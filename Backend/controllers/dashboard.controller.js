@@ -68,6 +68,93 @@ export const getStats = async (req, res, next) => {
       },
     })
 
+    // Get attendance stats for last 7 days
+    const sevenDaysAgo = new Date(today)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    
+    const attendanceLast7Days = await prisma.attendance.findMany({
+      where: {
+        date: {
+          gte: sevenDaysAgo,
+          lt: tomorrow,
+        },
+        ...(user.role !== 'admin' && user.role !== 'hr' && user.role !== 'manager' 
+          ? { userId: user.id } 
+          : {}),
+      },
+      select: {
+        date: true,
+        status: true,
+      },
+    })
+
+    // Group attendance by date
+    const attendanceByDate = {}
+    attendanceLast7Days.forEach((att) => {
+      const dateStr = att.date.toISOString().split('T')[0]
+      if (!attendanceByDate[dateStr]) {
+        attendanceByDate[dateStr] = { present: 0, absent: 0, late: 0 }
+      }
+      if (att.status === 'present') attendanceByDate[dateStr].present++
+      else if (att.status === 'absent') attendanceByDate[dateStr].absent++
+      else if (att.status === 'late') attendanceByDate[dateStr].late++
+    })
+
+    // Get department distribution
+    const departmentStats = await prisma.employee.groupBy({
+      by: ['department'],
+      where: {
+        status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
+      },
+      _count: {
+        id: true,
+      },
+    })
+
+    // Get monthly attendance trend (last 6 months)
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    sixMonthsAgo.setDate(1)
+    
+    const monthlyAttendance = await prisma.attendance.groupBy({
+      by: ['date'],
+      where: {
+        date: {
+          gte: sixMonthsAgo,
+        },
+        ...(user.role !== 'admin' && user.role !== 'hr' && user.role !== 'manager' 
+          ? { userId: user.id } 
+          : {}),
+      },
+      _count: {
+        id: true,
+      },
+    })
+
+    // Process monthly data
+    const monthlyData = {}
+    monthlyAttendance.forEach((item) => {
+      const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, '0')}`
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = 0
+      }
+      monthlyData[monthKey] += item._count.id
+    })
+
+    // Get leave statistics
+    const leaveStats = await prisma.leave.groupBy({
+      by: ['status'],
+      where: {
+        ...(user.role !== 'admin' && user.role !== 'hr' && user.role !== 'manager' 
+          ? { userId: user.id } 
+          : {}),
+      },
+      _count: {
+        id: true,
+      },
+    })
+
     res.json({
       status: 'success',
       data: {
@@ -76,6 +163,24 @@ export const getStats = async (req, res, next) => {
         pendingLeaves,
         lastPayrunAmount: lastPayrun?.totalAmount || 0,
         lastPayrunDate: lastPayrun?.payDate ? lastPayrun.payDate.toISOString() : null,
+        attendanceLast7Days: Object.entries(attendanceByDate).map(([date, stats]) => ({
+          date,
+          present: stats.present,
+          absent: stats.absent,
+          late: stats.late,
+        })),
+        departmentStats: departmentStats.map((dept) => ({
+          department: dept.department,
+          count: dept._count.id,
+        })),
+        monthlyAttendance: Object.entries(monthlyData).map(([month, count]) => ({
+          month,
+          count,
+        })),
+        leaveStats: leaveStats.map((stat) => ({
+          status: stat.status,
+          count: stat._count.id,
+        })),
       },
     })
   } catch (error) {

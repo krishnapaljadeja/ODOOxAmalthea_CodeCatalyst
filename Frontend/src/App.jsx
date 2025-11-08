@@ -20,6 +20,8 @@ import Settings from './pages/Settings'
 import UserSettings from './pages/UserSettings'
 import Profile from './pages/Profile'
 import ChangePassword from './pages/ChangePassword'
+import AdminSettings from './pages/AdminSettings'
+import SalaryManagement from './pages/SalaryManagement'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -65,6 +67,8 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="user-settings" element={<UserSettings />} />
+          <Route path="admin-settings" element={<AdminSettings />} />
+          <Route path="salary-management" element={<SalaryManagement />} />
           <Route path="profile" element={<Profile />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="*" element={<NotFound />} />

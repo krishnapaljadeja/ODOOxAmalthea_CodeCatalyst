@@ -616,11 +616,11 @@ Michael,Williams,michael.williams@example.com,+1234567892,Sales,Sales Representa
                           <img
                             src={employee.avatar || employee.user?.avatar}
                             alt={fullName}
-                            className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                            className="w-24 h-24 rounded-lg object-cover border-2 border-gray-200"
                           />
                         ) : (
-                          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border-2 border-gray-200">
-                            <span className="text-lg font-semibold text-primary">
+                          <div className="w-24 h-24 rounded-lg bg-primary/10 flex items-center justify-center border-2 border-gray-200">
+                            <span className="text-xl font-semibold text-primary">
                               {initials}
                             </span>
                           </div>
