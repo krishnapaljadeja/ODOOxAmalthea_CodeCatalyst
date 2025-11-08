@@ -353,7 +353,7 @@ export default function Attendance() {
   return (
     <div className="space-y-6">
       {/* NOTE Box */}
-      <Card className="bg-yellow-50 border-yellow-200">
+      {/* <Card className="bg-yellow-50 border-yellow-200">
         <CardContent className="pt-6">
           <div className="space-y-2 text-sm">
             <p className="font-semibold">NOTE</p>
@@ -383,7 +383,7 @@ export default function Attendance() {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {isAdmin ? (
         /* Admin/HR/Payroll Officer View */

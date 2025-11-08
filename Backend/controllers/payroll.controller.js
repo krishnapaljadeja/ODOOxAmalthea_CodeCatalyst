@@ -10,8 +10,20 @@ export const getPayrollDashboard = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get recent payruns
+    // Build company filter for payruns
+    const payrunWhere = user.companyId ? {
+      payrolls: {
+        some: {
+          employee: {
+            companyId: user.companyId,
+          },
+        },
+      },
+    } : {}
+
+    // Get recent payruns (filtered by company)
     const recentPayruns = await prisma.payrun.findMany({
+      where: payrunWhere,
       take: 5,
       orderBy: {
         createdAt: 'desc',
@@ -31,10 +43,11 @@ export const getPayrollDashboard = async (req, res, next) => {
     // Get warnings/notifications
     const warnings = []
 
-    // Check for employees without bank accounts
+    // Check for employees without bank accounts (filtered by company)
     const employeesWithoutBank = await prisma.employee.count({
       where: {
         status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
         OR: [
           { accountNumber: null },
           { accountNumber: '' },
@@ -81,7 +94,21 @@ export const getPayrollDashboard = async (req, res, next) => {
  */
 export const getPayruns = async (req, res, next) => {
   try {
+    const user = req.user
+
+    // Build company filter for payruns
+    const where = user.companyId ? {
+      payrolls: {
+        some: {
+          employee: {
+            companyId: user.companyId,
+          },
+        },
+      },
+    } : {}
+
     const payruns = await prisma.payrun.findMany({
+      where,
       orderBy: {
         createdAt: 'desc',
       },
@@ -115,11 +142,23 @@ export const getPayruns = async (req, res, next) => {
  */
 export const getCurrentMonthPayrun = async (req, res, next) => {
   try {
+    const user = req.user
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     startOfMonth.setHours(0, 0, 0, 0)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     endOfMonth.setHours(23, 59, 59, 999)
+
+    // Build company filter
+    const companyFilter = user.companyId ? {
+      payrolls: {
+        some: {
+          employee: {
+            companyId: user.companyId,
+          },
+        },
+      },
+    } : {}
 
     // Find payrun for current month - check if payPeriodStart is within current month
     const payrun = await prisma.payrun.findFirst({
@@ -135,10 +174,16 @@ export const getCurrentMonthPayrun = async (req, res, next) => {
               lte: endOfMonth,
             },
           },
+          companyFilter,
         ],
       },
       include: {
         payrolls: {
+          where: user.companyId ? {
+            employee: {
+              companyId: user.companyId,
+            },
+          } : {},
           include: {
             employee: {
               select: {
@@ -296,10 +341,30 @@ export const createPayrun = async (req, res, next) => {
 export const previewPayrun = async (req, res, next) => {
   try {
     const { payrunId } = req.params
+    const user = req.user
 
     const payrun = await prisma.payrun.findUnique({
       where: { id: payrunId },
     })
+
+    // Verify payrun belongs to user's company
+    if (user.companyId && payrun) {
+      const payrunHasCompanyEmployees = await prisma.payroll.findFirst({
+        where: {
+          payrunId: payrun.id,
+          employee: {
+            companyId: user.companyId,
+          },
+        },
+      })
+      if (!payrunHasCompanyEmployees) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Payrun not found',
+          error: 'Not Found',
+        })
+      }
+    }
 
     if (!payrun) {
       return res.status(404).json({
@@ -309,9 +374,12 @@ export const previewPayrun = async (req, res, next) => {
       })
     }
 
-    // Get all active employees
+    // Get all active employees (filtered by company)
     const employees = await prisma.employee.findMany({
-      where: { status: 'active' },
+      where: { 
+        status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
+      },
       include: {
         user: {
           select: {
@@ -376,10 +444,35 @@ export const previewPayrun = async (req, res, next) => {
 export const processPayrun = async (req, res, next) => {
   try {
     const { payrunId } = req.params
+    const user = req.user
 
     const payrun = await prisma.payrun.findUnique({
       where: { id: payrunId },
     })
+
+    // Verify payrun belongs to user's company (if payrun already has payrolls)
+    if (user.companyId && payrun) {
+      const existingPayrolls = await prisma.payroll.findMany({
+        where: { payrunId },
+      })
+      if (existingPayrolls.length > 0) {
+        const payrunHasCompanyEmployees = await prisma.payroll.findFirst({
+          where: {
+            payrunId: payrun.id,
+            employee: {
+              companyId: user.companyId,
+            },
+          },
+        })
+        if (!payrunHasCompanyEmployees) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'Payrun not found',
+            error: 'Not Found',
+          })
+        }
+      }
+    }
 
     if (!payrun) {
       return res.status(404).json({
@@ -416,9 +509,12 @@ export const processPayrun = async (req, res, next) => {
       data: { status: 'processing' },
     })
 
-    // Get all active employees
+    // Get all active employees (filtered by company)
     const employees = await prisma.employee.findMany({
-      where: { status: 'active' },
+      where: { 
+        status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
+      },
       include: {
         user: {
           select: {
@@ -505,6 +601,7 @@ export const processPayrun = async (req, res, next) => {
 export const getPayrollsByPayrun = async (req, res, next) => {
   try {
     const { payrunId } = req.params
+    const user = req.user
 
     // Get payrun details
     const payrun = await prisma.payrun.findUnique({
@@ -519,9 +616,35 @@ export const getPayrollsByPayrun = async (req, res, next) => {
       })
     }
 
-    // Get all payrolls for this payrun with employee and salary structure info
+    // Verify payrun belongs to user's company
+    if (user.companyId) {
+      const payrunHasCompanyEmployees = await prisma.payroll.findFirst({
+        where: {
+          payrunId: payrun.id,
+          employee: {
+            companyId: user.companyId,
+          },
+        },
+      })
+      if (!payrunHasCompanyEmployees) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Payrun not found',
+          error: 'Not Found',
+        })
+      }
+    }
+
+    // Get all payrolls for this payrun with employee and salary structure info (filtered by company)
     const payrolls = await prisma.payroll.findMany({
-      where: { payrunId },
+      where: { 
+        payrunId,
+        ...(user.companyId ? {
+          employee: {
+            companyId: user.companyId,
+          },
+        } : {}),
+      },
       include: {
         employee: {
           select: {
