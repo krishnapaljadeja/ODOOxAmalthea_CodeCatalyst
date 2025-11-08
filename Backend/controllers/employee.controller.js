@@ -4,6 +4,11 @@ import {
   generateCompanyCode,
 } from "../utils/employee.utils.js";
 import { hashPassword } from "../utils/password.utils.js";
+import {
+  generateRandomPassword,
+  generatePasswordResetToken,
+  sendAccountCreationEmail,
+} from "../utils/email.utils.js";
 
 const prisma = new PrismaClient();
 
@@ -119,6 +124,7 @@ export const createEmployee = async (req, res, next) => {
       position,
       salary,
       hireDate,
+      role, // Role selection for the new employee
     } = req.body;
 
     const currentUser = req.user; // Admin/HR creating the employee
@@ -190,9 +196,21 @@ export const createEmployee = async (req, res, next) => {
       company.id
     );
 
-    // Hash password (default password)
-    const defaultPassword = "password123";
-    const hashedPassword = await hashPassword(defaultPassword);
+    // Generate random password for new employee
+    const randomPassword = generateRandomPassword(12);
+    const hashedPassword = await hashPassword(randomPassword);
+
+    // Validate role (default to 'employee' if not provided or invalid)
+    const validRoles = ["admin", "hr", "manager", "employee"];
+    const employeeRole =
+      role && validRoles.includes(role.toLowerCase())
+        ? role.toLowerCase()
+        : "employee";
+
+    // Generate password reset token for initial password change
+    const resetToken = generatePasswordResetToken();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
 
     // Create user
     const user = await prisma.user.create({
@@ -201,12 +219,22 @@ export const createEmployee = async (req, res, next) => {
         password: hashedPassword,
         firstName,
         lastName,
-        role: "employee",
+        role: employeeRole,
         phone,
         department,
         position,
         employeeId,
         companyId: company.id,
+      },
+    });
+
+    // Create password reset token
+    await prisma.passwordResetToken.create({
+      data: {
+        token: resetToken,
+        userId: user.id,
+        email: user.email,
+        expiresAt,
       },
     });
 
@@ -245,6 +273,21 @@ export const createEmployee = async (req, res, next) => {
       },
     });
 
+    // Send account creation email with credentials
+    try {
+      await sendAccountCreationEmail(
+        email,
+        employeeId,
+        randomPassword,
+        firstName,
+        resetToken
+      );
+    } catch (emailError) {
+      // Log email error but don't fail the request
+      console.error("Failed to send account creation email:", emailError);
+      // Employee is already created, so we continue
+    }
+
     // Format response
     const formattedEmployee = {
       id: employee.id,
@@ -266,6 +309,8 @@ export const createEmployee = async (req, res, next) => {
     res.status(201).json({
       status: "success",
       data: formattedEmployee,
+      message:
+        "Employee created successfully. Credentials have been sent to their email.",
     });
   } catch (error) {
     next(error);

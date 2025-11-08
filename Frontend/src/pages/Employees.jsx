@@ -35,6 +35,7 @@ const employeeSchema = z.object({
   position: z.string().min(1, "Position is required"),
   salary: z.number().min(0, "Salary must be positive"),
   hireDate: z.string().min(1, "Hire date is required"),
+  role: z.enum(["admin", "hr", "manager", "employee"]).optional(),
   // Company name is automatically inherited from the logged-in admin/hr
 });
 
@@ -57,9 +58,16 @@ export default function Employees() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
+    watch,
   } = useForm({
     resolver: zodResolver(employeeSchema),
+    defaultValues: {
+      role: "employee",
+    },
   });
+
+  const selectedRole = watch("role");
 
   useEffect(() => {
     fetchEmployees();
@@ -436,6 +444,34 @@ export default function Employees() {
                       </p>
                     )}
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={selectedRole || "employee"}
+                    onValueChange={(value) => setValue("role", value)}
+                  >
+                    <SelectTrigger
+                      id="role"
+                      aria-invalid={errors.role ? "true" : "false"}
+                    >
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="hr">HR</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.role && (
+                    <p className="text-sm text-destructive">
+                      {errors.role.message}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Select the role for this employee. They will receive login credentials via email.
+                  </p>
                 </div>
                 <DialogFooter>
                   <Button

@@ -19,55 +19,85 @@ import { useAuthStore } from '../store/auth'
 export default function UserSettings() {
   const { user } = useAuthStore()
   const [users, setUsers] = useState([])
-  const [modules, setModules] = useState([
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [modules] = useState([
     'Employees',
     'Attendance',
     'Time Off',
     'Payroll',
     'Reports',
-    'Settings',
   ])
-  const [userRoles, setUserRoles] = useState({}) // { userId: { module: role } }
+  const [userRoles, setUserRoles] = useState({}) // { module: role }
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchUsers()
-    fetchUserRoles()
   }, [])
+
+  useEffect(() => {
+    if (selectedUser) {
+      fetchUserRoles(selectedUser.id)
+    }
+  }, [selectedUser])
 
   const fetchUsers = async () => {
     try {
-      const response = await apiClient.get('/users')
-      setUsers(response.data)
+      const response = await apiClient.get('/employees')
+      // Get unique users from employees
+      const userMap = new Map()
+      response.data.forEach((emp) => {
+        if (emp.user && !userMap.has(emp.user.id)) {
+          userMap.set(emp.user.id, {
+            id: emp.user.id,
+            firstName: emp.user.firstName,
+            lastName: emp.user.lastName,
+            email: emp.user.email,
+            employeeId: emp.user.employeeId,
+            role: emp.user.role,
+          })
+        }
+      })
+      const usersList = Array.from(userMap.values())
+      setUsers(usersList)
+      if (usersList.length > 0 && !selectedUser) {
+        setSelectedUser(usersList[0])
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error)
+      toast.error('Failed to fetch users')
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchUserRoles = async () => {
+  const fetchUserRoles = async (userId) => {
     try {
-      const response = await apiClient.get('/user-settings/roles')
-      setUserRoles(response.data)
+      const response = await apiClient.get(`/user-settings/roles/${userId}`)
+      setUserRoles(response.data || {})
     } catch (error) {
       console.error('Failed to fetch user roles:', error)
+      // Initialize with empty roles if endpoint doesn't exist yet
+      setUserRoles({})
     }
   }
 
-  const handleRoleChange = (userId, module, role) => {
+  const handleRoleChange = (module, role) => {
     setUserRoles((prev) => ({
       ...prev,
-      [userId]: {
-        ...prev[userId],
-        [module]: role,
-      },
+      [module]: role,
     }))
   }
 
   const handleSave = async () => {
+    if (!selectedUser) {
+      toast.error('Please select a user first')
+      return
+    }
+
     try {
-      await apiClient.put('/user-settings/roles', userRoles)
+      await apiClient.put(`/user-settings/roles/${selectedUser.id}`, {
+        moduleRoles: userRoles,
+      })
       toast.success('User access rights updated successfully')
     } catch (error) {
       console.error('Failed to save user roles:', error)
@@ -75,8 +105,8 @@ export default function UserSettings() {
     }
   }
 
-  const getRoleForUserModule = (userId, module) => {
-    return userRoles[userId]?.[module] || ''
+  const getRoleForModule = (module) => {
+    return userRoles[module] || selectedUser?.role || 'employee'
   }
 
   if (loading) {
@@ -88,7 +118,7 @@ export default function UserSettings() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">User Setting</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mt-2">
             In the Admin Settings, the administrator can assign user access
             rights based on each user's role.
           </p>
@@ -106,74 +136,131 @@ export default function UserSettings() {
               These access rights define what users are allowed to access and
               what they are restricted from accessing.
             </CardDescription>
-            <CardDescription className="mt-2">
-              Example roles: Employee / Admin / HR Officer / Payroll Officer
+            <CardDescription className="mt-2 font-medium">
+              Employee / Admin / HR Officer / Payroll Officer
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-48">Module</TableHead>
-                      {users.map((user) => (
-                        <TableHead key={user.id} className="min-w-[200px]">
-                          <div className="space-y-1">
-                            <p className="font-semibold">
-                              {user.firstName} {user.lastName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {user.email}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Login ID: {user.email}
-                            </p>
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {modules.map((module) => (
-                      <TableRow key={module}>
-                        <TableCell className="font-medium">{module}</TableCell>
-                        {users.map((user) => (
-                          <TableCell key={user.id}>
-                            <Select
-                              value={getRoleForUserModule(user.id, module)}
-                              onValueChange={(value) =>
-                                handleRoleChange(user.id, module, value)
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select role" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="employee">Employee</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="hr">HR Officer</SelectItem>
-                                <SelectItem value="payroll">
-                                  Payroll Officer
-                                </SelectItem>
-                                <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="none">No Access</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                        ))}
-                      </TableRow>
+              {/* User Selection */}
+              <div className="mb-6">
+                <Label htmlFor="user-select" className="mb-2 block">
+                  Select User
+                </Label>
+                <Select
+                  value={selectedUser?.id || ''}
+                  onValueChange={(userId) => {
+                    const user = users.find((u) => u.id === userId)
+                    setSelectedUser(user)
+                  }}
+                >
+                  <SelectTrigger id="user-select" className="w-full max-w-md">
+                    <SelectValue placeholder="Select a user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName} ({user.email})
+                      </SelectItem>
                     ))}
-                  </TableBody>
-                </Table>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="flex justify-end pt-4">
-                <Button onClick={handleSave}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
-                </Button>
-              </div>
+              {selectedUser && (
+                <>
+                  {/* User Information */}
+                  <div className="mb-6 p-4 bg-muted rounded-lg">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">
+                          User Name
+                        </Label>
+                        <p className="font-semibold">
+                          {selectedUser.firstName} {selectedUser.lastName}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">
+                          Login ID
+                        </Label>
+                        <p className="font-semibold">
+                          {selectedUser.employeeId || selectedUser.email}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">
+                          Email
+                        </Label>
+                        <p className="font-semibold">{selectedUser.email}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">
+                          Role
+                        </Label>
+                        <p className="font-semibold capitalize">
+                          {selectedUser.role}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Module Access Rights Table */}
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-48">Module</TableHead>
+                          <TableHead>Role</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {modules.map((module) => (
+                          <TableRow key={module}>
+                            <TableCell className="font-medium">
+                              {module}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={getRoleForModule(module)}
+                                onValueChange={(value) =>
+                                  handleRoleChange(module, value)
+                                }
+                              >
+                                <SelectTrigger className="w-full max-w-xs">
+                                  <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="employee">
+                                    Employee
+                                  </SelectItem>
+                                  <SelectItem value="manager">Manager</SelectItem>
+                                  <SelectItem value="hr">HR Officer</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="none">No Access</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <Button onClick={handleSave}>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Changes
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {!selectedUser && users.length === 0 && !loading && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No users found. Please create users first.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
