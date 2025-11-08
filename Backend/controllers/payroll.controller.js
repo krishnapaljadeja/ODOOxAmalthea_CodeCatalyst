@@ -4,6 +4,79 @@ import { calculatePayroll } from '../utils/payroll.utils.js'
 const prisma = new PrismaClient()
 
 /**
+ * Get payroll dashboard data
+ */
+export const getPayrollDashboard = async (req, res, next) => {
+  try {
+    const user = req.user
+
+    // Get recent payruns
+    const recentPayruns = await prisma.payrun.findMany({
+      take: 5,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        name: true,
+        payPeriodStart: true,
+        payPeriodEnd: true,
+        payDate: true,
+        status: true,
+        totalEmployees: true,
+        totalAmount: true,
+      },
+    })
+
+    // Get warnings/notifications
+    const warnings = []
+
+    // Check for employees without bank accounts
+    const employeesWithoutBank = await prisma.employee.count({
+      where: {
+        status: 'active',
+        OR: [
+          { accountNumber: null },
+          { accountNumber: '' },
+          { bankName: null },
+          { bankName: '' },
+        ],
+      },
+    })
+
+    if (employeesWithoutBank > 0) {
+      warnings.push({
+        type: 'noBankAccount',
+        count: employeesWithoutBank,
+        message: `${employeesWithoutBank} employee(s) without bank account details`,
+      })
+    }
+
+    // Check for employees without managers (if manager field exists)
+    // This is a placeholder - adjust based on your schema
+
+    res.json({
+      status: 'success',
+      data: {
+        warnings,
+        recentPayruns: recentPayruns.map((payrun) => ({
+          id: payrun.id,
+          name: payrun.name,
+          payPeriodStart: payrun.payPeriodStart.toISOString().split('T')[0],
+          payPeriodEnd: payrun.payPeriodEnd.toISOString().split('T')[0],
+          payDate: payrun.payDate.toISOString().split('T')[0],
+          status: payrun.status,
+          totalEmployees: payrun.totalEmployees,
+          totalAmount: payrun.totalAmount,
+        })),
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
  * Get payruns
  */
 export const getPayruns = async (req, res, next) => {

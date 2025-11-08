@@ -112,7 +112,7 @@ export default function Topbar() {
     const labels = {
       admin: 'Administrator',
       hr: 'HR Manager',
-      manager: 'Manager',
+      payroll: 'Payroll Officer',
       employee: 'Employee',
     }
     return labels[role] || role

@@ -17,21 +17,42 @@ import { useAuthStore } from "../store/auth";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/employees", label: "Employees", icon: Users },
-  { path: "/attendance", label: "Attendance", icon: Clock },
-  { path: "/leaves", label: "Time Off", icon: Calendar },
-  { path: "/payroll", label: "Payroll", icon: DollarSign },
+  {
+    path: "/employees",
+    label: "Employees",
+    icon: Users,
+    roles: ["admin", "hr", "employee"],
+    // All roles can access except payroll, but employees will have view-only access
+  },
+  {
+    path: "/attendance",
+    label: "Attendance",
+    icon: Clock,
+    roles: ["admin", "hr", "employee", "payroll"],
+  },
+  {
+    path: "/leaves",
+    label: "Time Off",
+    icon: Calendar,
+    roles: ["admin", "hr", "employee", "payroll"],
+  },
+  {
+    path: "/payroll",
+    label: "Payroll",
+    icon: DollarSign,
+    roles: ["admin", "payroll"],
+  },
   {
     path: "/salary-management",
     label: "Salary Management",
     icon: DollarSign,
-    roles: ["admin", "hr"],
+    roles: ["admin", "hr", "payroll"],
   },
   {
     path: "/reports",
     label: "Reports",
     icon: FileText,
-    roles: ["admin", "hr"],
+    roles: ["admin", "payroll"],
   },
   // { path: '/settings', label: 'Settings', icon: Settings },
   {

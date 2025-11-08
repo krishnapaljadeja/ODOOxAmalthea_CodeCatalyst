@@ -9,8 +9,8 @@ const router = express.Router()
 
 router.get('/', authenticate, validate(getLeavesSchema), getLeaves)
 router.post('/', authenticate, validate(createLeaveSchema), createLeave)
-router.put('/:leaveId/approve', authenticate, authorize('admin', 'hr', 'manager'), approveLeave)
-router.put('/:leaveId/reject', authenticate, authorize('admin', 'hr', 'manager'), validate(rejectLeaveSchema), rejectLeave)
+router.put('/:leaveId/approve', authenticate, authorize('admin', 'hr', 'payroll'), approveLeave)
+router.put('/:leaveId/reject', authenticate, authorize('admin', 'hr', 'payroll'), validate(rejectLeaveSchema), rejectLeave)
 
 export default router
 

@@ -24,23 +24,11 @@ export const getEmployees = async (req, res, next) => {
     const where = {};
 
     // Role-based filtering
-    if (user.role === "employee") {
-      // Employees can only see themselves
-      where.userId = user.id;
-    } else if (user.role === "manager") {
-      // Managers can see employees in their department
-      if (user.department) {
-        where.department = user.department;
-      }
-      // Also filter by company
-      if (user.companyId) {
-        where.companyId = user.companyId;
-      }
-    } else if (user.role === "admin" || user.role === "hr") {
-      // Admin and HR can only see employees from their company
-      if (user.companyId) {
-        where.companyId = user.companyId;
-      }
+    // Employees can view all employees in their company (view-only access)
+    // Admin and HR can view and manage all employees in their company
+    // Also filter by company
+    if (user.companyId) {
+      where.companyId = user.companyId;
     }
 
     if (status) {
@@ -209,7 +197,7 @@ export const createEmployee = async (req, res, next) => {
     const hashedPassword = await hashPassword(randomPassword);
 
     // Validate role (default to 'employee' if not provided or invalid)
-    const validRoles = ["admin", "hr", "manager", "employee"];
+    const validRoles = ["admin", "hr", "payroll", "employee"];
     const employeeRole =
       role && validRoles.includes(role.toLowerCase())
         ? role.toLowerCase()

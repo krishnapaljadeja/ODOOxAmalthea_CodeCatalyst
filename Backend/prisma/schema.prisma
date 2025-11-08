@@ -12,7 +12,7 @@ datasource db {
 enum UserRole {
   admin
   hr
-  manager
+  payroll
   employee
 }
 

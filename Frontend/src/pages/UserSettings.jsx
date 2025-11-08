@@ -234,7 +234,6 @@ export default function UserSettings() {
                                   <SelectItem value="employee">
                                     Employee
                                   </SelectItem>
-                                  <SelectItem value="manager">Manager</SelectItem>
                                   <SelectItem value="hr">HR Officer</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
                                   <SelectItem value="none">No Access</SelectItem>

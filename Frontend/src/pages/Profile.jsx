@@ -92,7 +92,7 @@ export default function Profile() {
     resolver: zodResolver(emergencyContactSchema),
   });
 
-  const isAdminOrPayroll = ["admin", "hr"].includes(user?.role);
+  const isAdminOrPayroll = ["admin", "hr", "payroll"].includes(user?.role);
 
   useEffect(() => {
     if (user) {

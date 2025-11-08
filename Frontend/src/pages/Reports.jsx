@@ -12,7 +12,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import ProtectedRoute from '../components/ProtectedRoute'
 
 const reportSchema = z.object({
   employeeId: z.string().min(1, 'Employee is required'),
@@ -117,8 +116,7 @@ export default function Reports() {
   })
 
   return (
-    <ProtectedRoute allowedRoles={['admin', 'hr']}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Reports</h1>
           <p className="text-muted-foreground">
@@ -372,7 +370,6 @@ export default function Reports() {
           </DialogContent>
         </Dialog>
       </div>
-    </ProtectedRoute>
   )
 }
 

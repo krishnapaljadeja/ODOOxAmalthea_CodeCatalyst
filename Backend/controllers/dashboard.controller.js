@@ -22,7 +22,7 @@ export const getStats = async (req, res, next) => {
     tomorrow.setDate(tomorrow.getDate() + 1)
 
     const presentToday =
-      user.role === 'admin' || user.role === 'hr' || user.role === 'manager'
+      user.role === 'admin' || user.role === 'hr'
         ? await prisma.attendance.count({
             where: {
               date: {
@@ -45,7 +45,7 @@ export const getStats = async (req, res, next) => {
 
     // Get pending leaves
     const pendingLeaves =
-      user.role === 'admin' || user.role === 'hr' || user.role === 'manager'
+      user.role === 'admin' || user.role === 'hr'
         ? await prisma.leave.count({
             where: {
               status: 'pending',
@@ -78,7 +78,7 @@ export const getStats = async (req, res, next) => {
           gte: sevenDaysAgo,
           lt: tomorrow,
         },
-        ...(user.role !== 'admin' && user.role !== 'hr' && user.role !== 'manager' 
+        ...(user.role !== 'admin' && user.role !== 'hr' 
           ? { userId: user.id } 
           : {}),
       },
@@ -123,7 +123,7 @@ export const getStats = async (req, res, next) => {
         date: {
           gte: sixMonthsAgo,
         },
-        ...(user.role !== 'admin' && user.role !== 'hr' && user.role !== 'manager' 
+        ...(user.role !== 'admin' && user.role !== 'hr' 
           ? { userId: user.id } 
           : {}),
       },
@@ -146,7 +146,7 @@ export const getStats = async (req, res, next) => {
     const leaveStats = await prisma.leave.groupBy({
       by: ['status'],
       where: {
-        ...(user.role !== 'admin' && user.role !== 'hr' && user.role !== 'manager' 
+        ...(user.role !== 'admin' && user.role !== 'hr' 
           ? { userId: user.id } 
           : {}),
       },

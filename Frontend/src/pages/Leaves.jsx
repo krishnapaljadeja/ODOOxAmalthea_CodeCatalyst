@@ -39,7 +39,7 @@ export default function Leaves() {
   const [selectedLeaveId, setSelectedLeaveId] = useState(null)
   const { user } = useAuthStore()
 
-  const isApprover = ['admin', 'hr', 'manager'].includes(user?.role)
+  const isApprover = ['admin', 'hr', 'payroll'].includes(user?.role)
 
   const {
     register,

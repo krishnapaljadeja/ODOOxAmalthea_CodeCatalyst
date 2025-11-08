@@ -24,16 +24,6 @@ export const getAttendance = async (req, res, next) => {
       if (employee) {
         where.employeeId = employee.id
       }
-    } else if (user.role === 'manager' && user.department) {
-      // Managers can see employees in their department
-      const employees = await prisma.employee.findMany({
-        where: { 
-          department: user.department,
-          ...(user.companyId ? { companyId: user.companyId } : {}),
-        },
-        select: { id: true },
-      })
-      where.employeeId = { in: employees.map((e) => e.id) }
     } else if (user.role === 'admin' || user.role === 'hr') {
       // Admin and HR can see all employees from their company
       if (user.companyId) {
@@ -388,8 +378,8 @@ export const adminCheckIn = async (req, res, next) => {
     const user = req.user
     const { employeeId } = req.body
 
-    // Only admin, hr, or manager can check in employees
-    if (!['admin', 'hr', 'manager'].includes(user.role)) {
+    // Only admin or hr can check in employees
+    if (!['admin', 'hr'].includes(user.role)) {
       return res.status(403).json({
         status: 'error',
         message: 'Insufficient permissions',
@@ -508,8 +498,8 @@ export const adminCheckOut = async (req, res, next) => {
     const user = req.user
     const { employeeId } = req.body
 
-    // Only admin, hr, or manager can check out employees
-    if (!['admin', 'hr', 'manager'].includes(user.role)) {
+    // Only admin or hr can check out employees
+    if (!['admin', 'hr'].includes(user.role)) {
       return res.status(403).json({
         status: 'error',
         message: 'Insufficient permissions',

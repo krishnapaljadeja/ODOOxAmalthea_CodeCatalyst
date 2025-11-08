@@ -7,18 +7,23 @@ import {
 
 const prisma = new PrismaClient();
 
-async function createDefaultSalaryStructure(employeeId, totalSalary, effectiveFrom = new Date()) {
+async function createDefaultSalaryStructure(
+  employeeId,
+  totalSalary,
+  effectiveFrom = new Date()
+) {
   // Simple preset split for demo
   const basic = totalSalary * 0.5;
   const hra = totalSalary * 0.25;
   const standardAllowance = totalSalary * 0.1;
   const pfEmployee = basic * 0.12;
   const professionalTax = 200;
-  const bonus = totalSalary * 0.05;
+  const performanceBonus = totalSalary * 0.05;
   const travelAllowance = totalSalary * 0.02;
   const tds = totalSalary * 0.01;
 
-  const grossSalary = basic + hra + standardAllowance + bonus + travelAllowance;
+  const grossSalary =
+    basic + hra + standardAllowance + performanceBonus + travelAllowance;
   const totalDeductions = pfEmployee + professionalTax + tds;
   const netSalary = grossSalary - totalDeductions;
 
@@ -30,7 +35,7 @@ async function createDefaultSalaryStructure(employeeId, totalSalary, effectiveFr
       basicSalary: basic,
       houseRentAllowance: hra,
       standardAllowance,
-      bonus,
+      performanceBonus,
       travelAllowance,
       pfEmployee,
       professionalTax,
@@ -63,7 +68,17 @@ async function main() {
   console.log(`✅ Created company: ${companyName} (${companyCode})`);
 
   // Common creator helper
-  async function createUserAndEmployee(role, firstName, lastName, email, hireDate, department, position, totalSalary, additionalData = {}) {
+  async function createUserAndEmployee(
+    role,
+    firstName,
+    lastName,
+    email,
+    hireDate,
+    department,
+    position,
+    totalSalary,
+    additionalData = {}
+  ) {
     const employeeId = await generateEmployeeId(
       companyCode,
       firstName,
@@ -90,37 +105,97 @@ async function main() {
       },
     });
 
-    // Create employee
-    const employee = await prisma.employee.upsert({
-      where: { employeeId },
-      update: {},
-      create: {
-        employeeId,
-        userId: user.id,
-        email,
-        firstName,
-        lastName,
-        phone: additionalData.phone || "+1234567890",
-        department,
-        position,
-        status: additionalData.status || "active",
-        hireDate,
-        salary: totalSalary,
-        companyId: company.id,
-        // Bank details
-        accountNumber: additionalData.accountNumber || `ACC${Math.floor(Math.random() * 1000000)}`,
-        bankName: additionalData.bankName || "HDFC Bank",
-        ifscCode: additionalData.ifscCode || "HDFC0001234",
-        panNo: additionalData.panNo || `PAN${Math.random().toString(36).substring(2, 7).toUpperCase()}${Math.floor(Math.random() * 10)}`,
-        uanNo: additionalData.uanNo || `${Math.floor(Math.random() * 10000000000)}`,
-        // Personal info
-        dateOfBirth: additionalData.dateOfBirth || new Date(1990, 0, 1),
-        address: additionalData.address || "123 Main Street, City, State",
-        nationality: additionalData.nationality || "Indian",
-        gender: additionalData.gender || "Male",
-        maritalStatus: additionalData.maritalStatus || "Single",
-      },
+    // Check if employee already exists by userId
+    let employee = await prisma.employee.findUnique({
+      where: { userId: user.id },
     });
+
+    if (!employee) {
+      // Check if employee exists by employeeId
+      employee = await prisma.employee.findUnique({
+        where: { employeeId },
+      });
+    }
+
+    // Create or update employee
+    if (employee) {
+      employee = await prisma.employee.update({
+        where: { id: employee.id },
+        data: {
+          employeeId,
+          userId: user.id,
+          email,
+          firstName,
+          lastName,
+          phone: additionalData.phone || "+1234567890",
+          department,
+          position,
+          status: additionalData.status || "active",
+          hireDate,
+          salary: totalSalary,
+          companyId: company.id,
+          // Bank details
+          accountNumber:
+            additionalData.accountNumber ||
+            `ACC${Math.floor(Math.random() * 1000000)}`,
+          bankName: additionalData.bankName || "HDFC Bank",
+          ifscCode: additionalData.ifscCode || "HDFC0001234",
+          panNo:
+            additionalData.panNo ||
+            `PAN${Math.random()
+              .toString(36)
+              .substring(2, 7)
+              .toUpperCase()}${Math.floor(Math.random() * 10)}`,
+          uanNo:
+            additionalData.uanNo ||
+            `${Math.floor(Math.random() * 10000000000)}`,
+          // Personal info
+          dateOfBirth: additionalData.dateOfBirth || new Date(1990, 0, 1),
+          address: additionalData.address || "123 Main Street, City, State",
+          nationality: additionalData.nationality || "Indian",
+          gender: additionalData.gender || "Male",
+          maritalStatus: additionalData.maritalStatus || "Single",
+        },
+      });
+    } else {
+      employee = await prisma.employee.create({
+        data: {
+          employeeId,
+          userId: user.id,
+          email,
+          firstName,
+          lastName,
+          phone: additionalData.phone || "+1234567890",
+          department,
+          position,
+          status: additionalData.status || "active",
+          hireDate,
+          salary: totalSalary,
+          companyId: company.id,
+          // Bank details
+          accountNumber:
+            additionalData.accountNumber ||
+            `ACC${Math.floor(Math.random() * 1000000)}`,
+          bankName: additionalData.bankName || "HDFC Bank",
+          ifscCode: additionalData.ifscCode || "HDFC0001234",
+          panNo:
+            additionalData.panNo ||
+            `PAN${Math.random()
+              .toString(36)
+              .substring(2, 7)
+              .toUpperCase()}${Math.floor(Math.random() * 10)}`,
+          uanNo:
+            additionalData.uanNo ||
+            `${Math.floor(Math.random() * 10000000000)}`,
+          // Personal info
+          dateOfBirth: additionalData.dateOfBirth || new Date(1990, 0, 1),
+          address: additionalData.address || "123 Main Street, City, State",
+          nationality: additionalData.nationality || "Indian",
+          gender: additionalData.gender || "Male",
+          maritalStatus: additionalData.maritalStatus || "Single",
+        },
+      });
+    }
 
     // Create default salary structure
     await createDefaultSalaryStructure(employee.id, totalSalary, hireDate);
@@ -129,7 +204,12 @@ async function main() {
   }
 
   // Function to create new salary structure (closing old one)
-  async function createNewSalaryStructure(employeeId, totalSalary, structureName, effectiveFrom) {
+  async function createNewSalaryStructure(
+    employeeId,
+    totalSalary,
+    structureName,
+    effectiveFrom
+  ) {
     // Find and close current active structure
     const activeStructure = await prisma.salaryStructure.findFirst({
       where: {
@@ -151,13 +231,15 @@ async function main() {
     const standardAllowance = totalSalary * 0.1;
     const pfEmployee = basic * 0.12;
     const professionalTax = 200;
-    const bonus = totalSalary * 0.05;
+    const performanceBonus = totalSalary * 0.05;
     const travelAllowance = totalSalary * 0.02;
     const tds = totalSalary * 0.01;
     const otherDeductions = 0;
 
-    const grossSalary = basic + hra + standardAllowance + bonus + travelAllowance;
-    const totalDeductions = pfEmployee + professionalTax + tds + otherDeductions;
+    const grossSalary =
+      basic + hra + standardAllowance + performanceBonus + travelAllowance;
+    const totalDeductions =
+      pfEmployee + professionalTax + tds + otherDeductions;
     const netSalary = grossSalary - totalDeductions;
 
     return prisma.salaryStructure.create({
@@ -170,7 +252,7 @@ async function main() {
         basicSalary: basic,
         houseRentAllowance: hra,
         standardAllowance,
-        bonus,
+        performanceBonus,
         travelAllowance,
         pfEmployee,
         professionalTax,
@@ -207,15 +289,15 @@ async function main() {
     90000
   );
 
-  const manager = await createUserAndEmployee(
-    "manager",
-    "Michael",
-    "Brown",
-    "manager@workzen.com",
-    new Date("2023-03-01"),
-    "Engineering",
-    "Engineering Manager",
-    85000
+  const payroll = await createUserAndEmployee(
+    "payroll",
+    "Jessica",
+    "Miller",
+    "payroll@workzen.com",
+    new Date("2023-03-15"),
+    "Finance",
+    "Payroll Officer",
+    82000
   );
 
   const employee1 = await createUserAndEmployee(
@@ -275,30 +357,62 @@ async function main() {
     { status: "inactive" } // Test inactive employee
   );
 
-  const allEmployees = [admin, hr, manager, employee1, employee2, employee3, employee4, employee5];
-  const activeEmployees = [admin, hr, manager, employee1, employee2, employee3, employee4];
+  const allEmployees = [
+    admin,
+    hr,
+    payroll,
+    employee1,
+    employee2,
+    employee3,
+    employee4,
+    employee5,
+  ];
+  const activeEmployees = [
+    admin,
+    hr,
+    payroll,
+    employee1,
+    employee2,
+    employee3,
+    employee4,
+  ];
   console.log(`✅ Created ${allEmployees.length} employees`);
 
   // Create salary structure history for some employees
   console.log("💰 Creating salary structure history...");
   const today = new Date();
-  
+
   // Create historical salary structures for employee1 (promotion scenario)
   const promotionDate = new Date(today);
   promotionDate.setMonth(promotionDate.getMonth() - 2);
-  await createNewSalaryStructure(employee1.employee.id, 80000, "Promotion Structure", promotionDate);
+  await createNewSalaryStructure(
+    employee1.employee.id,
+    80000,
+    "Promotion Structure",
+    promotionDate
+  );
 
   // Create historical salary structures for employee2 (raise scenario)
   const raiseDate = new Date(today);
   raiseDate.setMonth(raiseDate.getMonth() - 1);
-  await createNewSalaryStructure(employee2.employee.id, 100000, "Annual Raise Structure", raiseDate);
+  await createNewSalaryStructure(
+    employee2.employee.id,
+    100000,
+    "Annual Raise Structure",
+    raiseDate
+  );
 
   // Create updated structures for all active employees
   const updateDate = new Date(today);
   updateDate.setDate(updateDate.getDate() - 30);
   for (const emp of activeEmployees) {
     const currentSalary = emp.employee.salary;
-    await createNewSalaryStructure(emp.employee.id, currentSalary, `Updated Structure - ${emp.employee.firstName}`, updateDate);
+    await createNewSalaryStructure(
+      emp.employee.id,
+      currentSalary,
+      `Updated Structure - ${emp.employee.firstName}`,
+      updateDate
+    );
   }
   console.log("✅ Created salary structure history");
 
@@ -326,9 +440,17 @@ async function main() {
 
   // Create attendance for current month and previous month
   for (let monthOffset = 0; monthOffset <= 1; monthOffset++) {
-    const targetMonth = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1);
-    const monthEnd = new Date(today.getFullYear(), today.getMonth() - monthOffset + 1, 0);
-    
+    const targetMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() - monthOffset,
+      1
+    );
+    const monthEnd = new Date(
+      today.getFullYear(),
+      today.getMonth() - monthOffset + 1,
+      0
+    );
+
     for (let dayOffset = 0; dayOffset < 20; dayOffset++) {
       const attendanceDate = new Date(targetMonth);
       attendanceDate.setDate(attendanceDate.getDate() + dayOffset);
@@ -340,7 +462,8 @@ async function main() {
       if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
       for (const emp of activeEmployees) {
-        const variation = attendanceVariations[dayOffset % attendanceVariations.length];
+        const variation =
+          attendanceVariations[dayOffset % attendanceVariations.length];
         const status = variation.status;
 
         let checkIn = null;
@@ -413,32 +536,6 @@ async function main() {
     });
   }
 
-  // Approved sick leave for manager
-  const managerLeaveDate = new Date(today);
-  managerLeaveDate.setDate(managerLeaveDate.getDate() - 2);
-  const existingLeave2 = await prisma.leave.findFirst({
-    where: {
-      employeeId: manager.employee.id,
-      startDate: managerLeaveDate,
-    },
-  });
-  if (!existingLeave2) {
-    await prisma.leave.create({
-      data: {
-        employeeId: manager.employee.id,
-        userId: manager.user.id,
-        type: "sick",
-        startDate: managerLeaveDate,
-        endDate: managerLeaveDate,
-        days: 1,
-        reason: "Sick leave",
-        status: "approved",
-        approvedById: admin.user.id,
-        approvedAt: new Date(),
-      },
-    });
-  }
-
   // Pending leave for employee2
   const futureLeaveStart = new Date(today);
   futureLeaveStart.setDate(futureLeaveStart.getDate() + 7);
@@ -496,15 +593,27 @@ async function main() {
   // Create payruns for different months
   console.log("📊 Creating payruns...");
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   // Previous month payrun (completed with payslips)
   const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
   const prevMonthPayDate = new Date(today.getFullYear(), today.getMonth(), 5);
-  const prevMonthPayrunName = `Payrun ${monthNames[prevMonth.getMonth()]} ${prevMonth.getFullYear()}`;
+  const prevMonthPayrunName = `Payrun ${
+    monthNames[prevMonth.getMonth()]
+  } ${prevMonth.getFullYear()}`;
 
   let prevMonthPayrun = await prisma.payrun.findFirst({
     where: {
@@ -529,9 +638,15 @@ async function main() {
 
   // Current month payrun (draft status)
   const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const currentMonthEnd = new Date(
+    today.getFullYear(),
+    today.getMonth() + 1,
+    0
+  );
   const payDate = new Date(today.getFullYear(), today.getMonth() + 1, 5);
-  const currentPayrunName = `Payrun ${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+  const currentPayrunName = `Payrun ${
+    monthNames[today.getMonth()]
+  } ${today.getFullYear()}`;
 
   let currentPayrun = await prisma.payrun.findFirst({
     where: {
@@ -560,7 +675,9 @@ async function main() {
     });
   }
 
-  console.log(`✅ Created payruns: ${prevMonthPayrun.name} (${prevMonthPayrun.status}), ${currentPayrun.name} (${currentPayrun.status})`);
+  console.log(
+    `✅ Created payruns: ${prevMonthPayrun.name} (${prevMonthPayrun.status}), ${currentPayrun.name} (${currentPayrun.status})`
+  );
 
   // Create payrolls for previous month (completed payrun)
   console.log("💼 Creating payrolls for previous month...");
@@ -612,7 +729,9 @@ async function main() {
     data: { totalAmount: prevMonthTotalAmount },
   });
 
-  console.log(`✅ Created ${prevMonthPayrolls.length} validated payrolls for previous month`);
+  console.log(
+    `✅ Created ${prevMonthPayrolls.length} validated payrolls for previous month`
+  );
 
   // Create payslips for previous month validated payrolls
   console.log("📄 Creating payslips for previous month...");
@@ -621,7 +740,9 @@ async function main() {
       where: { payrollId: payroll.id },
     });
     if (!existingPayslip) {
-      const emp = await prisma.employee.findUnique({ where: { id: payroll.employeeId } });
+      const emp = await prisma.employee.findUnique({
+        where: { id: payroll.employeeId },
+      });
       await prisma.payslip.create({
         data: {
           payrollId: payroll.id,
@@ -633,7 +754,9 @@ async function main() {
       });
     }
   }
-  console.log(`✅ Created ${prevMonthPayrolls.length} payslips for previous month`);
+  console.log(
+    `✅ Created ${prevMonthPayrolls.length} payslips for previous month`
+  );
 
   // Create payrolls for current month (draft status - for testing processing)
   console.log("💼 Creating draft payrolls for current month...");
@@ -696,14 +819,18 @@ async function main() {
     });
   }
 
-  console.log(`✅ Created ${currentMonthPayrolls.length} draft payrolls for current month with default salary structure values`);
+  console.log(
+    `✅ Created ${currentMonthPayrolls.length} draft payrolls for current month with default salary structure values`
+  );
 
   // Create a test payrun with computed payrolls (for testing validation)
   console.log("💼 Creating test payrun with computed payrolls...");
   const testMonthStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
   const testMonthEnd = new Date(today.getFullYear(), today.getMonth() - 1, 0);
   const testPayDate = new Date(today.getFullYear(), today.getMonth() - 1, 5);
-  const testPayrunName = `Payrun ${monthNames[testMonthStart.getMonth()]} ${testMonthStart.getFullYear()}`;
+  const testPayrunName = `Payrun ${
+    monthNames[testMonthStart.getMonth()]
+  } ${testMonthStart.getFullYear()}`;
 
   let testPayrun = await prisma.payrun.findFirst({
     where: {
@@ -728,7 +855,8 @@ async function main() {
 
   // Create computed payrolls for test payrun
   const testPayrolls = [];
-  for (const emp of activeEmployees.slice(0, 3)) { // Only first 3 employees
+  for (const emp of activeEmployees.slice(0, 3)) {
+    // Only first 3 employees
     const salaryStructure = await prisma.salaryStructure.findFirst({
       where: {
         employeeId: emp.employee.id,
@@ -763,28 +891,56 @@ async function main() {
       testPayrolls.push(payroll);
     }
   }
-  console.log(`✅ Created ${testPayrolls.length} computed payrolls for test payrun`);
+  console.log(
+    `✅ Created ${testPayrolls.length} computed payrolls for test payrun`
+  );
 
   console.log("\n✅ Database seeded successfully!");
   console.log("\n📋 Test Accounts:");
-  console.log(`  Admin:    admin@workzen.com / password123 (ID: ${admin.employee.employeeId})`);
-  console.log(`  HR:       hr@workzen.com / password123 (ID: ${hr.employee.employeeId})`);
-  console.log(`  Manager:  manager@workzen.com / password123 (ID: ${manager.employee.employeeId})`);
-  console.log(`  Employee: employee@workzen.com / password123 (ID: ${employee1.employee.employeeId})`);
-  console.log(`  Employee: david@workzen.com / password123 (ID: ${employee2.employee.employeeId})`);
-  console.log(`  Employee: lisa@workzen.com / password123 (ID: ${employee3.employee.employeeId})`);
-  console.log(`  Employee: robert@workzen.com / password123 (ID: ${employee4.employee.employeeId})`);
-  console.log(`  Employee: jennifer@workzen.com / password123 (ID: ${employee5.employee.employeeId}) - INACTIVE`);
-  
+  console.log(
+    `  Admin:        admin@workzen.com / password123 (ID: ${admin.employee.employeeId})`
+  );
+  console.log(
+    `  HR:           hr@workzen.com / password123 (ID: ${hr.employee.employeeId})`
+  );
+  console.log(
+    `  Payroll:      payroll@workzen.com / password123 (ID: ${payroll.employee.employeeId})`
+  );
+  console.log(
+    `  Employee:     employee@workzen.com / password123 (ID: ${employee1.employee.employeeId})`
+  );
+  console.log(
+    `  Employee:     david@workzen.com / password123 (ID: ${employee2.employee.employeeId})`
+  );
+  console.log(
+    `  Employee:     lisa@workzen.com / password123 (ID: ${employee3.employee.employeeId})`
+  );
+  console.log(
+    `  Employee:     robert@workzen.com / password123 (ID: ${employee4.employee.employeeId})`
+  );
+  console.log(
+    `  Employee:     jennifer@workzen.com / password123 (ID: ${employee5.employee.employeeId}) - INACTIVE`
+  );
+
   console.log("\n📊 Seed Summary:");
-  console.log(`  ✅ Created ${allEmployees.length} employees (${activeEmployees.length} active, 1 inactive)`);
-  console.log(`  ✅ Created salary structures with history for testing effective dates`);
+  console.log(
+    `  ✅ Created ${allEmployees.length} employees (${activeEmployees.length} active, 1 inactive)`
+  );
+  console.log(
+    `  ✅ Created salary structures with history for testing effective dates`
+  );
   console.log(`  ✅ Created attendance entries for current and previous month`);
   console.log(`  ✅ Created leave records (approved, pending, rejected)`);
   console.log(`  ✅ Created 3 payruns:`);
-  console.log(`     - Previous month: ${prevMonthPayrun.name} (${prevMonthPayrun.status}) with ${prevMonthPayrolls.length} validated payrolls and payslips`);
-  console.log(`     - Current month: ${currentPayrun.name} (${currentPayrun.status}) with ${currentMonthPayrolls.length} draft payrolls`);
-  console.log(`     - Test month: ${testPayrun.name} (${testPayrun.status}) with ${testPayrolls.length} computed payrolls`);
+  console.log(
+    `     - Previous month: ${prevMonthPayrun.name} (${prevMonthPayrun.status}) with ${prevMonthPayrolls.length} validated payrolls and payslips`
+  );
+  console.log(
+    `     - Current month: ${currentPayrun.name} (${currentPayrun.status}) with ${currentMonthPayrolls.length} draft payrolls`
+  );
+  console.log(
+    `     - Test month: ${testPayrun.name} (${testPayrun.status}) with ${testPayrolls.length} computed payrolls`
+  );
   console.log("\n💡 Test Scenarios Available:");
   console.log("  📝 Process current month payrun (draft → computed)");
   console.log("  ✅ Validate computed payrolls (computed → validated)");

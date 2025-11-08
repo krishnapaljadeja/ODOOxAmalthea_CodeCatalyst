@@ -18,13 +18,6 @@ export const getLeaves = async (req, res, next) => {
       where.userId = user.id
     } else if (employeeId) {
       where.employeeId = employeeId
-    } else if (user.role === 'manager' && user.department) {
-      // Managers can see employees in their department
-      const employees = await prisma.employee.findMany({
-        where: { department: user.department },
-        select: { id: true },
-      })
-      where.employeeId = { in: employees.map((e) => e.id) }
     }
     // Admin and HR can see all
 

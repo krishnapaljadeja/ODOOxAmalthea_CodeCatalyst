@@ -118,7 +118,7 @@ export default function SalaryManagement() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['admin', 'hr']}>
+    <ProtectedRoute allowedRoles={['admin', 'hr', 'payroll']}>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Salary Management</h1>

@@ -23,7 +23,7 @@ export const createEmployeeSchema = z.object({
     hireDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),
-    role: z.enum(["admin", "hr", "manager", "employee"]).optional(),
+    role: z.enum(["admin", "hr", "payroll", "employee"]).optional(),
     // Company name is automatically inherited from the admin/hr creating the employee
   }),
 });
