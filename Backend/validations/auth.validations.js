@@ -15,9 +15,13 @@ export const refreshTokenSchema = z.object({
 
 export const registerSchema = z.object({
   body: z.object({
-    employeeId: z.string().min(1, 'Employee ID is required'),
+    companyName: z.string().min(2, 'Company name must be at least 2 characters'),
     name: z.string().min(1, 'Name is required'),
     email: z.string().email('Invalid email address'),
+    phone: z.preprocess(
+      (val) => (val === '' || val === null || val === undefined ? undefined : val),
+      z.string().optional()
+    ),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')

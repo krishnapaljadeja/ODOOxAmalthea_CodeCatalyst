@@ -36,6 +36,14 @@ export const authenticate = async (req, res, next) => {
           position: true,
           employeeId: true,
           companyId: true,
+          company: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              logo: true,
+            },
+          },
           createdAt: true,
           updatedAt: true,
         },

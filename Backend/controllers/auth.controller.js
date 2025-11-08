@@ -24,12 +24,32 @@ export const login = async (req, res, next) => {
     // Try to find user by email first
     let user = await prisma.user.findUnique({
       where: { email: loginId },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            logo: true,
+          },
+        },
+      },
     });
 
     // If not found by email, try to find by employee ID
     if (!user) {
       user = await prisma.user.findUnique({
         where: { employeeId: loginId },
+        include: {
+          company: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              logo: true,
+            },
+          },
+        },
       });
     }
 
@@ -175,7 +195,7 @@ export const getMe = async (req, res, next) => {
  */
 export const registerUser = async (req, res, next) => {
   try {
-    const { companyName, name, email, phone, password } = req.body;
+    const { companyName, name, email, phone, password, companyLogo } = req.body;
 
     // Validate required fields
     if (!companyName || companyName.length < 2) {
@@ -214,6 +234,7 @@ export const registerUser = async (req, res, next) => {
           data: {
             name: companyName,
             code: companyCode,
+            logo: companyLogo || null,
           },
         });
       } catch (error) {
@@ -227,6 +248,7 @@ export const registerUser = async (req, res, next) => {
             data: {
               name: companyName,
               code: fallbackCode,
+              logo: companyLogo || null,
             },
           });
         } else {
@@ -253,8 +275,9 @@ export const registerUser = async (req, res, next) => {
     const hireDate = new Date();
 
     // Generate employee ID using company code
+    // Use company.code (which exists whether company was just created or already existed)
     const employeeId = await generateEmployeeId(
-      companyCode,
+      company.code,
       firstName,
       lastName,
       hireDate,

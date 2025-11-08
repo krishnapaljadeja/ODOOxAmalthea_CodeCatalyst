@@ -12,6 +12,7 @@ import payslipRoutes from './routes/payslip.routes.js'
 import settingsRoutes from './routes/settings.routes.js'
 import profileRoutes from './routes/profile.routes.js'
 import passwordResetRoutes from './routes/passwordReset.routes.js'
+import adminRoutes from './routes/admin.routes.js'
 import { errorHandler } from './middleware/error.middleware.js'
 
 dotenv.config()
@@ -46,6 +47,7 @@ app.use('/api/payslips', payslipRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/password-reset', passwordResetRoutes)
+app.use('/api/admin', adminRoutes)
 
 // Error handling
 app.use(errorHandler)
