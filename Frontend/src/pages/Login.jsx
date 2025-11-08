@@ -63,7 +63,7 @@ export default function Login() {
               <Input
                 id="email"
                 type="text"
-                placeholder="Employee ID or Email (e.g., OIJODO20220001 or name@example.com)"
+                placeholder="Employee ID or Email "
                 {...register("email")}
                 aria-invalid={errors.email ? "true" : "false"}
                 aria-describedby={errors.email ? "email-error" : undefined}

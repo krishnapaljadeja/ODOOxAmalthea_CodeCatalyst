@@ -388,7 +388,7 @@ export default function Leaves() {
       </div>
 
       {/* NOTE Box */}
-      <Card className="bg-yellow-50 border-yellow-200">
+      {/* <Card className="bg-yellow-50 border-yellow-200">
         <CardContent className="pt-6">
           <div className="space-y-2 text-sm">
             <p className="font-semibold">Note</p>
@@ -399,7 +399,7 @@ export default function Leaves() {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       <Card>
         <CardHeader>

@@ -9,10 +9,27 @@ export const getStats = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get total employees (admin/hr can see all, others see only their own)
+    // Get company employees if user has companyId (for admin/hr/payroll)
+    let companyEmployeeIds = []
+    let companyUserIds = []
+    if (user.companyId && (user.role === 'admin' || user.role === 'hr' || user.role === 'payroll')) {
+      const companyEmployees = await prisma.employee.findMany({
+        where: { companyId: user.companyId },
+        select: { id: true, userId: true },
+      })
+      companyEmployeeIds = companyEmployees.map(e => e.id)
+      companyUserIds = companyEmployees.map(e => e.userId).filter(Boolean)
+    }
+
+    // Get total employees (admin/hr/payroll can see all in their company, others see only their own)
     const totalEmployees =
-      user.role === 'admin' || user.role === 'hr'
-        ? await prisma.employee.count({ where: { status: 'active' } })
+      user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
+        ? await prisma.employee.count({ 
+            where: { 
+              status: 'active',
+              ...(user.companyId ? { companyId: user.companyId } : {})
+            } 
+          })
         : 1
 
     // Get present today
@@ -22,7 +39,7 @@ export const getStats = async (req, res, next) => {
     tomorrow.setDate(tomorrow.getDate() + 1)
 
     const presentToday =
-      user.role === 'admin' || user.role === 'hr'
+      user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
         ? await prisma.attendance.count({
             where: {
               date: {
@@ -30,6 +47,7 @@ export const getStats = async (req, res, next) => {
                 lt: tomorrow,
               },
               status: 'present',
+              ...(companyEmployeeIds.length > 0 ? { employeeId: { in: companyEmployeeIds } } : {}),
             },
           })
         : await prisma.attendance.count({
@@ -45,10 +63,11 @@ export const getStats = async (req, res, next) => {
 
     // Get pending leaves
     const pendingLeaves =
-      user.role === 'admin' || user.role === 'hr'
+      user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
         ? await prisma.leave.count({
             where: {
               status: 'pending',
+              ...(companyEmployeeIds.length > 0 ? { employeeId: { in: companyEmployeeIds } } : {}),
             },
           })
         : await prisma.leave.count({
@@ -58,10 +77,19 @@ export const getStats = async (req, res, next) => {
             },
           })
 
-    // Get last payrun
+    // Get last payrun (filter by company if user has companyId)
     const lastPayrun = await prisma.payrun.findFirst({
       where: {
         status: 'completed',
+        ...(user.companyId ? {
+          payrolls: {
+            some: {
+              employee: {
+                companyId: user.companyId,
+              },
+            },
+          },
+        } : {}),
       },
       orderBy: {
         payDate: 'desc',
@@ -78,9 +106,9 @@ export const getStats = async (req, res, next) => {
           gte: sevenDaysAgo,
           lt: tomorrow,
         },
-        ...(user.role !== 'admin' && user.role !== 'hr' 
-          ? { userId: user.id } 
-          : {}),
+        ...(user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
+          ? (companyEmployeeIds.length > 0 ? { employeeId: { in: companyEmployeeIds } } : {})
+          : { userId: user.id }),
       },
       select: {
         date: true,
@@ -123,9 +151,9 @@ export const getStats = async (req, res, next) => {
         date: {
           gte: sixMonthsAgo,
         },
-        ...(user.role !== 'admin' && user.role !== 'hr' 
-          ? { userId: user.id } 
-          : {}),
+        ...(user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
+          ? (companyEmployeeIds.length > 0 ? { employeeId: { in: companyEmployeeIds } } : {})
+          : { userId: user.id }),
       },
       _count: {
         id: true,
@@ -146,9 +174,9 @@ export const getStats = async (req, res, next) => {
     const leaveStats = await prisma.leave.groupBy({
       by: ['status'],
       where: {
-        ...(user.role !== 'admin' && user.role !== 'hr' 
-          ? { userId: user.id } 
-          : {}),
+        ...(user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
+          ? (companyEmployeeIds.length > 0 ? { employeeId: { in: companyEmployeeIds } } : {})
+          : { userId: user.id }),
       },
       _count: {
         id: true,
