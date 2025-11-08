@@ -61,6 +61,7 @@ function App() {
           <Route path="payroll" element={<Payroll />} />
           <Route path="payslips" element={<Payslips />} />
           <Route path="payslips/:payslipId" element={<PayslipDetail />} />
+          <Route path="payslips/payroll/:payrollId" element={<PayslipDetail />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="user-settings" element={<UserSettings />} />

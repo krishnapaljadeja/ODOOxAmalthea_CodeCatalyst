@@ -128,11 +128,14 @@ model Employee {
   company    Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+  
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  attendances Attendance[]
-  leaves      Leave[]
-  payslips    Payslip[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendances      Attendance[]
+  leaves           Leave[]
+  salaryStructures SalaryStructure[]
+  payrolls         Payroll[]
+  payslips         Payslip[]
 
   @@index([employeeId])
   @@index([department])

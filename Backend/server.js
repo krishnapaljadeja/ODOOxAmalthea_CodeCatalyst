@@ -9,6 +9,7 @@ import attendanceRoutes from './routes/attendance.routes.js'
 import leaveRoutes from './routes/leave.routes.js'
 import payrollRoutes from './routes/payroll.routes.js'
 import payslipRoutes from './routes/payslip.routes.js'
+import salaryStructureRoutes from './routes/salaryStructure.routes.js'
 import settingsRoutes from './routes/settings.routes.js'
 import profileRoutes from './routes/profile.routes.js'
 import passwordResetRoutes from './routes/passwordReset.routes.js'
@@ -43,6 +44,7 @@ app.use('/api/attendance', attendanceRoutes)
 app.use('/api/leaves', leaveRoutes)
 app.use('/api/payroll', payrollRoutes)
 app.use('/api/payslips', payslipRoutes)
+app.use('/api/salary-structures', salaryStructureRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/password-reset', passwordResetRoutes)

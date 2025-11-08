@@ -3,74 +3,77 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 /**
- * Calculate payslip for an employee
+ * Get active salary structure for an employee for a given date
  */
-export const calculatePayslip = async (employee, payrun, settings = null) => {
-  // Get default settings if not provided
-  if (!settings) {
-    settings = await prisma.payrollSettings.findUnique({
-      where: { id: 'default' },
-    })
-    if (!settings) {
-      settings = await prisma.payrollSettings.create({
-        data: { id: 'default' },
-      })
-    }
-  }
+export const getActiveSalaryStructure = async (employeeId, date) => {
+  const targetDate = date || new Date()
 
-  // Get attendance for the pay period
-  const attendances = await prisma.attendance.findMany({
+  const structure = await prisma.salaryStructure.findFirst({
     where: {
-      employeeId: employee.id,
-      date: {
-        gte: payrun.payPeriodStart,
-        lte: payrun.payPeriodEnd,
-      },
-      status: 'present',
+      employeeId,
+      AND: [
+        {
+          effectiveFrom: {
+            lte: targetDate,
+          },
+        },
+        {
+          OR: [
+            { effectiveTo: null },
+            { effectiveTo: { gte: targetDate } },
+          ],
+        },
+      ],
+    },
+    orderBy: {
+      effectiveFrom: 'desc',
     },
   })
 
-  const daysWorked = attendances.length
-  const totalHours = attendances.reduce((sum, att) => sum + (att.hoursWorked || 0), 0)
+  return structure
+}
 
-  // Calculate base salary (proportional to days worked)
-  const dailyRate = employee.salary / settings.payPeriodDays
-  const baseSalary = dailyRate * daysWorked
+/**
+ * Calculate payroll for an employee using their active salary structure
+ */
+export const calculatePayroll = async (employee, payrun) => {
+  // Get active salary structure for the pay period
+  const salaryStructure = await getActiveSalaryStructure(
+    employee.id,
+    payrun.payPeriodStart
+  )
 
-  // Calculate overtime (hours > 8 per day)
-  const overtimeHours = Math.max(0, totalHours - daysWorked * 8)
-  const overtimeRate = dailyRate / 8 * 1.5 // 1.5x for overtime
-  const overtime = overtimeHours * overtimeRate
+  if (!salaryStructure) {
+    throw new Error(
+      `No active salary structure found for employee ${employee.employeeId}`
+    )
+  }
 
-  // Allowances (10% of base salary)
-  const allowances = baseSalary * 0.1
+  // Calculate gross salary from structure
+  // gross = basic + hra + allowances + bonus
+  const grossSalary =
+    salaryStructure.basicSalary +
+    salaryStructure.houseRentAllowance +
+    salaryStructure.standardAllowance +
+    salaryStructure.bonus +
+    salaryStructure.travelAllowance
 
-  // Bonus (if applicable)
-  const bonus = 0
+  // Calculate deductions from structure
+  // deductions = pf + professionalTax + tds + otherDeductions
+  const totalDeductions =
+    salaryStructure.pfEmployee +
+    salaryStructure.professionalTax +
+    salaryStructure.tds +
+    salaryStructure.otherDeductions
 
-  // Gross pay
-  const grossPay = baseSalary + overtime + allowances + bonus
-
-  // Deductions
-  const tax = grossPay * (settings.taxRate / 100)
-  const insurance = grossPay * (settings.insuranceRate / 100)
-  const other = 0
-  const totalDeductions = tax + insurance + other
-
-  // Net pay
-  const netPay = grossPay - totalDeductions
+  // Calculate net salary
+  const netSalary = grossSalary - totalDeductions
 
   return {
-    baseSalary,
-    overtime,
-    bonus,
-    allowances,
-    grossPay,
-    tax,
-    insurance,
-    other,
+    grossSalary,
     totalDeductions,
-    netPay,
+    netSalary,
+    salaryStructure,
   }
 }
 
