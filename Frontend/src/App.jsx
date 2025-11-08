@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 
 // Pages
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
@@ -32,6 +33,12 @@ function App() {
       <Toaster position="bottom-right" richColors />
       <Routes>
         <Route
+          path="/"
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />
+          }
+        />
+        <Route
           path="/login"
           element={
             isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
@@ -49,14 +56,12 @@ function App() {
         />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route
-          path="/"
           element={
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route
             path="employees"

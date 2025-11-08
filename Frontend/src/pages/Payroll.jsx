@@ -23,10 +23,19 @@ import {
   CheckCircle,
   Grid3x3,
   List,
+  DollarSign,
+  Calendar,
+  FileText,
+  BarChart3,
+  Shield,
+  Zap,
+  Settings,
+  Users,
 } from "lucide-react";
 import apiClient from "../lib/api";
 import { formatDate, formatCurrency } from "../lib/format";
 import { toast } from "sonner";
+import { FeaturesSectionWithHoverEffects } from "../components/ui/feature-section-with-hover-effects";
 import {
   BarChart,
   Bar,
@@ -148,8 +157,8 @@ export default function Payroll() {
       );
       const payrunData = response.data?.data || response.data;
       if (payrunData) {
-        setCurrentMonthPayrun(payrunData)
-        setPayrolls(payrunData.payrolls || [])
+        setCurrentMonthPayrun(payrunData);
+        setPayrolls(payrunData.payrolls || []);
       } else {
         setCurrentMonthPayrun(null);
         setPayrolls([]);
@@ -476,6 +485,70 @@ export default function Payroll() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Features Section */}
+      <div className="py-10">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold mb-2">
+            Payroll Management Features
+          </h2>
+          <p className="text-muted-foreground">
+            Everything you need to manage payroll efficiently
+          </p>
+        </div>
+        <FeaturesSectionWithHoverEffects
+          features={[
+            {
+              title: "Payroll Processing",
+              description:
+                "Automated payroll calculations with salary structures, deductions, and payslip generation.",
+              icon: DollarSign,
+            },
+            {
+              title: "Payrun Management",
+              description:
+                "Create, manage, and process monthly payruns with validation and approval workflows.",
+              icon: Calendar,
+            },
+            {
+              title: "Payslip Generation",
+              description:
+                "Automatically generate and distribute payslips to all employees with detailed breakdowns.",
+              icon: FileText,
+            },
+            {
+              title: "Analytics & Reports",
+              description:
+                "Powerful dashboard with insights, trends, and comprehensive payroll reporting.",
+              icon: BarChart3,
+            },
+            {
+              title: "Employee Management",
+              description:
+                "Manage employee salary structures, deductions, and payroll configurations.",
+              icon: Users,
+            },
+            {
+              title: "Secure & Compliant",
+              description:
+                "Enterprise-grade security with role-based access control and data encryption.",
+              icon: Shield,
+            },
+            {
+              title: "Quick Actions",
+              description:
+                "Fast access to common payroll tasks and frequently used features.",
+              icon: Zap,
+            },
+            {
+              title: "Settings & Configuration",
+              description:
+                "Complete control over payroll settings, tax configurations, and system preferences.",
+              icon: Settings,
+            },
+          ]}
+        />
       </div>
 
       <Tabs

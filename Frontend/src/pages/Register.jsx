@@ -16,7 +16,8 @@ import {
 import { Building2, Upload, X } from "lucide-react";
 import apiClient from "../lib/api";
 import { toast } from "sonner";
-import { AuroraBackground } from "../components/ui/aurora-background";
+import AnimatedShaderBackground from "../components/ui/animated-shader-background";
+import PublicNavbar from "../components/PublicNavbar";
 
 const registerSchema = z
   .object({
@@ -192,64 +193,85 @@ export default function Register() {
   };
 
   return (
-    <AuroraBackground className="min-h-screen">
-      <div className="flex min-h-screen items-center justify-center p-4 relative z-10">
-        <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Building2 className="h-6 w-6" />
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 relative overflow-hidden">
+      <AnimatedShaderBackground />
+      <div className="relative z-10">
+        <PublicNavbar />
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+        <Card className="w-full max-w-3xl relative z-20 bg-white dark:bg-gray-900 shadow-xl border-2">
+          <CardHeader className="space-y-1 text-center pb-4">
+            <div className="flex justify-center mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Building2 className="h-5 w-5" />
+              </div>
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">Register</CardTitle>
-          <CardDescription>Create a new account to get started</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name</Label>
-              <Input
-                id="companyName"
-                placeholder="e.g., Odoo India"
-                {...register("companyName")}
-                aria-invalid={errors.companyName ? "true" : "false"}
-                aria-describedby={
-                  errors.companyName ? "companyName-error" : undefined
-                }
-              />
-              {errors.companyName && (
-                <p id="companyName-error" className="text-sm text-destructive">
-                  {errors.companyName.message}
+            <CardTitle className="text-2xl font-bold">Register</CardTitle>
+            <CardDescription>Create a new account to get started</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="companyName">Company Name</Label>
+                <Input
+                  id="companyName"
+                  placeholder="e.g., Odoo India"
+                  {...register("companyName")}
+                  aria-invalid={errors.companyName ? "true" : "false"}
+                  aria-describedby={
+                    errors.companyName ? "companyName-error" : undefined
+                  }
+                />
+                {errors.companyName && (
+                  <p id="companyName-error" className="text-sm text-destructive">
+                    {errors.companyName.message}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Login ID will be auto-generated using company name
                 </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Login ID will be auto-generated using company name
-              </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  placeholder="Your full name"
+                  {...register("name")}
+                  aria-invalid={errors.name ? "true" : "false"}
+                  aria-describedby={errors.name ? "name-error" : undefined}
+                />
+                {errors.name && (
+                  <p id="name-error" className="text-sm text-destructive">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="companyLogo">Company Logo (Optional)</Label>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 {logoPreview ? (
                   <div className="relative">
                     <img
                       src={logoPreview}
                       alt="Company logo preview"
-                      className="h-20 w-20 rounded-lg object-cover border-2 border-gray-200"
+                      className="h-16 w-16 rounded-lg object-cover border-2 border-gray-200"
                     />
                     <Button
                       type="button"
                       variant="destructive"
                       size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
                       onClick={removeLogo}
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3" />
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-20 w-20 rounded-lg border-2 border-dashed border-gray-300">
-                    <Upload className="h-6 w-6 text-muted-foreground" />
+                  <div className="flex items-center justify-center h-16 w-16 rounded-lg border-2 border-dashed border-gray-300">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
                   </div>
                 )}
                 <div className="flex-1">
@@ -263,6 +285,7 @@ export default function Register() {
                   <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     onClick={() => document.getElementById("companyLogo")?.click()}
                   >
                     <Upload className="mr-2 h-4 w-4" />
@@ -275,99 +298,87 @@ export default function Register() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="Your full name"
-                {...register("name")}
-                aria-invalid={errors.name ? "true" : "false"}
-                aria-describedby={errors.name ? "name-error" : undefined}
-              />
-              {errors.name && (
-                <p id="name-error" className="text-sm text-destructive">
-                  {errors.name.message}
-                </p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  {...register("email")}
+                  aria-invalid={errors.email ? "true" : "false"}
+                  aria-describedby={errors.email ? "email-error" : undefined}
+                />
+                {errors.email && (
+                  <p id="email-error" className="text-sm text-destructive">
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">Phone (Optional)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+1234567890"
+                  {...register("phone")}
+                  aria-invalid={errors.phone ? "true" : "false"}
+                  aria-describedby={errors.phone ? "phone-error" : undefined}
+                />
+                {errors.phone && (
+                  <p id="phone-error" className="text-sm text-destructive">
+                    {errors.phone.message}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                {...register("email")}
-                aria-invalid={errors.email ? "true" : "false"}
-                aria-describedby={errors.email ? "email-error" : undefined}
-              />
-              {errors.email && (
-                <p id="email-error" className="text-sm text-destructive">
-                  {errors.email.message}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  {...register("password")}
+                  aria-invalid={errors.password ? "true" : "false"}
+                  aria-describedby={
+                    errors.password ? "password-error" : undefined
+                  }
+                />
+                {errors.password && (
+                  <p id="password-error" className="text-sm text-destructive">
+                    {errors.password.message}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Must be at least 8 characters with uppercase, lowercase, number,
+                  and special character
                 </p>
-              )}
-            </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone (Optional)</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+1234567890"
-                {...register("phone")}
-                aria-invalid={errors.phone ? "true" : "false"}
-                aria-describedby={errors.phone ? "phone-error" : undefined}
-              />
-              {errors.phone && (
-                <p id="phone-error" className="text-sm text-destructive">
-                  {errors.phone.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                {...register("password")}
-                aria-invalid={errors.password ? "true" : "false"}
-                aria-describedby={
-                  errors.password ? "password-error" : undefined
-                }
-              />
-              {errors.password && (
-                <p id="password-error" className="text-sm text-destructive">
-                  {errors.password.message}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters with uppercase, lowercase, number,
-                and special character
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                {...register("confirmPassword")}
-                aria-invalid={errors.confirmPassword ? "true" : "false"}
-                aria-describedby={
-                  errors.confirmPassword ? "confirmPassword-error" : undefined
-                }
-              />
-              {errors.confirmPassword && (
-                <p
-                  id="confirmPassword-error"
-                  className="text-sm text-destructive"
-                >
-                  {errors.confirmPassword.message}
-                </p>
-              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  {...register("confirmPassword")}
+                  aria-invalid={errors.confirmPassword ? "true" : "false"}
+                  aria-describedby={
+                    errors.confirmPassword ? "confirmPassword-error" : undefined
+                  }
+                />
+                {errors.confirmPassword && (
+                  <p
+                    id="confirmPassword-error"
+                    className="text-sm text-destructive"
+                  >
+                    {errors.confirmPassword.message}
+                  </p>
+                )}
+              </div>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -385,7 +396,8 @@ export default function Register() {
           </form>
         </CardContent>
       </Card>
+        </div>
       </div>
-    </AuroraBackground>
+    </div>
   );
 }

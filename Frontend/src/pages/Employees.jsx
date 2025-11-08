@@ -34,6 +34,15 @@ import {
   Pencil,
   Grid3x3,
   List,
+  Users,
+  Clock,
+  Calendar,
+  DollarSign,
+  BarChart3,
+  Shield,
+  Zap,
+  Settings,
+  FileText,
 } from "lucide-react";
 import apiClient from "../lib/api";
 import { formatDate, formatPhone, formatCurrency } from "../lib/format";
@@ -42,6 +51,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useAuthStore } from "../store/auth";
+import { FeaturesSectionWithHoverEffects } from "../components/ui/feature-section-with-hover-effects";
 import {
   Select,
   SelectContent,
@@ -1100,6 +1110,123 @@ export default function Employees() {
               )}
             </div>
           </div>
+
+          {/* Features Section */}
+          {/* <div className="py-10">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2">
+                Employee Management Features
+              </h2>
+              <p className="text-muted-foreground">
+                Everything you need to manage your workforce efficiently
+              </p>
+            </div>
+            <FeaturesSectionWithHoverEffects
+              features={
+                user?.role !== "employee"
+                  ? [
+                      {
+                        title: "Employee Database",
+                        description:
+                          "Comprehensive employee database with detailed profiles and organizational structure.",
+                        icon: Users,
+                      },
+                      {
+                        title: "Attendance Tracking",
+                        description:
+                          "Real-time attendance monitoring with check-in/check-out functionality and detailed reports.",
+                        icon: Clock,
+                      },
+                      {
+                        title: "Leave Management",
+                        description:
+                          "Streamlined leave request system with approval workflows and calendar integration.",
+                        icon: Calendar,
+                      },
+                      {
+                        title: "Salary Management",
+                        description:
+                          "Automated salary calculations with structures, deductions, and payslip generation.",
+                        icon: DollarSign,
+                      },
+                      {
+                        title: "Analytics & Reports",
+                        description:
+                          "Powerful dashboard with insights, trends, and comprehensive reporting capabilities.",
+                        icon: BarChart3,
+                      },
+                      {
+                        title: "Secure & Compliant",
+                        description:
+                          "Enterprise-grade security with role-based access control and data encryption.",
+                        icon: Shield,
+                      },
+                      {
+                        title: "Quick Actions",
+                        description:
+                          "Fast access to common tasks and frequently used features.",
+                        icon: Zap,
+                      },
+                      {
+                        title: "Document Management",
+                        description:
+                          "Store and manage employee documents, contracts, and important files.",
+                        icon: FileText,
+                      },
+                    ]
+                  : [
+                      {
+                        title: "My Profile",
+                        description:
+                          "View and update your personal information, contact details, and preferences.",
+                        icon: Users,
+                      },
+                      {
+                        title: "My Attendance",
+                        description:
+                          "Track your daily attendance, check-in/check-out times, and attendance history.",
+                        icon: Clock,
+                      },
+                      {
+                        title: "Leave Requests",
+                        description:
+                          "Submit and manage your leave requests with real-time status updates.",
+                        icon: Calendar,
+                      },
+                      {
+                        title: "My Payslips",
+                        description:
+                          "Access and download your payslips with detailed salary breakdowns.",
+                        icon: DollarSign,
+                      },
+                      {
+                        title: "Attendance Analytics",
+                        description:
+                          "View your attendance trends and performance metrics over time.",
+                        icon: BarChart3,
+                      },
+                      {
+                        title: "Quick Actions",
+                        description:
+                          "Fast access to common tasks and frequently used features.",
+                        icon: Zap,
+                      },
+                      {
+                        title: "Notifications",
+                        description:
+                          "Stay updated with important announcements and system notifications.",
+                        icon: Shield,
+                      },
+                      {
+                        title: "Settings",
+                        description:
+                          "Customize your preferences and account settings.",
+                        icon: Settings,
+                      },
+                    ]
+              }
+            />
+          </div> */}
 
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">

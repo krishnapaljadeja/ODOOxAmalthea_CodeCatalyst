@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Users, Clock, Calendar, DollarSign, TrendingUp, Building2, Activity } from 'lucide-react'
+import { Users, Clock, Calendar, DollarSign, TrendingUp, Building2, Activity, BarChart3, Shield, Zap, FileText, Settings } from 'lucide-react'
 import apiClient from '../lib/api'
 import { formatCurrency, formatDate } from '../lib/format'
 import { Skeleton } from '../components/ui/skeleton'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts'
 import { useAuthStore } from '../store/auth'
+import { FeaturesSectionWithHoverEffects } from '../components/ui/feature-section-with-hover-effects'
 
 /**
  * Dashboard page component
@@ -162,6 +163,8 @@ export default function Dashboard() {
           )
         })}
       </div>
+
+   
 
       {/* Charts and Analytics Section */}
       {stats && (
