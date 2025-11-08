@@ -238,92 +238,95 @@ export const getPayrollDashboard = async (req, res, next) => {
   }
 }
 
-
 export const getPayruns = async (req, res, next) => {
   try {
-    const user = req.user
-    const { year, month } = req.query
+    const user = req.user;
+    const { year, month } = req.query;
 
-    const companyFilter = user.companyId ? {
-      payrolls: {
-        some: {
-          employee: {
-            companyId: user.companyId,
+    // Company filter
+    const companyFilter = user.companyId
+      ? {
+          payrolls: {
+            some: {
+              employee: {
+                companyId: user.companyId,
+              },
+            },
           },
-        },
-      },
-    } : {}
+        }
+      : {};
 
-    const dateFilter = {}
+    // Date filter
+    const dateFilter = {};
+
     if (year && month) {
-      const selectedYear = parseInt(year)
-      const selectedMonth = parseInt(month) - 1
-      const startOfMonth = new Date(selectedYear, selectedMonth, 1)
-      startOfMonth.setHours(0, 0, 0, 0)
-      const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0)
-      endOfMonth.setHours(23, 59, 59, 999)
-      const offsetMinutes = new Date().getTimezoneOffset(); // -330 for IST
-      startOfMonth.setMinutes(startOfMonth.getMinutes() - offsetMinutes);
-      endOfMonth.setMinutes(endOfMonth.getMinutes() - offsetMinutes);
+      const selectedYear = parseInt(year);
+      const selectedMonth = parseInt(month) - 1;
 
-      
+      const startOfMonth = new Date(selectedYear, selectedMonth, 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0);
+      endOfMonth.setHours(23, 59, 59, 999);
+
       dateFilter.payPeriodStart = {
         gte: startOfMonth,
         lte: endOfMonth,
-      }
+      };
     } else if (year) {
-      const selectedYear = parseInt(year)
-      const startOfYear = new Date(selectedYear, 0, 1)
-      startOfYear.setHours(0, 0, 0, 0)
-      const endOfYear = new Date(selectedYear, 11, 31)
-      endOfYear.setHours(23, 59, 59, 999)
-      const offsetMinutes = new Date().getTimezoneOffset(); // -330 for IST
-      startOfYear.setMinutes(startOfYear.getMinutes() - offsetMinutes);
-      endOfYear.setMinutes(endOfYear.getMinutes() - offsetMinutes);
+      const selectedYear = parseInt(year);
+
+      const startOfYear = new Date(selectedYear, 0, 1);
+      startOfYear.setHours(0, 0, 0, 0);
+
+      const endOfYear = new Date(selectedYear, 11, 31);
+      endOfYear.setHours(23, 59, 59, 999);
 
       dateFilter.payPeriodStart = {
         gte: startOfYear,
         lte: endOfYear,
-      }
+      };
     }
 
     const where = {
       ...companyFilter,
       ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
-    }
-    console.log(where);
-    
+    };
+
+    console.log("WHERE FILTER:", where);
 
     const payruns = await prisma.payrun.findMany({
       where,
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
-    })
-
-    console.log(payruns);
+    });
 
     const formattedPayruns = payruns.map((payrun) => ({
       id: payrun.id,
       name: payrun.name,
-      payPeriodStart: payrun.payPeriodStart.toISOString().split('T')[0],
-      payPeriodEnd: payrun.payPeriodEnd.toISOString().split('T')[0],
-      payDate: payrun.payDate.toISOString().split('T')[0],
+      payPeriodStart: payrun.payPeriodStart.toISOString().split("T")[0],
+      payPeriodEnd: payrun.payPeriodEnd.toISOString().split("T")[0],
+      payDate: payrun.payDate.toISOString().split("T")[0],
       status: payrun.status,
       totalEmployees: payrun.totalEmployees,
       totalAmount: payrun.totalAmount,
       createdAt: payrun.createdAt.toISOString(),
       updatedAt: payrun.updatedAt.toISOString(),
-    }))
+    }));
+
+    console.log("FORMATTED PAYRUNS:", formattedPayruns);
 
     res.json({
-      status: 'success',
+      status: "success",
       data: formattedPayruns,
-    })
+    });
   } catch (error) {
-    next(error)
+    console.error("Error in getPayruns:", error);
+    next(error);
   }
-}
+};
+
 
 
 export const getCurrentMonthPayrun = async (req, res, next) => {
