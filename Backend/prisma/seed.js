@@ -654,7 +654,7 @@ async function main() {
     });
 
     if (salaryStructure) {
-      // Create draft payroll (will be computed when payrun is processed)
+      // Create draft payroll with default values from salary structure
       const payroll = await prisma.payroll.upsert({
         where: {
           employeeId_payrunId: {
@@ -662,20 +662,41 @@ async function main() {
             payrunId: currentPayrun.id,
           },
         },
-        update: {},
+        update: {
+          // Update with salary structure values if payroll already exists
+          grossSalary: salaryStructure.grossSalary,
+          totalDeductions: salaryStructure.totalDeductions,
+          netSalary: salaryStructure.netSalary,
+        },
         create: {
           employeeId: emp.employee.id,
           payrunId: currentPayrun.id,
           status: "draft",
-          grossSalary: 0,
-          totalDeductions: 0,
-          netSalary: 0,
+          grossSalary: salaryStructure.grossSalary,
+          totalDeductions: salaryStructure.totalDeductions,
+          netSalary: salaryStructure.netSalary,
         },
       });
       currentMonthPayrolls.push(payroll);
     }
   }
-  console.log(`✅ Created ${currentMonthPayrolls.length} draft payrolls for current month`);
+
+  // Update current month payrun with total amount
+  if (currentMonthPayrolls.length > 0) {
+    const currentMonthTotalAmount = currentMonthPayrolls.reduce(
+      (sum, p) => sum + (p.netSalary || 0),
+      0
+    );
+    await prisma.payrun.update({
+      where: { id: currentPayrun.id },
+      data: {
+        totalEmployees: currentMonthPayrolls.length,
+        totalAmount: currentMonthTotalAmount,
+      },
+    });
+  }
+
+  console.log(`✅ Created ${currentMonthPayrolls.length} draft payrolls for current month with default salary structure values`);
 
   // Create a test payrun with computed payrolls (for testing validation)
   console.log("💼 Creating test payrun with computed payrolls...");

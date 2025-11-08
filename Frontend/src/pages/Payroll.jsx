@@ -39,7 +39,9 @@ export default function Payroll() {
   const fetchPayruns = async () => {
     try {
       const response = await apiClient.get('/payroll/payruns')
-      setPayruns(response.data)
+      // Backend returns { status: 'success', data: [...] }
+      const payrunsData = response.data?.data || response.data || []
+      setPayruns(payrunsData)
     } catch (error) {
       console.error('Failed to fetch payruns:', error)
       toast.error('Failed to fetch payruns')
@@ -52,9 +54,12 @@ export default function Payroll() {
     try {
       setLoading(true)
       const response = await apiClient.get('/payroll/payruns/current-month')
-      if (response.data) {
-        setCurrentMonthPayrun(response.data)
-        setPayrolls(response.data.payrolls || [])
+      // Backend returns { status: 'success', data: {...} }
+      const payrunData = response.data?.data || response.data
+      if (payrunData) {
+        setCurrentMonthPayrun(payrunData)
+        setPayrolls(payrunData.payrolls || [])
+        console.log('Current Month Payrun:', payrunData)
       } else {
         setCurrentMonthPayrun(null)
         setPayrolls([])
@@ -374,36 +379,25 @@ export default function Payroll() {
           )}
 
           {/* Recent Payruns */}
-          {dashboardData?.recentPayruns && dashboardData.recentPayruns.length > 0 && (
+          {payruns && payruns.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Payrun</CardTitle>
+                <CardTitle>Payruns</CardTitle>
+                <CardDescription>View all payruns (completed payruns are read-only)</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {dashboardData.recentPayruns.map((payrun) => (
-                    <div
-                      key={payrun.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium">{payrun.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          ({payrun.totalEmployees || 1} Payslip{payrun.totalEmployees !== 1 ? 's' : ''})
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs ${
-                          payrun.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {payrun.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <DataTable
+                  data={payruns}
+                  columns={payrunColumns}
+                  searchable
+                  searchPlaceholder="Search payruns..."
+                  paginated
+                  pageSize={10}
+                  onRowClick={(payrun) => {
+                    setSelectedPayrun(payrun)
+                    setIsPreviewOpen(true)
+                  }}
+                />
               </CardContent>
             </Card>
           )}
@@ -509,6 +503,12 @@ export default function Payroll() {
                 <CardHeader>
                   <CardTitle>{currentMonthPayrun.name}</CardTitle>
                   <CardDescription>
+                    Pay Period: {currentMonthPayrun.payPeriodStart && currentMonthPayrun.payPeriodEnd
+                      ? `${formatDate(currentMonthPayrun.payPeriodStart)} - ${formatDate(currentMonthPayrun.payPeriodEnd)}`
+                      : 'N/A'}
+                    {currentMonthPayrun.payDate && ` | Pay Date: ${formatDate(currentMonthPayrun.payDate)}`}
+                  </CardDescription>
+                  <CardDescription className="mt-2">
                     The payslip of an individual employee is generated on the basis of attendance of that employee in a particular month.
                   </CardDescription>
                   <CardDescription className="mt-2">
@@ -519,11 +519,21 @@ export default function Payroll() {
                   <div className="grid grid-cols-4 gap-4 mb-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Employer Cost</p>
-                      <p className="text-lg font-semibold">{formatCurrency(currentMonthPayrun.totalAmount)}</p>
+                      <p className="text-lg font-semibold">
+                        {formatCurrency(
+                          currentMonthPayrun.payrolls?.reduce((sum, p) => sum + (p.grossSalary || 0), 0) || 
+                          currentMonthPayrun.totalAmount || 0
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Gross</p>
-                      <p className="text-lg font-semibold">{formatCurrency(currentMonthPayrun.totalAmount)}</p>
+                      <p className="text-lg font-semibold">
+                        {formatCurrency(
+                          currentMonthPayrun.payrolls?.reduce((sum, p) => sum + (p.grossSalary || 0), 0) || 
+                          currentMonthPayrun.totalAmount || 0
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Net</p>
@@ -593,9 +603,11 @@ export default function Payroll() {
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Payrun Preview</DialogTitle>
+            <DialogTitle>Payrun Details</DialogTitle>
             <DialogDescription>
-              Preview payslips for this payrun
+              {selectedPayrun?.status === 'completed' 
+                ? 'View payrun details (read-only - cannot be edited)' 
+                : 'View payrun details'}
             </DialogDescription>
           </DialogHeader>
           {selectedPayrun && (
@@ -607,21 +619,54 @@ export default function Payroll() {
                 </div>
                 <div>
                   <Label>Status</Label>
-                  <p className="text-sm font-medium">{selectedPayrun.status}</p>
+                  <p className="text-sm font-medium">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        selectedPayrun.status === 'completed'
+                          ? 'bg-green-100 text-green-800'
+                          : selectedPayrun.status === 'processing'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {selectedPayrun.status}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <Label>Pay Period</Label>
+                  <p className="text-sm font-medium">
+                    {selectedPayrun.payPeriodStart && selectedPayrun.payPeriodEnd
+                      ? `${formatDate(selectedPayrun.payPeriodStart)} - ${formatDate(selectedPayrun.payPeriodEnd)}`
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <Label>Pay Date</Label>
+                  <p className="text-sm font-medium">
+                    {selectedPayrun.payDate ? formatDate(selectedPayrun.payDate) : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <Label>Total Employees</Label>
                   <p className="text-sm font-medium">
-                    {selectedPayrun.totalEmployees}
+                    {selectedPayrun.totalEmployees || 0}
                   </p>
                 </div>
                 <div>
                   <Label>Total Amount</Label>
                   <p className="text-sm font-medium">
-                    {formatCurrency(selectedPayrun.totalAmount)}
+                    {formatCurrency(selectedPayrun.totalAmount || 0)}
                   </p>
                 </div>
               </div>
+              {selectedPayrun.status === 'completed' && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    This payrun is completed and cannot be edited. All payrolls have been validated and payslips generated.
+                  </p>
+                </div>
+              )}
               {selectedPayrun.payslips && (
                 <div className="space-y-2">
                   <Label>Payslips</Label>

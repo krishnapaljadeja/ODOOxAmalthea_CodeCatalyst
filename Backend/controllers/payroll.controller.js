@@ -40,19 +40,29 @@ export const getPayruns = async (req, res, next) => {
 /**
  * Get current month's payrun with all payrolls
  */
-export const  getCurrentMonthPayrun = async (req, res, next) => {
+export const getCurrentMonthPayrun = async (req, res, next) => {
   try {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    startOfMonth.setHours(0, 0, 0, 0)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    endOfMonth.setHours(23, 59, 59, 999)
 
-    // Find payrun for current month
+    // Find payrun for current month - check if payPeriodStart is within current month
     const payrun = await prisma.payrun.findFirst({
       where: {
-        payPeriodStart: {
-          gte: startOfMonth,
-          lte: endOfMonth,
-        },
+        AND: [
+          {
+            payPeriodStart: {
+              gte: startOfMonth,
+            },
+          },
+          {
+            payPeriodStart: {
+              lte: endOfMonth,
+            },
+          },
+        ],
       },
       include: {
         payrolls: {
@@ -93,8 +103,8 @@ export const  getCurrentMonthPayrun = async (req, res, next) => {
     }
 
     // Get salary structures for each employee to calculate basic wage
-    const employeeIds = payrun.payrolls.map((p) => p.employeeId)
-    const salaryStructures = await prisma.salaryStructure.findMany({
+    const employeeIds = payrun.payrolls.length > 0 ? payrun.payrolls.map((p) => p.employeeId) : []
+    const salaryStructures = employeeIds.length > 0 ? await prisma.salaryStructure.findMany({
       where: {
         employeeId: { in: employeeIds },
         effectiveFrom: { lte: payrun.payPeriodStart },
@@ -103,7 +113,10 @@ export const  getCurrentMonthPayrun = async (req, res, next) => {
           { effectiveTo: { gte: payrun.payPeriodStart } },
         ],
       },
-    })
+      orderBy: {
+        effectiveFrom: 'desc',
+      },
+    }) : []
 
     const structureMap = new Map()
     salaryStructures.forEach((struct) => {
