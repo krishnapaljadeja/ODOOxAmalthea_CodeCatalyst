@@ -44,7 +44,7 @@ export default function Topbar() {
   const fetchTodayAttendance = async () => {
     try {
       const response = await apiClient.get('/attendance/today')
-      // Backend returns { status: 'success', data: {...} }
+      // Backend returns { status: 'success', data: {...} } 
       const attendanceData = response.data?.data || response.data
       setTodayAttendance(attendanceData)
     } catch (error) {
@@ -198,12 +198,6 @@ export default function Topbar() {
                 <Link to="/profile" className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
                   Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/change-password" className="flex items-center">
-                  <Lock className="mr-2 h-4 w-4" />
-                  Change Password
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

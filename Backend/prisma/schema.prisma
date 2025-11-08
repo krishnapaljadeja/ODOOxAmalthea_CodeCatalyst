@@ -81,21 +81,29 @@ model Company {
 }
 
 model User {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  password   String
-  firstName  String
-  lastName   String
-  role       UserRole @default(employee)
-  avatar     String?
-  phone      String?
-  department String?
-  position   String?
-  employeeId String?  @unique
-  companyId  String?
-  company    Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  role        UserRole @default(employee)
+  avatar      String?
+  phone       String?
+  department  String?
+  position    String?
+  employeeId  String?  @unique
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Resume fields
+  about              String?
+  whatILoveAboutMyJob String?
+  interestsAndHobbies String?
+  skills             String[] @default([])
+  certifications     String[] @default([])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   
   employee        Employee?
@@ -124,8 +132,25 @@ model Employee {
   position   String
   status     EmployeeStatus @default(active)
   hireDate   DateTime
-  companyId  String?
-  company    Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salary     Float
+  companyId String?
+  company   Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Private info fields
+  dateOfBirth    DateTime?  @db.Date
+  address        String?
+  nationality    String?
+  personalEmail  String?
+  gender         String?
+  maritalStatus  String?
+  
+  // Bank details fields
+  accountNumber  String?
+  bankName       String?
+  ifscCode       String?
+  panNo          String?
+  uanNo          String?
+  
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   

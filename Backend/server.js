@@ -13,6 +13,7 @@ import salaryStructureRoutes from './routes/salaryStructure.routes.js'
 import settingsRoutes from './routes/settings.routes.js'
 import profileRoutes from './routes/profile.routes.js'
 import passwordResetRoutes from './routes/passwordReset.routes.js'
+import adminRoutes from './routes/admin.routes.js'
 import { errorHandler } from './middleware/error.middleware.js'
 
 dotenv.config()
@@ -28,8 +29,8 @@ app.use(
     credentials: true,
   })
 )
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // Health check
 app.get('/health', (req, res) => {
@@ -48,6 +49,7 @@ app.use('/api/salary-structures', salaryStructureRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/password-reset', passwordResetRoutes)
+app.use('/api/admin', adminRoutes)
 
 // Error handling
 app.use(errorHandler)

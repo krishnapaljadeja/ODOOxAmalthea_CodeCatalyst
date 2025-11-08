@@ -2,13 +2,62 @@ import { z } from 'zod'
 
 export const updateProfileSchema = z.object({
   body: z.object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    email: z.string().email('Invalid email address'),
+    firstName: z.string().min(1, 'First name is required').optional(),
+    lastName: z.string().min(1, 'Last name is required').optional(),
+    email: z.string().email('Invalid email address').optional(),
     phone: z.string().optional(),
-    address: z.string().optional(),
-    dateOfBirth: z.string().optional(),
-    gender: z.string().optional(),
+    avatar: z.string().optional(),
+    about: z.string().optional(),
+    whatILoveAboutMyJob: z.string().optional(),
+    interestsAndHobbies: z.string().optional(),
+    skills: z.array(z.string()).optional(),
+    certifications: z.array(z.string()).optional(),
+    employeeData: z.object({
+      dateOfBirth: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      address: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      nationality: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      personalEmail: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().email('Invalid email address').nullable().optional().or(z.literal(''))
+      ),
+      gender: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      maritalStatus: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      accountNumber: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      bankName: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      ifscCode: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      panNo: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+      uanNo: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : val),
+        z.string().nullable().optional()
+      ),
+    }).optional(),
   }),
 })
 

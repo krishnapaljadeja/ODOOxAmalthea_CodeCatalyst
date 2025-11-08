@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Building2 } from "lucide-react";
+import { Building2, Upload, X } from "lucide-react";
 import apiClient from "../lib/api";
 import { toast } from "sonner";
 
@@ -48,6 +48,8 @@ const registerSchema = z
 export default function Register() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
 
   const {
     register,
@@ -57,23 +59,115 @@ export default function Register() {
     resolver: zodResolver(registerSchema),
   });
 
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select an image file");
+        return;
+      }
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Image size should be less than 2MB");
+        return;
+      }
+      setCompanyLogo(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    setCompanyLogo(null);
+    setLogoPreview(null);
+  };
+
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      await apiClient.post("/auth/register", {
+      // Prepare payload - convert empty phone to undefined
+      const payload = {
         companyName: data.companyName,
         name: data.name,
         email: data.email,
-        phone: data.phone,
         password: data.password,
-      });
+      };
+      
+      // Only include phone if it has a value
+      if (data.phone && data.phone.trim() !== "") {
+        payload.phone = data.phone;
+      }
+
+      // Convert logo to base64 if present
+      if (companyLogo) {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          payload.companyLogo = reader.result;
+          try {
+            const response = await apiClient.post("/auth/register", payload);
+            toast.success("Registration successful! Please login.");
+            navigate("/login");
+          } catch (error) {
+            console.error("Registration failed:", error);
+            console.error("Error response:", error.response?.data);
+            
+            let message = "Registration failed. Please try again.";
+            
+            if (error.response?.data) {
+              const errorData = error.response.data;
+              
+              if (errorData.errors && Array.isArray(errorData.errors)) {
+                const firstError = errorData.errors[0];
+                if (firstError) {
+                  message = `${firstError.path?.join(".") || "Field"}: ${firstError.message || errorData.message}`;
+                } else {
+                  message = errorData.message || message;
+                }
+              } else {
+                message = errorData.message || message;
+              }
+            }
+            
+            toast.error(message);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        reader.readAsDataURL(companyLogo);
+        return; // Exit early, will continue in reader.onloadend
+      }
+
+      const response = await apiClient.post("/auth/register", payload);
       toast.success("Registration successful! Please login.");
       navigate("/login");
     } catch (error) {
       console.error("Registration failed:", error);
-      const message =
-        error.response?.data?.message ||
-        "Registration failed. Please try again.";
+      console.error("Error response:", error.response?.data);
+      
+      // Get detailed error message
+      let message = "Registration failed. Please try again.";
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        
+        // Check for validation errors array
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const firstError = errorData.errors[0];
+          if (firstError) {
+            message = `${firstError.path?.join(".") || "Field"}: ${firstError.message || errorData.message}`;
+          } else {
+            message = errorData.message || message;
+          }
+        } else {
+          message = errorData.message || message;
+        }
+      }
+      
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -113,6 +207,54 @@ export default function Register() {
               <p className="text-xs text-muted-foreground">
                 Login ID will be auto-generated using company name
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="companyLogo">Company Logo (Optional)</Label>
+              <div className="flex items-center gap-4">
+                {logoPreview ? (
+                  <div className="relative">
+                    <img
+                      src={logoPreview}
+                      alt="Company logo preview"
+                      className="h-20 w-20 rounded-lg object-cover border-2 border-gray-200"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      onClick={removeLogo}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-20 w-20 rounded-lg border-2 border-dashed border-gray-300">
+                    <Upload className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <input
+                    id="companyLogo"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("companyLogo")?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {logoPreview ? "Change Logo" : "Upload Logo"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Recommended: Square image, max 2MB
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">

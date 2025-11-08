@@ -12,24 +12,38 @@ import {
 
 const prisma = new PrismaClient();
 
-/**
- * Login user
- * Supports both email and employee ID for login
- */
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const loginId = email; // Can be either email or employee ID
+    const loginId = email;
 
-    // Try to find user by email first
     let user = await prisma.user.findUnique({
       where: { email: loginId },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            logo: true,
+          },
+        },
+      },
     });
 
-    // If not found by email, try to find by employee ID
     if (!user) {
       user = await prisma.user.findUnique({
         where: { employeeId: loginId },
+        include: {
+          company: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              logo: true,
+            },
+          },
+        },
       });
     }
 
@@ -41,7 +55,6 @@ export const login = async (req, res, next) => {
       });
     }
 
-    // Verify password
     const isValid = await comparePassword(password, user.password);
     if (!isValid) {
       return res.status(401).json({
@@ -67,7 +80,6 @@ export const login = async (req, res, next) => {
       },
     });
 
-    // Return user without password
     const { password: _, ...userWithoutPassword } = user;
 
     res.json({
@@ -83,37 +95,28 @@ export const login = async (req, res, next) => {
   }
 };
 
-/**
- * Logout user
- */
 export const logout = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
-      // Invalidate refresh token if provided
-      // For now, just return success
+      await prisma.refreshToken.delete({
+        where: { token },
+      });
     }
 
-    res.json({
-      status: "success",
-      data: {
-        success: true,
-      },
-    });
+    res
+      .status(200)
+      .json({ status: "success", message: "Logged out successfully" });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Refresh access token
- */
 export const refresh = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
 
-    // Verify refresh token
     let decoded;
     try {
       decoded = verifyRefreshToken(refreshToken);
@@ -125,7 +128,6 @@ export const refresh = async (req, res, next) => {
       });
     }
 
-    // Check if refresh token exists in database
     const tokenRecord = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
     });
@@ -138,7 +140,6 @@ export const refresh = async (req, res, next) => {
       });
     }
 
-    // Generate new access token
     const accessToken = generateAccessToken(decoded.userId);
 
     res.json({
@@ -152,9 +153,6 @@ export const refresh = async (req, res, next) => {
   }
 };
 
-/**
- * Get current user
- */
 export const getMe = async (req, res, next) => {
   try {
     const user = req.user;
@@ -168,16 +166,10 @@ export const getMe = async (req, res, next) => {
   }
 };
 
-/**
- * Register new user
- * Note: This creates both company, employee, and user records
- * Login ID is auto-generated based on company name, employee name, and hire date
- */
 export const registerUser = async (req, res, next) => {
   try {
-    const { companyName, name, email, phone, password } = req.body;
+    const { companyName, name, email, phone, password, companyLogo } = req.body;
 
-    // Validate required fields
     if (!companyName || companyName.length < 2) {
       return res.status(400).json({
         status: "error",
@@ -186,7 +178,6 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -199,13 +190,10 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
-    // Get or create company
-    // First check if company with this name already exists
     let company = await prisma.company.findUnique({
       where: { name: companyName },
     });
 
-    // If company doesn't exist, generate unique code and create
     if (!company) {
       const companyCode = await generateCompanyCode(companyName);
 
@@ -214,12 +202,11 @@ export const registerUser = async (req, res, next) => {
           data: {
             name: companyName,
             code: companyCode,
+            logo: companyLogo || null,
           },
         });
       } catch (error) {
-        // If code conflict occurs (shouldn't happen, but handle it)
         if (error.code === "P2002" && error.meta?.target?.includes("code")) {
-          // Generate fallback code with timestamp
           const fallbackCode = `${companyName
             .substring(0, 2)
             .toUpperCase()}${Date.now().toString().slice(-4)}`;
@@ -227,6 +214,7 @@ export const registerUser = async (req, res, next) => {
             data: {
               name: companyName,
               code: fallbackCode,
+              logo: companyLogo || null,
             },
           });
         } else {
@@ -253,45 +241,29 @@ export const registerUser = async (req, res, next) => {
     const hireDate = new Date();
 
     // Generate employee ID using company code
+    // Use company.code (which exists whether company was just created or already existed)
     const employeeId = await generateEmployeeId(
-      companyCode,
+      company.code,
       firstName,
       lastName,
       hireDate,
       company.id
     );
 
-    // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create employee first
-    const employee = await prisma.employee.create({
-      data: {
-        employeeId,
-        email,
-        firstName,
-        lastName,
-        phone: phone || null,
-        department: "General", // Default department
-        position: "Employee", // Default position
-        status: "active",
-        hireDate,
-        salary: 0, // Default salary, can be updated later
-        companyId: company.id,
-      },
-    });
-
-    // Create user
+    // Create User first (Employee requires userId)
+    // User registering is the admin/owner of the company
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         firstName,
         lastName,
-        role: "employee",
+        role: "admin",
         phone: phone || null,
-        department: employee.department,
-        position: employee.position,
+        department: "General",
+        position: "Owner",
         employeeId,
         companyId: company.id,
       },
@@ -311,13 +283,25 @@ export const registerUser = async (req, res, next) => {
       },
     });
 
-    // Update employee with userId
-    await prisma.employee.update({
-      where: { id: employee.id },
-      data: { userId: user.id },
+    // Create Employee with userId from the created user
+    // Admin/owner is also an employee record
+    await prisma.employee.create({
+      data: {
+        employeeId,
+        userId: user.id,
+        email,
+        firstName,
+        lastName,
+        phone: phone || null,
+        department: "General",
+        position: "Owner",
+        status: "active",
+        hireDate,
+        salary: 0,
+        companyId: company.id,
+      },
     });
 
-    // Generate tokens
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
@@ -340,7 +324,7 @@ export const registerUser = async (req, res, next) => {
         refreshToken,
         user: {
           ...user,
-          employeeId, // Include the generated employee ID
+          employeeId,
         },
       },
     });

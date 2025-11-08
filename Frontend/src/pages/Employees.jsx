@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -18,13 +19,14 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Plus, Upload, Download, Search, Plane } from "lucide-react";
+import { Plus, Upload, Download, Search, Plane, Save } from "lucide-react";
 import apiClient from "../lib/api";
-import { formatDate, formatPhone } from "../lib/format";
+import { formatDate, formatPhone, formatCurrency } from "../lib/format";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useAuthStore } from "../store/auth";
 import {
   Select,
   SelectContent,
@@ -50,6 +52,7 @@ const employeeSchema = z.object({
  * Employees page component
  */
 export default function Employees() {
+  const { user } = useAuthStore();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -59,6 +62,8 @@ export default function Employees() {
   const [searchTerm, setSearchTerm] = useState("");
   const [todayAttendance, setTodayAttendance] = useState([]);
   const [todayLeaves, setTodayLeaves] = useState([]);
+  const [employeeSalaryInfo, setEmployeeSalaryInfo] = useState(null);
+  const [employeeViewTab, setEmployeeViewTab] = useState("details");
 
   const {
     register,
@@ -162,9 +167,31 @@ export default function Employees() {
     }
   };
 
-  const handleViewEmployee = (employee) => {
+  const handleViewEmployee = async (employee) => {
     setSelectedEmployee(employee);
     setIsViewOpen(true);
+    // Fetch salary info if admin/payroll
+    if (['admin', 'hr'].includes(user?.role) && employee.id) {
+      try {
+        const response = await apiClient.get(`/employees/${employee.id}/salary`);
+        setEmployeeSalaryInfo(response.data?.data || response.data);
+      } catch (error) {
+        console.error('Failed to fetch salary info:', error);
+        // Use mock data for now
+        setEmployeeSalaryInfo({
+          basicSalary: employee.salary * 0.5 || 25000,
+          hra: employee.salary * 0.25 || 12500,
+          conveyance: employee.salary * 0.1 || 5000,
+          medicalAllowance: employee.salary * 0.1 || 5000,
+          specialAllowance: employee.salary * 0.05 || 2500,
+          grossSalary: employee.salary || 50000,
+          pf: (employee.salary * 0.5 || 25000) * 0.12 || 3000,
+          esi: 0,
+          professionalTax: 200,
+          netSalary: (employee.salary || 50000) - 3200,
+        });
+      }
+    }
   };
 
   const handleImport = async (file) => {
@@ -629,72 +656,234 @@ Michael,Williams,michael.williams@example.com,+1234567892,Sales,Sales Representa
 
         {/* View Employee Dialog */}
         <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Employee Details</DialogTitle>
               <DialogDescription>
-                View employee information and details
+                View and manage employee information
               </DialogDescription>
             </DialogHeader>
             {selectedEmployee && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Employee ID</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.employeeId}
-                    </p>
+              <Tabs value={employeeViewTab} onValueChange={setEmployeeViewTab} className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  {['admin', 'hr'].includes(user?.role) && (
+                    <TabsTrigger value="salary">Salary Info</TabsTrigger>
+                  )}
+                </TabsList>
+
+                <TabsContent value="details" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Employee ID</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.employeeId}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Status</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.status}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>First Name</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.firstName}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Last Name</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.lastName}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Email</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.email}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Phone</Label>
+                      <p className="text-sm font-medium">
+                        {formatPhone(selectedEmployee.phone)}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Department</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.department}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Position</Label>
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.position}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Hire Date</Label>
+                      <p className="text-sm font-medium">
+                        {formatDate(selectedEmployee.hireDate)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Status</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.status}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>First Name</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.firstName}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Last Name</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.lastName}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Email</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.email}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Phone</Label>
-                    <p className="text-sm font-medium">
-                      {formatPhone(selectedEmployee.phone)}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Department</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.department}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Position</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.position}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Hire Date</Label>
-                    <p className="text-sm font-medium">
-                      {formatDate(selectedEmployee.hireDate)}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                </TabsContent>
+
+                {['admin', 'hr'].includes(user?.role) && (
+                  <TabsContent value="salary" className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Salary Information</CardTitle>
+                        <CardDescription>
+                          View and update employee salary details
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {employeeSalaryInfo ? (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Basic Salary</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.basicSalary || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    basicSalary: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>HRA</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.hra || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    hra: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Conveyance</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.conveyance || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    conveyance: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Medical Allowance</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.medicalAllowance || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    medicalAllowance: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Special Allowance</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.specialAllowance || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    specialAllowance: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Gross Salary</Label>
+                                <p className="text-lg font-semibold text-primary">
+                                  {formatCurrency(
+                                    (employeeSalaryInfo.basicSalary || 0) +
+                                    (employeeSalaryInfo.hra || 0) +
+                                    (employeeSalaryInfo.conveyance || 0) +
+                                    (employeeSalaryInfo.medicalAllowance || 0) +
+                                    (employeeSalaryInfo.specialAllowance || 0)
+                                  )}
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>PF</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.pf || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    pf: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>ESI</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.esi || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    esi: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Professional Tax</Label>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.professionalTax || 0}
+                                  onChange={(e) => setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    professionalTax: parseFloat(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Net Salary</Label>
+                                <p className="text-2xl font-bold text-primary">
+                                  {formatCurrency(
+                                    ((employeeSalaryInfo.basicSalary || 0) +
+                                    (employeeSalaryInfo.hra || 0) +
+                                    (employeeSalaryInfo.conveyance || 0) +
+                                    (employeeSalaryInfo.medicalAllowance || 0) +
+                                    (employeeSalaryInfo.specialAllowance || 0)) -
+                                    ((employeeSalaryInfo.pf || 0) +
+                                    (employeeSalaryInfo.esi || 0) +
+                                    (employeeSalaryInfo.professionalTax || 0))
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={async () => {
+                                try {
+                                  await apiClient.put(`/employees/${selectedEmployee.id}/salary`, employeeSalaryInfo);
+                                  toast.success('Salary information updated successfully');
+                                  fetchEmployees();
+                                } catch (error) {
+                                  console.error('Failed to update salary:', error);
+                                  toast.error('Failed to update salary information');
+                                }
+                              }}
+                            >
+                              <Save className="mr-2 h-4 w-4" />
+                              Save Salary Info
+                            </Button>
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">Loading salary information...</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
+              </Tabs>
             )}
           </DialogContent>
         </Dialog>

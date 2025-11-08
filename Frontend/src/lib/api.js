@@ -284,6 +284,12 @@ apiClient.interceptors.response.use(
 
     // Handle other errors
     if (error.response) {
+      // Skip showing toast for 404 errors - they're often valid "not found" states
+      // (e.g., no attendance record for today)
+      if (error.response.status === 404) {
+        return Promise.reject(error);
+      }
+      
       const message =
         error.response.data?.message ||
         error.response.data?.error ||
