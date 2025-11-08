@@ -8,9 +8,9 @@ const prisma = new PrismaClient()
 export const getAttendance = async (req, res, next) => {
   try {
     const { date, startDate, endDate, employeeId } = req.query
-    const user = req.user
-    
-    const where = {}
+    const user = req.user;
+
+    const where = {};
 
     // Role-based filtering
     if (user.role === 'employee') {
@@ -27,17 +27,28 @@ export const getAttendance = async (req, res, next) => {
     }
     // Admin and HR can see all
 
+    // Date filtering logic:
     if (date) {
-      // Parse date string (YYYY-MM-DD) and set to start of day in UTC
-      const dateObj = new Date(date + 'T00:00:00.000Z')
-      where.date = dateObj
-    } else if (startDate) {
-      const startDateObj = new Date(startDate + 'T00:00:00.000Z')
-      where.date = { ...where.date, gte: startDateObj }
-    } else if (endDate) {
-      const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-      where.date = { ...where.date, lte: endDateObj }
+      // To get "today's attendance", filter where date >= start of given day AND < start of next day (UTC)
+      const dateStart = new Date(date + 'T00:00:00.000Z');
+      const dateEnd = new Date(date + 'T00:00:00.000Z');
+      dateEnd.setUTCDate(dateEnd.getUTCDate() + 1);
+      where.checkIn = {
+        gte: dateStart,
+        lt: dateEnd,
+      };
+    } else {
+      if (startDate) {
+        const startDateObj = new Date(startDate + 'T00:00:00.000Z')
+        where.date = { ...where.date, gte: startDateObj }
+      }
+      if (endDate) {
+        const endDateObj = new Date(endDate + 'T23:59:59.999Z')
+        where.date = { ...where.date, lte: endDateObj }
+      }
     }
+
+    console.log(where)
 
     const attendances = await prisma.attendance.findMany({
       where,
