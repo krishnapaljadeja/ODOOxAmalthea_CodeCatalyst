@@ -274,6 +274,8 @@ export default function AdminSettings() {
                                 }
                                 placeholder="Enter new password"
                                 className="w-48"
+                                autoComplete="new-password"
+                                autoFocus
                               />
                               <Button
                                 variant="ghost"

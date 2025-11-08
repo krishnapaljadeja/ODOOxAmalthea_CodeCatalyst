@@ -68,6 +68,79 @@ export const getPayrollDashboard = async (req, res, next) => {
     // Check for employees without managers (if manager field exists)
     // This is a placeholder - adjust based on your schema
 
+    // Get employee cost analytics - last 12 months
+    const now = new Date()
+    const twelveMonthsAgo = new Date(now)
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+    
+    // Get all payruns for the last 12 months
+    const payrunsForAnalytics = await prisma.payrun.findMany({
+      where: {
+        ...payrunWhere,
+        payDate: {
+          gte: twelveMonthsAgo,
+        },
+        status: 'completed',
+      },
+      include: {
+        payrolls: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                companyId: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        payDate: 'asc',
+      },
+    })
+
+    // Group by month and calculate costs
+    const monthlyCosts = {}
+    const monthlyCounts = {}
+    
+    payrunsForAnalytics.forEach((payrun) => {
+      const monthKey = `${payrun.payDate.getFullYear()}-${String(payrun.payDate.getMonth() + 1).padStart(2, '0')}`
+      const monthName = payrun.payDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      
+      if (!monthlyCosts[monthKey]) {
+        monthlyCosts[monthKey] = { month: monthName, cost: 0 }
+        monthlyCounts[monthKey] = { month: monthName, count: 0 }
+      }
+      
+      monthlyCosts[monthKey].cost += payrun.totalAmount || 0
+      monthlyCounts[monthKey].count += payrun.totalEmployees || 0
+    })
+
+    // Convert to arrays and sort
+    const employeeCostAnnually = Object.values(monthlyCosts).sort((a, b) => {
+      const dateA = new Date(a.month)
+      const dateB = new Date(b.month)
+      return dateA - dateB
+    })
+    
+    const employeeCostMonthly = Object.values(monthlyCosts).slice(-6).sort((a, b) => {
+      const dateA = new Date(a.month)
+      const dateB = new Date(b.month)
+      return dateA - dateB
+    })
+    
+    const employeeCountAnnually = Object.values(monthlyCounts).sort((a, b) => {
+      const dateA = new Date(a.month)
+      const dateB = new Date(b.month)
+      return dateA - dateB
+    })
+    
+    const employeeCountMonthly = Object.values(monthlyCounts).slice(-6).sort((a, b) => {
+      const dateA = new Date(a.month)
+      const dateB = new Date(b.month)
+      return dateA - dateB
+    })
+
     res.json({
       status: 'success',
       data: {
@@ -82,6 +155,14 @@ export const getPayrollDashboard = async (req, res, next) => {
           totalEmployees: payrun.totalEmployees,
           totalAmount: payrun.totalAmount,
         })),
+        employeeCost: {
+          annually: employeeCostAnnually,
+          monthly: employeeCostMonthly,
+        },
+        employeeCount: {
+          annually: employeeCountAnnually,
+          monthly: employeeCountMonthly,
+        },
       },
     })
   } catch (error) {
@@ -90,14 +171,15 @@ export const getPayrollDashboard = async (req, res, next) => {
 }
 
 /**
- * Get payruns
+ * Get payruns (optionally filtered by year and month)
  */
 export const getPayruns = async (req, res, next) => {
   try {
     const user = req.user
+    const { year, month } = req.query
 
     // Build company filter for payruns
-    const where = user.companyId ? {
+    const companyFilter = user.companyId ? {
       payrolls: {
         some: {
           employee: {
@@ -106,6 +188,38 @@ export const getPayruns = async (req, res, next) => {
         },
       },
     } : {}
+
+    // Build date filter if year/month provided
+    const dateFilter = {}
+    if (year && month) {
+      const selectedYear = parseInt(year)
+      const selectedMonth = parseInt(month) - 1 // month is 0-indexed
+      const startOfMonth = new Date(selectedYear, selectedMonth, 1)
+      startOfMonth.setHours(0, 0, 0, 0)
+      const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0)
+      endOfMonth.setHours(23, 59, 59, 999)
+      
+      dateFilter.payPeriodStart = {
+        gte: startOfMonth,
+        lte: endOfMonth,
+      }
+    } else if (year) {
+      const selectedYear = parseInt(year)
+      const startOfYear = new Date(selectedYear, 0, 1)
+      startOfYear.setHours(0, 0, 0, 0)
+      const endOfYear = new Date(selectedYear, 11, 31)
+      endOfYear.setHours(23, 59, 59, 999)
+      
+      dateFilter.payPeriodStart = {
+        gte: startOfYear,
+        lte: endOfYear,
+      }
+    }
+
+    const where = {
+      ...companyFilter,
+      ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
+    }
 
     const payruns = await prisma.payrun.findMany({
       where,
@@ -138,15 +252,21 @@ export const getPayruns = async (req, res, next) => {
 }
 
 /**
- * Get current month's payrun with all payrolls
+ * Get current month's payrun with all payrolls (or specified year/month)
  */
 export const getCurrentMonthPayrun = async (req, res, next) => {
   try {
     const user = req.user
+    const { year, month } = req.query
+    
+    // Use provided year/month or default to current month
     const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const selectedYear = year ? parseInt(year) : now.getFullYear()
+    const selectedMonth = month ? parseInt(month) - 1 : now.getMonth() // month is 0-indexed
+    
+    const startOfMonth = new Date(selectedYear, selectedMonth, 1)
     startOfMonth.setHours(0, 0, 0, 0)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0)
     endOfMonth.setHours(23, 59, 59, 999)
 
     // Build company filter

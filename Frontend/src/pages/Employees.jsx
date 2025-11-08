@@ -20,7 +20,7 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Plus, Upload, Download, Search, Plane, Save } from "lucide-react";
+import { Plus, Upload, Download, Search, Plane, Save, Pencil } from "lucide-react";
 import apiClient from "../lib/api";
 import { formatDate, formatPhone, formatCurrency } from "../lib/format";
 import { useForm } from "react-hook-form";
@@ -63,6 +63,7 @@ export default function Employees() {
   const [todayLeaves, setTodayLeaves] = useState([]);
   const [employeeSalaryInfo, setEmployeeSalaryInfo] = useState(null);
   const [employeeViewTab, setEmployeeViewTab] = useState("details");
+  const [isEditingEmployeeSalary, setIsEditingEmployeeSalary] = useState(false);
 
   const {
     register,
@@ -190,29 +191,146 @@ export default function Employees() {
     }
   };
 
+  const handleSaveEmployeeSalary = async () => {
+    if (!selectedEmployee || !employeeSalaryInfo) return;
+
+    try {
+      // Calculate gross and net salary
+      const grossSalary =
+        (employeeSalaryInfo.basicSalary || 0) +
+        (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+        (employeeSalaryInfo.standardAllowance || 0) +
+        (employeeSalaryInfo.performanceBonus || 0) +
+        (employeeSalaryInfo.travelAllowance || 0) +
+        (employeeSalaryInfo.fixedAllowance || 0);
+
+      const netSalary =
+        grossSalary -
+        (employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || 0) -
+        (employeeSalaryInfo.professionalTax || 0);
+
+      await apiClient.put(`/employees/${selectedEmployee.id}/salary`, {
+        monthWage: employeeSalaryInfo.monthWage,
+        yearlyWage: employeeSalaryInfo.yearlyWage,
+        workingDaysPerWeek: employeeSalaryInfo.workingDaysPerWeek,
+        breakTime: employeeSalaryInfo.breakTime,
+        basicSalary: employeeSalaryInfo.basicSalary,
+        basicSalaryPercent: employeeSalaryInfo.basicSalaryPercent,
+        houseRentAllowance: employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance,
+        hraPercent: employeeSalaryInfo.hraPercent,
+        standardAllowance: employeeSalaryInfo.standardAllowance,
+        standardAllowancePercent: employeeSalaryInfo.standardAllowancePercent,
+        performanceBonus: employeeSalaryInfo.performanceBonus,
+        performanceBonusPercent: employeeSalaryInfo.performanceBonusPercent,
+        travelAllowance: employeeSalaryInfo.travelAllowance,
+        ltaPercent: employeeSalaryInfo.ltaPercent,
+        fixedAllowance: employeeSalaryInfo.fixedAllowance,
+        fixedAllowancePercent: employeeSalaryInfo.fixedAllowancePercent,
+        pfEmployee: employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee,
+        pfEmployeePercent: employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent,
+        pfEmployer: employeeSalaryInfo.pfEmployer || 0,
+        pfEmployerPercent: employeeSalaryInfo.pfEmployerPercent,
+        professionalTax: employeeSalaryInfo.professionalTax,
+      });
+
+      toast.success("Salary information updated successfully");
+      setIsEditingEmployeeSalary(false);
+      await fetchEmployees();
+    } catch (error) {
+      console.error("Failed to update salary:", error);
+      toast.error("Failed to update salary information");
+    }
+  };
+
   const handleViewEmployee = async (employee) => {
     setSelectedEmployee(employee);
     setIsViewOpen(true);
+    setEmployeeViewTab("details");
+    setIsEditingEmployeeSalary(false);
     if (["admin", "hr"].includes(user?.role) && employee?.id) {
       try {
         const response = await apiClient.get(`/employees/${employee.id}/salary`);
-        setEmployeeSalaryInfo(response.data?.data || response.data);
+        const salaryData = response.data?.data || response.data;
+        
+        // Calculate percentages if not present
+        const monthWage = salaryData.monthWage || salaryData.grossSalary || employee.salary || 0;
+        const basicSalary = salaryData.basicSalary || 0;
+        const hra = salaryData.hra || salaryData.houseRentAllowance || 0;
+        const grossSalary = salaryData.grossSalary || monthWage;
+        
+        // Calculate percentages
+        const basicSalaryPercent = monthWage > 0 ? (basicSalary / monthWage) * 100 : 0;
+        const hraPercent = basicSalary > 0 ? (hra / basicSalary) * 100 : 0;
+        const standardAllowancePercent = monthWage > 0 ? ((salaryData.standardAllowance || 0) / monthWage) * 100 : 0;
+        const performanceBonusPercent = basicSalary > 0 ? ((salaryData.performanceBonus || 0) / basicSalary) * 100 : 0;
+        const ltaPercent = basicSalary > 0 ? ((salaryData.travelAllowance || 0) / basicSalary) * 100 : 0;
+        const fixedAllowancePercent = monthWage > 0 ? ((salaryData.fixedAllowance || 0) / monthWage) * 100 : 0;
+        const pfPercent = basicSalary > 0 ? ((salaryData.pf || salaryData.pfEmployee || 0) / basicSalary) * 100 : 0;
+        
+        setEmployeeSalaryInfo({
+          ...salaryData,
+          monthWage: monthWage || salaryData.monthWage,
+          basicSalary,
+          hra: hra || salaryData.houseRentAllowance,
+          houseRentAllowance: hra || salaryData.houseRentAllowance,
+          basicSalaryPercent: salaryData.basicSalaryPercent || basicSalaryPercent,
+          hraPercent: salaryData.hraPercent || hraPercent,
+          standardAllowancePercent: salaryData.standardAllowancePercent || standardAllowancePercent,
+          performanceBonusPercent: salaryData.performanceBonusPercent || performanceBonusPercent,
+          ltaPercent: salaryData.ltaPercent || ltaPercent,
+          fixedAllowancePercent: salaryData.fixedAllowancePercent || fixedAllowancePercent,
+          pfPercent: salaryData.pfEmployeePercent || salaryData.pfPercent || pfPercent,
+        });
       } catch (error) {
         console.error("Failed to fetch salary info:", error);
-        // fallback to reasonable mock breakdown
-        const base = Number(employee?.salary) || 50000;
-        setEmployeeSalaryInfo({
-          basicSalary: Math.round(base * 0.5),
-          hra: Math.round(base * 0.25),
-          conveyance: Math.round(base * 0.1),
-          medicalAllowance: Math.round(base * 0.1),
-          specialAllowance: Math.round(base * 0.05),
-          grossSalary: base,
-          pf: Math.round((base * 0.5) * 0.12),
-          esi: 0,
-          professionalTax: 200,
-          netSalary: base - 3200,
-        });
+        // Use employee salary if available
+        if (employee.salary) {
+          const monthWage = employee.salary;
+          const basicSalary = employee.salary * 0.5;
+          const hra = basicSalary * 0.5;
+          const standardAllowance = employee.salary * 0.1667;
+          const performanceBonus = basicSalary * 0.0833;
+          const travelAllowance = basicSalary * 0.0833;
+          
+          // Calculate fixed allowance as remaining amount
+          const otherComponents =
+            basicSalary +
+            hra +
+            standardAllowance +
+            performanceBonus +
+            travelAllowance;
+          const fixedAllowance = Math.max(0, monthWage - otherComponents);
+          
+          const grossSalary = employee.salary;
+          const pf = basicSalary * 0.12;
+          const professionalTax = 200;
+          const netSalary = grossSalary - pf - professionalTax;
+          
+          setEmployeeSalaryInfo({
+            monthWage,
+            yearlyWage: monthWage * 12,
+            basicSalary,
+            hra,
+            houseRentAllowance: hra,
+            standardAllowance,
+            performanceBonus,
+            travelAllowance,
+            fixedAllowance,
+            grossSalary,
+            pf,
+            pfEmployee: pf,
+            professionalTax,
+            netSalary,
+            basicSalaryPercent: 50,
+            hraPercent: 50,
+            standardAllowancePercent: 16.67,
+            performanceBonusPercent: 8.33,
+            ltaPercent: 8.33,
+            fixedAllowancePercent: monthWage > 0 ? (fixedAllowance / monthWage) * 100 : 0,
+            pfPercent: 12,
+            pfEmployeePercent: 12,
+          });
+        }
       }
     }
   };
@@ -282,9 +400,9 @@ export default function Employees() {
   };
 
   const handleDownloadSample = () => {
-    const sampleData = `First Name,Last Name,Email,Phone,Department,Position,Salary,Hire Date
-John,Smith,john.smith@example.com,+1234567890,Engineering,Software Engineer,75000,2025-01-15
-Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,85000,2025-01-20`;
+    const sampleData = `First Name,Last Name,Email,Phone,Department,Position,Salary,Hire Date,Role
+John,Smith,john.smith@example.com,+1234567890,Engineering,Software Engineer,75000,2025-01-15,employee
+Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,85000,2025-01-20,hr`;
     const blob = new Blob([sampleData], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -611,181 +729,1060 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
 
               {["admin", "hr"].includes(user?.role) && (
                 <TabsContent value="salary" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Salary Information</CardTitle>
-                      <CardDescription>View and update employee salary details</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {employeeSalaryInfo ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Basic Salary</Label>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold">
+                        Salary Information - {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        View and update employee salary details
+                      </p>
+                    </div>
+                    {employeeSalaryInfo && (
+                      <Button
+                        variant={isEditingEmployeeSalary ? "outline" : "default"}
+                        onClick={() => {
+                          if (isEditingEmployeeSalary) {
+                            handleSaveEmployeeSalary();
+                          } else {
+                            setIsEditingEmployeeSalary(true);
+                          }
+                        }}
+                      >
+                        {isEditingEmployeeSalary ? (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                          </>
+                        ) : (
+                          <>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  {employeeSalaryInfo ? (
+                    <div className="space-y-6">
+                      {/* General Work Information */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">
+                          General Work Information
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Month Wage</Label>
+                            {isEditingEmployeeSalary ? (
                               <Input
                                 type="number"
-                                value={employeeSalaryInfo.basicSalary || 0}
-                                onChange={(e) =>
+                                value={employeeSalaryInfo.monthWage || ""}
+                                onChange={(e) => {
+                                  const value = parseFloat(e.target.value) || 0;
+                                  const yearlyWage = value * 12;
+
+                                  // Auto-calculate all components based on new wage
+                                  const basicSalary =
+                                    (value *
+                                      (employeeSalaryInfo.basicSalaryPercent || 50)) /
+                                    100;
+                                  const hra =
+                                    (basicSalary * (employeeSalaryInfo.hraPercent || 50)) /
+                                    100;
+                                  const standardAllowance =
+                                    (value *
+                                      (employeeSalaryInfo.standardAllowancePercent ||
+                                        16.67)) /
+                                    100;
+                                  const performanceBonus =
+                                    (basicSalary *
+                                      (employeeSalaryInfo.performanceBonusPercent ||
+                                        8.33)) /
+                                    100;
+                                  const travelAllowance =
+                                    (basicSalary *
+                                      (employeeSalaryInfo.ltaPercent || 8.33)) /
+                                    100;
+
+                                  // Calculate fixed allowance as remaining amount
+                                  const otherComponents =
+                                    basicSalary +
+                                    hra +
+                                    standardAllowance +
+                                    performanceBonus +
+                                    travelAllowance;
+                                  const fixedAllowance = Math.max(
+                                    0,
+                                    value - otherComponents
+                                  );
+                                  const fixedAllowancePercent =
+                                    value > 0 ? (fixedAllowance / value) * 100 : 0;
+
+                                  // Recalculate PF based on new basic salary
+                                  const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                  const pf = (basicSalary * pfPercent) / 100;
+
                                   setEmployeeSalaryInfo({
                                     ...employeeSalaryInfo,
-                                    basicSalary: parseFloat(e.target.value) || 0,
-                                  })
-                                }
+                                    monthWage: value,
+                                    yearlyWage: yearlyWage,
+                                    basicSalary: basicSalary,
+                                    hra: hra,
+                                    houseRentAllowance: hra,
+                                    standardAllowance: standardAllowance,
+                                    performanceBonus: performanceBonus,
+                                    travelAllowance: travelAllowance,
+                                    fixedAllowance: fixedAllowance,
+                                    fixedAllowancePercent: fixedAllowancePercent,
+                                    pf: pf,
+                                    pfEmployee: pf,
+                                  });
+                                }}
+                                placeholder="Monthly wage"
                               />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>HRA</Label>
-                              <Input
-                                type="number"
-                                value={employeeSalaryInfo.hra || 0}
-                                onChange={(e) =>
-                                  setEmployeeSalaryInfo({
-                                    ...employeeSalaryInfo,
-                                    hra: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Conveyance</Label>
-                              <Input
-                                type="number"
-                                value={employeeSalaryInfo.conveyance || 0}
-                                onChange={(e) =>
-                                  setEmployeeSalaryInfo({
-                                    ...employeeSalaryInfo,
-                                    conveyance: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Medical Allowance</Label>
-                              <Input
-                                type="number"
-                                value={employeeSalaryInfo.medicalAllowance || 0}
-                                onChange={(e) =>
-                                  setEmployeeSalaryInfo({
-                                    ...employeeSalaryInfo,
-                                    medicalAllowance: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Special Allowance</Label>
-                              <Input
-                                type="number"
-                                value={employeeSalaryInfo.specialAllowance || 0}
-                                onChange={(e) =>
-                                  setEmployeeSalaryInfo({
-                                    ...employeeSalaryInfo,
-                                    specialAllowance: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Gross Salary</Label>
-                              <p className="text-lg font-semibold text-primary">
-                                {formatCurrency(
-                                  (employeeSalaryInfo.basicSalary || 0) +
-                                    (employeeSalaryInfo.hra || 0) +
-                                    (employeeSalaryInfo.conveyance || 0) +
-                                    (employeeSalaryInfo.medicalAllowance || 0) +
-                                    (employeeSalaryInfo.specialAllowance || 0)
-                                )}
+                            ) : (
+                              <p className="text-lg font-semibold">
+                                {formatCurrency(employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0)} / Month
                               </p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>PF</Label>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Yearly Wage</Label>
+                            {isEditingEmployeeSalary ? (
                               <Input
                                 type="number"
-                                value={employeeSalaryInfo.pf || 0}
-                                onChange={(e) =>
+                                value={employeeSalaryInfo.yearlyWage || ""}
+                                onChange={(e) => {
+                                  const yearlyValue =
+                                    parseFloat(e.target.value) || 0;
+                                  const value = yearlyValue / 12;
+
+                                  // Auto-calculate all components based on new wage
+                                  const basicSalary =
+                                    (value *
+                                      (employeeSalaryInfo.basicSalaryPercent || 50)) /
+                                    100;
+                                  const hra =
+                                    (basicSalary * (employeeSalaryInfo.hraPercent || 50)) /
+                                    100;
+                                  const standardAllowance =
+                                    (value *
+                                      (employeeSalaryInfo.standardAllowancePercent ||
+                                        16.67)) /
+                                    100;
+                                  const performanceBonus =
+                                    (basicSalary *
+                                      (employeeSalaryInfo.performanceBonusPercent ||
+                                        8.33)) /
+                                    100;
+                                  const travelAllowance =
+                                    (basicSalary *
+                                      (employeeSalaryInfo.ltaPercent || 8.33)) /
+                                    100;
+
+                                  // Calculate fixed allowance as remaining amount
+                                  const otherComponents =
+                                    basicSalary +
+                                    hra +
+                                    standardAllowance +
+                                    performanceBonus +
+                                    travelAllowance;
+                                  const fixedAllowance = Math.max(
+                                    0,
+                                    value - otherComponents
+                                  );
+                                  const fixedAllowancePercent =
+                                    value > 0 ? (fixedAllowance / value) * 100 : 0;
+
+                                  // Recalculate PF based on new basic salary
+                                  const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                  const pf = (basicSalary * pfPercent) / 100;
+
                                   setEmployeeSalaryInfo({
                                     ...employeeSalaryInfo,
-                                    pf: parseFloat(e.target.value) || 0,
-                                  })
-                                }
+                                    monthWage: value,
+                                    yearlyWage: yearlyValue,
+                                    basicSalary: basicSalary,
+                                    hra: hra,
+                                    houseRentAllowance: hra,
+                                    standardAllowance: standardAllowance,
+                                    performanceBonus: performanceBonus,
+                                    travelAllowance: travelAllowance,
+                                    fixedAllowance: fixedAllowance,
+                                    fixedAllowancePercent: fixedAllowancePercent,
+                                    pf: pf,
+                                    pfEmployee: pf,
+                                  });
+                                }}
+                                placeholder="Yearly wage"
                               />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>ESI</Label>
-                              <Input
-                                type="number"
-                                value={employeeSalaryInfo.esi || 0}
-                                onChange={(e) =>
-                                  setEmployeeSalaryInfo({
-                                    ...employeeSalaryInfo,
-                                    esi: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Professional Tax</Label>
-                              <Input
-                                type="number"
-                                value={employeeSalaryInfo.professionalTax || 0}
-                                onChange={(e) =>
-                                  setEmployeeSalaryInfo({
-                                    ...employeeSalaryInfo,
-                                    professionalTax: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Net Salary</Label>
-                              <p className="text-2xl font-bold text-primary">
-                                {formatCurrency(
-                                  ((employeeSalaryInfo.basicSalary || 0) +
-                                    (employeeSalaryInfo.hra || 0) +
-                                    (employeeSalaryInfo.conveyance || 0) +
-                                    (employeeSalaryInfo.medicalAllowance || 0) +
-                                    (employeeSalaryInfo.specialAllowance || 0)) -
-                                    ((employeeSalaryInfo.pf || 0) +
-                                      (employeeSalaryInfo.esi || 0) +
-                                      (employeeSalaryInfo.professionalTax || 0))
-                                )}
+                            ) : (
+                              <p className="text-lg font-semibold">
+                                {formatCurrency(employeeSalaryInfo.yearlyWage || (employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0) * 12)} /
+                                Yearly
                               </p>
-                            </div>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label>No of working days in a week</Label>
+                            {isEditingEmployeeSalary ? (
+                              <Input
+                                type="number"
+                                value={employeeSalaryInfo.workingDaysPerWeek || ""}
+                                onChange={(e) => {
+                                  setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    workingDaysPerWeek:
+                                      parseInt(e.target.value) || null,
+                                  });
+                                }}
+                                placeholder="Working days per week"
+                                min="1"
+                                max="7"
+                              />
+                            ) : (
+                              <p className="text-lg font-semibold">
+                                {employeeSalaryInfo.workingDaysPerWeek || "-"}
+                              </p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Break Time</Label>
+                            {isEditingEmployeeSalary ? (
+                              <Input
+                                type="number"
+                                value={employeeSalaryInfo.breakTime || ""}
+                                onChange={(e) => {
+                                  setEmployeeSalaryInfo({
+                                    ...employeeSalaryInfo,
+                                    breakTime: parseFloat(e.target.value) || null,
+                                  });
+                                }}
+                                placeholder="Break time in hours"
+                                step="0.5"
+                              />
+                            ) : (
+                              <p className="text-lg font-semibold">
+                                {employeeSalaryInfo.breakTime
+                                  ? `${employeeSalaryInfo.breakTime} /hrs`
+                                  : "-"}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Salary Components */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Salary Components</h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Basic Salary */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Basic Salary
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.basicSalary || ""}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const percent = monthWage > 0 ? (value / monthWage) * 100 : 0;
+
+                                    // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
+                                    const hra =
+                                      (value * (employeeSalaryInfo.hraPercent || 50)) / 100;
+                                    const performanceBonus =
+                                      (value *
+                                        (employeeSalaryInfo.performanceBonusPercent ||
+                                          8.33)) /
+                                      100;
+                                    const travelAllowance =
+                                      (value * (employeeSalaryInfo.ltaPercent || 8.33)) /
+                                      100;
+
+                                    // Recalculate PF based on new basic salary
+                                    const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                    const pf = (value * pfPercent) / 100;
+
+                                    // Recalculate fixed allowance
+                                    const otherComponents =
+                                      value +
+                                      hra +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      performanceBonus +
+                                      travelAllowance;
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      basicSalary: value,
+                                      basicSalaryPercent: percent,
+                                      hra: hra,
+                                      houseRentAllowance: hra,
+                                      performanceBonus: performanceBonus,
+                                      travelAllowance: travelAllowance,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      pf: pf,
+                                      pfEmployee: pf,
+                                    });
+                                  }}
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.basicSalaryPercent?.toFixed(2) || ""}
+                                  onChange={(e) => {
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const amount = (monthWage * percent) / 100;
+
+                                    // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
+                                    const hra =
+                                      (amount * (employeeSalaryInfo.hraPercent || 50)) /
+                                      100;
+                                    const performanceBonus =
+                                      (amount *
+                                        (employeeSalaryInfo.performanceBonusPercent ||
+                                          8.33)) /
+                                      100;
+                                    const travelAllowance =
+                                      (amount * (employeeSalaryInfo.ltaPercent || 8.33)) /
+                                      100;
+
+                                    // Recalculate PF based on new basic salary
+                                    const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                    const pf = (amount * pfPercent) / 100;
+
+                                    // Recalculate fixed allowance
+                                    const otherComponents =
+                                      amount +
+                                      hra +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      performanceBonus +
+                                      travelAllowance;
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      basicSalary: amount,
+                                      basicSalaryPercent: percent,
+                                      hra: hra,
+                                      houseRentAllowance: hra,
+                                      performanceBonus: performanceBonus,
+                                      travelAllowance: travelAllowance,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      pf: pf,
+                                      pfEmployee: pf,
+                                    });
+                                  }}
+                                  className="w-24"
+                                  placeholder="%"
+                                  step="0.01"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency(employeeSalaryInfo.basicSalary || 0)}{" "}
+                                  ₹/month
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {employeeSalaryInfo.basicSalaryPercent?.toFixed(2) || "0.00"} %
+                                </span>
+                              </div>
+                            )}
                           </div>
 
+                          {/* HRA */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              House Rent Allowance (HRA)
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || ""}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const percent = basicSalary > 0 ? (value / basicSalary) * 100 : 0;
+                                    
+                                    // Recalculate fixed allowance
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      value +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.travelAllowance || 0);
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      hra: value,
+                                      houseRentAllowance: value,
+                                      hraPercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.hraPercent?.toFixed(2) || ""}
+                                  onChange={(e) => {
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const amount = (basicSalary * percent) / 100;
+                                    
+                                    // Recalculate fixed allowance
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      amount +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.travelAllowance || 0);
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      hra: amount,
+                                      houseRentAllowance: amount,
+                                      hraPercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-24"
+                                  placeholder="%"
+                                  step="0.01"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency(employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0)}{" "}
+                                  ₹/month
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {employeeSalaryInfo.hraPercent?.toFixed(2) || "0.00"} %
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Standard Allowance */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Standard Allowance
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.standardAllowance || ""}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const percent =
+                                      monthWage > 0 ? (value / monthWage) * 100 : 0;
+                                    
+                                    // Recalculate fixed allowance
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      value +
+                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.travelAllowance || 0);
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      standardAllowance: value,
+                                      standardAllowancePercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={
+                                    employeeSalaryInfo.standardAllowancePercent?.toFixed(
+                                      2
+                                    ) || ""
+                                  }
+                                  onChange={(e) => {
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const amount = (monthWage * percent) / 100;
+                                    
+                                    // Recalculate fixed allowance
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      amount +
+                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.travelAllowance || 0);
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      standardAllowance: amount,
+                                      standardAllowancePercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-24"
+                                  placeholder="%"
+                                  step="0.01"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency(
+                                    employeeSalaryInfo.standardAllowance || 0
+                                  )}{" "}
+                                  ₹/month
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {employeeSalaryInfo.standardAllowancePercent?.toFixed(
+                                    2
+                                  ) || "0.00"}{" "}
+                                  %
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Performance Bonus */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Performance Bonus
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.performanceBonus || ""}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const percent =
+                                      basicSalary > 0
+                                        ? (value / basicSalary) * 100
+                                        : 0;
+                                    
+                                    // Recalculate fixed allowance
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      value +
+                                      (employeeSalaryInfo.travelAllowance || 0);
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      performanceBonus: value,
+                                      performanceBonusPercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={
+                                    employeeSalaryInfo.performanceBonusPercent?.toFixed(
+                                      2
+                                    ) || ""
+                                  }
+                                  onChange={(e) => {
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const amount = (basicSalary * percent) / 100;
+                                    
+                                    // Recalculate fixed allowance
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      amount +
+                                      (employeeSalaryInfo.travelAllowance || 0);
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      performanceBonus: amount,
+                                      performanceBonusPercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-24"
+                                  placeholder="%"
+                                  step="0.01"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency(employeeSalaryInfo.performanceBonus || 0)}{" "}
+                                  ₹/month
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {employeeSalaryInfo.performanceBonusPercent?.toFixed(2) ||
+                                    "0.00"}{" "}
+                                  %
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* LTA */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Leave Travel Allowance (LTA)
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.travelAllowance || ""}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const percent =
+                                      basicSalary > 0
+                                        ? (value / basicSalary) * 100
+                                        : 0;
+                                    
+                                    // Recalculate fixed allowance
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      value;
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      travelAllowance: value,
+                                      ltaPercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.ltaPercent?.toFixed(2) || ""}
+                                  onChange={(e) => {
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const amount = (basicSalary * percent) / 100;
+                                    
+                                    // Recalculate fixed allowance
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const otherComponents =
+                                      (employeeSalaryInfo.basicSalary || 0) +
+                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      amount;
+                                    const fixedAllowance = Math.max(
+                                      0,
+                                      monthWage - otherComponents
+                                    );
+                                    const fixedAllowancePercent =
+                                      monthWage > 0
+                                        ? (fixedAllowance / monthWage) * 100
+                                        : 0;
+                                    
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      travelAllowance: amount,
+                                      ltaPercent: percent,
+                                      fixedAllowance: fixedAllowance,
+                                      fixedAllowancePercent: fixedAllowancePercent,
+                                    });
+                                  }}
+                                  className="w-24"
+                                  placeholder="%"
+                                  step="0.01"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency(employeeSalaryInfo.travelAllowance || 0)}{" "}
+                                  ₹/month
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {employeeSalaryInfo.ltaPercent?.toFixed(2) || "0.00"} %
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Fixed Allowance */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Fixed Allowance
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.fixedAllowance || ""}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const percent =
+                                      monthWage > 0 ? (value / monthWage) * 100 : 0;
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      fixedAllowance: value,
+                                      fixedAllowancePercent: percent,
+                                    });
+                                  }}
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={
+                                    employeeSalaryInfo.fixedAllowancePercent?.toFixed(2) ||
+                                    ""
+                                  }
+                                  onChange={(e) => {
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const amount = (monthWage * percent) / 100;
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      fixedAllowance: amount,
+                                      fixedAllowancePercent: percent,
+                                    });
+                                  }}
+                                  className="w-24"
+                                  placeholder="%"
+                                  step="0.01"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency(employeeSalaryInfo.fixedAllowance || 0)}{" "}
+                                  ₹/month
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {employeeSalaryInfo.fixedAllowancePercent?.toFixed(2) ||
+                                    "0.00"}{" "}
+                                  %
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Gross Salary */}
+                          <div className="col-span-full p-4 border-2 border-primary rounded-lg bg-primary/5 space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Gross Salary
+                            </Label>
+                            <p className="text-2xl font-bold text-primary">
+                              {formatCurrency(
+                                (employeeSalaryInfo.basicSalary || 0) +
+                                (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                (employeeSalaryInfo.standardAllowance || 0) +
+                                (employeeSalaryInfo.performanceBonus || 0) +
+                                (employeeSalaryInfo.travelAllowance || 0) +
+                                (employeeSalaryInfo.fixedAllowance || 0)
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Provident Fund Contribution */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">
+                          Provident Fund (PF) Contribution
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* PF Employee */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Employee
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || ""}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const percent = basicSalary > 0 ? (value / basicSalary) * 100 : 0;
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      pf: value,
+                                      pfEmployee: value,
+                                      pfPercent: percent,
+                                      pfEmployeePercent: percent,
+                                    });
+                                  }}
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.pfPercent?.toFixed(2) || employeeSalaryInfo.pfEmployeePercent?.toFixed(2) || ""}
+                                  onChange={(e) => {
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const amount = (basicSalary * percent) / 100;
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      pf: amount,
+                                      pfEmployee: amount,
+                                      pfPercent: percent,
+                                      pfEmployeePercent: percent,
+                                    });
+                                  }}
+                                  className="w-24"
+                                  placeholder="%"
+                                  step="0.01"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency(employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || 0)}{" "}
+                                  ₹/month
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {employeeSalaryInfo.pfPercent?.toFixed(2) || employeeSalaryInfo.pfEmployeePercent?.toFixed(2) || "0.00"} %
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tax Deductions */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Tax Deductions</h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Professional Tax */}
+                          <div className="p-4 border rounded-lg space-y-3">
+                            <Label className="text-base font-semibold block">
+                              Professional Tax
+                            </Label>
+                            {isEditingEmployeeSalary && (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={employeeSalaryInfo.professionalTax || ""}
+                                  onChange={(e) =>
+                                    setEmployeeSalaryInfo({
+                                      ...employeeSalaryInfo,
+                                      professionalTax: parseFloat(e.target.value) || 0,
+                                    })
+                                  }
+                                  className="w-32"
+                                  placeholder="Amount"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  ₹/month
+                                </span>
+                              </div>
+                            )}
+                            {!isEditingEmployeeSalary && (
+                              <div className="text-lg font-semibold">
+                                {formatCurrency(employeeSalaryInfo.professionalTax || 0)}{" "}
+                                <span className="text-sm text-muted-foreground font-normal">
+                                  ₹/month
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Net Salary */}
+                      <div className="space-y-2 p-4 border-2 border-primary rounded-lg bg-primary/5">
+                        <Label className="text-base font-semibold">
+                          Net Salary
+                        </Label>
+                        <p className="text-2xl font-bold text-primary">
+                          {formatCurrency(
+                            ((employeeSalaryInfo.basicSalary || 0) +
+                            (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                            (employeeSalaryInfo.standardAllowance || 0) +
+                            (employeeSalaryInfo.performanceBonus || 0) +
+                            (employeeSalaryInfo.travelAllowance || 0) +
+                            (employeeSalaryInfo.fixedAllowance || 0)) -
+                            ((employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || 0) +
+                            (employeeSalaryInfo.professionalTax || 0))
+                          )}
+                        </p>
+                      </div>
+
+                      {isEditingEmployeeSalary && (
+                        <div className="flex justify-end gap-2">
                           <Button
-                            onClick={async () => {
-                              try {
-                                await apiClient.put(
-                                  `/employees/${selectedEmployee.id}/salary`,
-                                  employeeSalaryInfo
-                                );
-                                toast.success("Salary information updated successfully");
-                                fetchEmployees();
-                              } catch (error) {
-                                console.error("Failed to update salary:", error);
-                                toast.error("Failed to update salary information");
-                              }
+                            variant="outline"
+                            onClick={() => {
+                              setIsEditingEmployeeSalary(false);
                             }}
                           >
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Salary Info
+                            Cancel
                           </Button>
                         </div>
-                      ) : (
-                        <p className="text-muted-foreground">Loading salary information...</p>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">Loading salary information...</p>
+                  )}
                 </TabsContent>
               )}
             </Tabs>

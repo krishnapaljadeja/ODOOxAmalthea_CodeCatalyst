@@ -317,15 +317,50 @@ export const registerUser = async (req, res, next) => {
       },
     });
 
+    // Get user with company data
+    const userWithCompany = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            logo: true,
+          },
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        avatar: true,
+        phone: true,
+        department: true,
+        position: true,
+        employeeId: true,
+        companyId: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            logo: true,
+          },
+        },
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
     res.status(201).json({
       status: "success",
       data: {
         accessToken,
         refreshToken,
-        user: {
-          ...user,
-          employeeId,
-        },
+        user: userWithCompany,
       },
     });
   } catch (error) {

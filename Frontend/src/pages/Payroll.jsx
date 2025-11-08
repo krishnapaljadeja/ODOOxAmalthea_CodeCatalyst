@@ -12,6 +12,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog'
 import { Label } from '../components/ui/label'
 import { useLocation } from 'react-router-dom'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
 
 export default function Payroll() {
   const navigate = useNavigate()
@@ -24,6 +31,44 @@ export default function Payroll() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [dashboardData, setDashboardData] = useState(null)
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard')
+  
+  // Filter states - initialize with current date
+  const getCurrentDate = () => {
+    const now = new Date()
+    return {
+      year: now.getFullYear().toString(),
+      month: (now.getMonth() + 1).toString(),
+    }
+  }
+  
+  const [selectedYear, setSelectedYear] = useState(() => getCurrentDate().year)
+  const [selectedMonth, setSelectedMonth] = useState(() => getCurrentDate().month)
+
+  // Generate year options (current year and 5 years back) - memoized
+  const yearOptions = (() => {
+    const now = new Date()
+    const options = []
+    for (let i = 0; i < 6; i++) {
+      options.push((now.getFullYear() - i).toString())
+    }
+    return options
+  })()
+
+  // Generate month options - constant
+  const monthOptions = [
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ]
 
   useEffect(() => {
     fetchPayruns()
@@ -31,11 +76,15 @@ export default function Payroll() {
     if (activeTab === 'payrun') {
       fetchCurrentMonthPayrun()
     }
-  }, [activeTab])
+  }, [activeTab, selectedYear, selectedMonth])
 
   const fetchPayruns = async () => {
     try {
-      const response = await apiClient.get('/payroll/payruns')
+      const params = new URLSearchParams()
+      if (selectedYear) params.append('year', selectedYear)
+      if (selectedMonth) params.append('month', selectedMonth)
+      
+      const response = await apiClient.get(`/payroll/payruns?${params.toString()}`)
       const payrunsData = response.data?.data || response.data || []
       setPayruns(payrunsData)
     } catch (error) {
@@ -49,7 +98,11 @@ export default function Payroll() {
   const fetchCurrentMonthPayrun = async () => {
     try {
       setLoading(true)
-      const response = await apiClient.get('/payroll/payruns/current-month')
+      const params = new URLSearchParams()
+      if (selectedYear) params.append('year', selectedYear)
+      if (selectedMonth) params.append('month', selectedMonth)
+      
+      const response = await apiClient.get(`/payroll/payruns/current-month?${params.toString()}`)
       const payrunData = response.data?.data || response.data
       if (payrunData) {
         setCurrentMonthPayrun(payrunData)
@@ -72,50 +125,20 @@ export default function Payroll() {
   const fetchDashboardData = async () => {
     try {
       const response = await apiClient.get('/payroll/dashboard')
-      setDashboardData(response.data)
+      const dashboardDataResponse = response.data?.data || response.data
+      setDashboardData(dashboardDataResponse)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
       setDashboardData({
-        warnings: [
-          { type: 'noBankAccount', count: 1 },
-          { type: 'noManager', count: 1 },
-        ],
-        recentPayruns: payruns.slice(0, 2),
+        warnings: [],
+        recentPayruns: [],
         employeeCost: {
-          annually: [
-            { month: 'Jan 2025', cost: 50000 },
-            { month: 'Feb 2025', cost: 52000 },
-            { month: 'Mar 2025', cost: 48000 },
-            { month: 'Apr 2025', cost: 55000 },
-            { month: 'May 2025', cost: 53000 },
-            { month: 'Jun 2025', cost: 51000 },
-          ],
-          monthly: [
-            { month: 'Jan 2025', cost: 50000 },
-            { month: 'Feb 2025', cost: 52000 },
-            { month: 'Mar 2025', cost: 48000 },
-            { month: 'Apr 2025', cost: 55000 },
-            { month: 'May 2025', cost: 53000 },
-            { month: 'Jun 2025', cost: 51000 },
-          ],
+          annually: [],
+          monthly: [],
         },
         employeeCount: {
-          annually: [
-            { month: 'Jan 2025', count: 10 },
-            { month: 'Feb 2025', count: 12 },
-            { month: 'Mar 2025', count: 11 },
-            { month: 'Apr 2025', count: 13 },
-            { month: 'May 2025', count: 12 },
-            { month: 'Jun 2025', count: 11 },
-          ],
-          monthly: [
-            { month: 'Jan 2025', count: 10 },
-            { month: 'Feb 2025', count: 12 },
-            { month: 'Mar 2025', count: 11 },
-            { month: 'Apr 2025', count: 13 },
-            { month: 'May 2025', count: 12 },
-            { month: 'Jun 2025', count: 11 },
-          ],
+          annually: [],
+          monthly: [],
         },
       })
     }
@@ -333,25 +356,60 @@ export default function Payroll() {
             The Payroll menu is accessible only to users with Admin/Payroll Officer access rights
           </p>
         </div>
-        {activeTab === 'payrun' && (
-          <div className="flex gap-2">
-            {currentMonthPayrun && currentMonthPayrun.status === 'draft' && (
-              <Button variant="outline" onClick={handleProcessPayrun}>
-                <Play className="mr-2 h-4 w-4" />
-                Process Payrun
-              </Button>
-            )}
-            {currentMonthPayrun && 
-             currentMonthPayrun.payrolls && 
-             currentMonthPayrun.payrolls.length > 0 &&
-             currentMonthPayrun.payrolls.some(p => p.status === 'computed' || p.status === 'draft') && (
-              <Button variant="outline" onClick={handleValidateAll}>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Validate
-              </Button>
-            )}
+        <div className="flex items-center gap-4">
+          {/* Year and Month Filters */}
+          <div className="flex items-center gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="year-filter" className="text-xs">Year</Label>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger id="year-filter" className="w-32">
+                  <SelectValue placeholder="Select Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={year}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="month-filter" className="text-xs">Month</Label>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger id="month-filter" className="w-40">
+                  <SelectValue placeholder="Select Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((month) => (
+                    <SelectItem key={month.value} value={month.value}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
+          {activeTab === 'payrun' && (
+            <div className="flex gap-2">
+              {currentMonthPayrun && currentMonthPayrun.status === 'draft' && (
+                <Button variant="outline" onClick={handleProcessPayrun}>
+                  <Play className="mr-2 h-4 w-4" />
+                  Process Payrun
+                </Button>
+              )}
+              {currentMonthPayrun && 
+               currentMonthPayrun.payrolls && 
+               currentMonthPayrun.payrolls.length > 0 &&
+               currentMonthPayrun.payrolls.some(p => p.status === 'computed' || p.status === 'draft') && (
+                <Button variant="outline" onClick={handleValidateAll}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Validate
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -506,7 +564,9 @@ export default function Payroll() {
               {/* Payrun Summary */}
               <Card>
                 <CardHeader>
-                  <CardTitle>{currentMonthPayrun.name}</CardTitle>
+                  <CardTitle>
+                    Payrun {monthOptions.find(m => m.value === selectedMonth)?.label || 'Selected Month'} {selectedYear}
+                  </CardTitle>
                   <CardDescription>
                     Pay Period: {currentMonthPayrun.payPeriodStart && currentMonthPayrun.payPeriodEnd
                       ? `${formatDate(currentMonthPayrun.payPeriodStart)} - ${formatDate(currentMonthPayrun.payPeriodEnd)}`
@@ -591,7 +651,7 @@ export default function Payroll() {
               <CardHeader>
                 <CardTitle>No Payrun Found</CardTitle>
                 <CardDescription>
-                  No payrun found for the current month. Create a new payrun to get started.
+                  No payrun found for {monthOptions.find(m => m.value === selectedMonth)?.label || 'selected month'} {selectedYear}. Create a new payrun to get started.
                 </CardDescription>
               </CardHeader>
               <CardContent>
