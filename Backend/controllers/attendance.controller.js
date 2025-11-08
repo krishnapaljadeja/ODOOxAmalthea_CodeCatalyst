@@ -16,16 +16,34 @@ export const getAttendance = async (req, res, next) => {
     if (user.role === 'employee') {
       where.userId = user.id
     } else if (employeeId) {
-      where.employeeId = employeeId
+      // Filter by specific employee if provided
+      const employee = await prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { id: true },
+      })
+      if (employee) {
+        where.employeeId = employee.id
+      }
     } else if (user.role === 'manager' && user.department) {
       // Managers can see employees in their department
       const employees = await prisma.employee.findMany({
-        where: { department: user.department },
+        where: { 
+          department: user.department,
+          ...(user.companyId ? { companyId: user.companyId } : {}),
+        },
         select: { id: true },
       })
       where.employeeId = { in: employees.map((e) => e.id) }
+    } else if (user.role === 'admin' || user.role === 'hr') {
+      // Admin and HR can see all employees from their company
+      if (user.companyId) {
+        const employees = await prisma.employee.findMany({
+          where: { companyId: user.companyId },
+          select: { id: true },
+        })
+        where.employeeId = { in: employees.map((e) => e.id) }
+      }
     }
-    // Admin and HR can see all
 
     // Date filtering logic:
     if (date) {

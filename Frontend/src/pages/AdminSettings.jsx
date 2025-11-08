@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { Mail, Lock, Send, Edit2, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Send, Edit2, Eye, EyeOff, Search } from "lucide-react";
 import apiClient from "../lib/api";
 import { toast } from "sonner";
 import { useAuthStore } from "../store/auth";
@@ -35,6 +35,7 @@ export default function AdminSettings() {
   const [editingPassword, setEditingPassword] = useState(null);
   const [showPasswords, setShowPasswords] = useState({});
   const [passwords, setPasswords] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -146,6 +147,20 @@ export default function AdminSettings() {
     }));
   };
 
+  // Filter users based on search term
+  const filteredUsers = users.filter((userItem) => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      userItem.email?.toLowerCase().includes(searchLower) ||
+      userItem.employeeId?.toLowerCase().includes(searchLower) ||
+      `${userItem.firstName || ""} ${userItem.lastName || ""}`
+        .toLowerCase()
+        .includes(searchLower) ||
+      userItem.role?.toLowerCase().includes(searchLower)
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -179,6 +194,18 @@ export default function AdminSettings() {
               </p>
             </div>
 
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search users by email, login ID, name, or role..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -191,17 +218,19 @@ export default function AdminSettings() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.length === 0 ? (
+                  {filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={5}
                         className="text-center text-muted-foreground"
                       >
-                        No users found
+                        {users.length === 0
+                          ? "No users found"
+                          : "No users match your search"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    users.map((userItem) => (
+                    filteredUsers.map((userItem) => (
                       <TableRow key={userItem.id}>
                         <TableCell>
                           <div className="flex items-center justify-center">
