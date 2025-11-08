@@ -262,6 +262,10 @@ export const getPayruns = async (req, res, next) => {
       startOfMonth.setHours(0, 0, 0, 0)
       const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0)
       endOfMonth.setHours(23, 59, 59, 999)
+      const offsetMinutes = new Date().getTimezoneOffset(); // -330 for IST
+      startOfMonth.setMinutes(startOfMonth.getMinutes() - offsetMinutes);
+      endOfMonth.setMinutes(endOfMonth.getMinutes() - offsetMinutes);
+
       
       dateFilter.payPeriodStart = {
         gte: startOfMonth,
@@ -273,7 +277,10 @@ export const getPayruns = async (req, res, next) => {
       startOfYear.setHours(0, 0, 0, 0)
       const endOfYear = new Date(selectedYear, 11, 31)
       endOfYear.setHours(23, 59, 59, 999)
-      
+      const offsetMinutes = new Date().getTimezoneOffset(); // -330 for IST
+      startOfYear.setMinutes(startOfYear.getMinutes() - offsetMinutes);
+      endOfYear.setMinutes(endOfYear.getMinutes() - offsetMinutes);
+
       dateFilter.payPeriodStart = {
         gte: startOfYear,
         lte: endOfYear,
@@ -284,6 +291,8 @@ export const getPayruns = async (req, res, next) => {
       ...companyFilter,
       ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
     }
+    console.log(where);
+    
 
     const payruns = await prisma.payrun.findMany({
       where,
@@ -291,6 +300,8 @@ export const getPayruns = async (req, res, next) => {
         createdAt: 'desc',
       },
     })
+
+    console.log(payruns);
 
     const formattedPayruns = payruns.map((payrun) => ({
       id: payrun.id,
