@@ -1281,547 +1281,513 @@ export default function Profile() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Salary Components</h3>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Basic Salary */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          Basic Salary
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll && (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={salaryInfo.basicSalary || ""}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                const monthWage = salaryInfo.monthWage || 0;
-                                const percent =
-                                  monthWage > 0 ? (value / monthWage) * 100 : 0;
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Basic Salary
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.basicSalary || ""}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              const monthWage = salaryInfo.monthWage || 0;
+                              const percent =
+                                monthWage > 0 ? (value / monthWage) * 100 : 0;
 
-                                // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
-                                const hra =
-                                  (value * (salaryInfo.hraPercent || 50)) / 100;
-                                const performanceBonus =
-                                  (value *
-                                    (salaryInfo.performanceBonusPercent ||
-                                      8.33)) /
-                                  100;
-                                const travelAllowance =
-                                  (value * (salaryInfo.ltaPercent || 8.33)) /
-                                  100;
+                              // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
+                              const hra =
+                                (value * (salaryInfo.hraPercent || 50)) / 100;
+                              const performanceBonus =
+                                (value *
+                                  (salaryInfo.performanceBonusPercent ||
+                                    8.33)) /
+                                100;
+                              const travelAllowance =
+                                (value * (salaryInfo.ltaPercent || 8.33)) /
+                                100;
 
-                                // Recalculate PF based on new basic salary
-                                const pfEmployee =
-                                  (value *
-                                    (salaryInfo.pfEmployeePercent || 12)) /
-                                  100;
-                                const pfEmployer =
-                                  (value *
-                                    (salaryInfo.pfEmployerPercent || 12)) /
-                                  100;
+                              // Recalculate PF based on new basic salary
+                              const pfEmployee =
+                                (value *
+                                  (salaryInfo.pfEmployeePercent || 12)) /
+                                100;
+                              const pfEmployer =
+                                (value *
+                                  (salaryInfo.pfEmployerPercent || 12)) /
+                                100;
 
-                                // Recalculate fixed allowance
-                                const otherComponents =
-                                  value +
-                                  hra +
-                                  (salaryInfo.standardAllowance || 0) +
-                                  performanceBonus +
-                                  travelAllowance;
-                                const fixedAllowance = Math.max(
-                                  0,
-                                  monthWage - otherComponents
-                                );
-                                const fixedAllowancePercent =
-                                  monthWage > 0
-                                    ? (fixedAllowance / monthWage) * 100
-                                    : 0;
+                              // Recalculate fixed allowance
+                              const otherComponents =
+                                value +
+                                hra +
+                                (salaryInfo.standardAllowance || 0) +
+                                performanceBonus +
+                                travelAllowance;
+                              const fixedAllowance = Math.max(
+                                0,
+                                monthWage - otherComponents
+                              );
+                              const fixedAllowancePercent =
+                                monthWage > 0
+                                  ? (fixedAllowance / monthWage) * 100
+                                  : 0;
 
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  basicSalary: value,
-                                  basicSalaryPercent: percent,
-                                  houseRentAllowance: hra,
-                                  performanceBonus: performanceBonus,
-                                  travelAllowance: travelAllowance,
-                                  fixedAllowance: fixedAllowance,
-                                  fixedAllowancePercent: fixedAllowancePercent,
-                                  pfEmployee: pfEmployee,
-                                  pfEmployer: pfEmployer,
-                                });
-                              }}
-                              className="w-32"
-                              placeholder="Amount"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              ₹/month
-                            </span>
-                            <Input
-                              type="number"
-                              value={
-                                salaryInfo.basicSalaryPercent?.toFixed(2) || ""
-                              }
-                              onChange={(e) => {
-                                const percent = parseFloat(e.target.value) || 0;
-                                const monthWage = salaryInfo.monthWage || 0;
-                                const amount = (monthWage * percent) / 100;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                basicSalary: value,
+                                basicSalaryPercent: percent,
+                                houseRentAllowance: hra,
+                                performanceBonus: performanceBonus,
+                                travelAllowance: travelAllowance,
+                                fixedAllowance: fixedAllowance,
+                                fixedAllowancePercent: fixedAllowancePercent,
+                                pfEmployee: pfEmployee,
+                                pfEmployer: pfEmployer,
+                              });
+                            }}
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                          <Input
+                            type="number"
+                            value={
+                              salaryInfo.basicSalaryPercent?.toFixed(2) || ""
+                            }
+                            onChange={(e) => {
+                              const percent = parseFloat(e.target.value) || 0;
+                              const monthWage = salaryInfo.monthWage || 0;
+                              const amount = (monthWage * percent) / 100;
 
-                                // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
-                                const hra =
-                                  (amount * (salaryInfo.hraPercent || 50)) /
-                                  100;
-                                const performanceBonus =
-                                  (amount *
-                                    (salaryInfo.performanceBonusPercent ||
-                                      8.33)) /
-                                  100;
-                                const travelAllowance =
-                                  (amount * (salaryInfo.ltaPercent || 8.33)) /
-                                  100;
+                              // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
+                              const hra =
+                                (amount * (salaryInfo.hraPercent || 50)) /
+                                100;
+                              const performanceBonus =
+                                (amount *
+                                  (salaryInfo.performanceBonusPercent ||
+                                    8.33)) /
+                                100;
+                              const travelAllowance =
+                                (amount * (salaryInfo.ltaPercent || 8.33)) /
+                                100;
 
-                                // Recalculate PF based on new basic salary
-                                const pfEmployee =
-                                  (amount *
-                                    (salaryInfo.pfEmployeePercent || 12)) /
-                                  100;
-                                const pfEmployer =
-                                  (amount *
-                                    (salaryInfo.pfEmployerPercent || 12)) /
-                                  100;
+                              // Recalculate PF based on new basic salary
+                              const pfEmployee =
+                                (amount *
+                                  (salaryInfo.pfEmployeePercent || 12)) /
+                                100;
+                              const pfEmployer =
+                                (amount *
+                                  (salaryInfo.pfEmployerPercent || 12)) /
+                                100;
 
-                                // Recalculate fixed allowance
-                                const otherComponents =
-                                  amount +
-                                  hra +
-                                  (salaryInfo.standardAllowance || 0) +
-                                  performanceBonus +
-                                  travelAllowance;
-                                const fixedAllowance = Math.max(
-                                  0,
-                                  monthWage - otherComponents
-                                );
-                                const fixedAllowancePercent =
-                                  monthWage > 0
-                                    ? (fixedAllowance / monthWage) * 100
-                                    : 0;
+                              // Recalculate fixed allowance
+                              const otherComponents =
+                                amount +
+                                hra +
+                                (salaryInfo.standardAllowance || 0) +
+                                performanceBonus +
+                                travelAllowance;
+                              const fixedAllowance = Math.max(
+                                0,
+                                monthWage - otherComponents
+                              );
+                              const fixedAllowancePercent =
+                                monthWage > 0
+                                  ? (fixedAllowance / monthWage) * 100
+                                  : 0;
 
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  basicSalary: amount,
-                                  basicSalaryPercent: percent,
-                                  houseRentAllowance: hra,
-                                  performanceBonus: performanceBonus,
-                                  travelAllowance: travelAllowance,
-                                  fixedAllowance: fixedAllowance,
-                                  fixedAllowancePercent: fixedAllowancePercent,
-                                  pfEmployee: pfEmployee,
-                                  pfEmployer: pfEmployer,
-                                });
-                              }}
-                              className="w-24"
-                              placeholder="%"
-                              step="0.01"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                        )}
-                        {(!isEditingSalary || !isAdminOrPayroll) && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold">
-                              {formatCurrency(salaryInfo.basicSalary || 0)}{" "}
-                              ₹/month
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {salaryInfo.basicSalaryPercent?.toFixed(2) ||
-                                "0.00"}{" "}
-                              %
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Define Basic salary from company cost compute it based
-                        on monthly Wages
-                      </p>
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                basicSalary: amount,
+                                basicSalaryPercent: percent,
+                                houseRentAllowance: hra,
+                                performanceBonus: performanceBonus,
+                                travelAllowance: travelAllowance,
+                                fixedAllowance: fixedAllowance,
+                                fixedAllowancePercent: fixedAllowancePercent,
+                                pfEmployee: pfEmployee,
+                                pfEmployer: pfEmployer,
+                              });
+                            }}
+                            className="w-24"
+                            placeholder="%"
+                            step="0.01"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      {(!isEditingSalary || !isAdminOrPayroll) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(salaryInfo.basicSalary || 0)}{" "}
+                            ₹/month
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {salaryInfo.basicSalaryPercent?.toFixed(2) ||
+                              "0.00"}{" "}
+                            %
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* HRA */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          House Rent Allowance (HRA)
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll && (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={salaryInfo.houseRentAllowance || ""}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const percent =
-                                  basicSalary > 0
-                                    ? (value / basicSalary) * 100
-                                    : 0;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  houseRentAllowance: value,
-                                  hraPercent: percent,
-                                });
-                              }}
-                              className="w-32"
-                              placeholder="Amount"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              ₹/month
-                            </span>
-                            <Input
-                              type="number"
-                              value={salaryInfo.hraPercent?.toFixed(2) || ""}
-                              onChange={(e) => {
-                                const percent = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const amount = (basicSalary * percent) / 100;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  houseRentAllowance: amount,
-                                  hraPercent: percent,
-                                });
-                              }}
-                              className="w-24"
-                              placeholder="%"
-                              step="0.01"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                        )}
-                        {(!isEditingSalary || !isAdminOrPayroll) && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold">
-                              {formatCurrency(
-                                salaryInfo.houseRentAllowance || 0
-                              )}{" "}
-                              ₹/month
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {salaryInfo.hraPercent?.toFixed(2) || "0.00"} %
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        HRA provided to employees 50% of the basic salary
-                      </p>
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        House Rent Allowance (HRA)
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.houseRentAllowance || ""}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const percent =
+                                basicSalary > 0
+                                  ? (value / basicSalary) * 100
+                                  : 0;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                houseRentAllowance: value,
+                                hraPercent: percent,
+                              });
+                            }}
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                          <Input
+                            type="number"
+                            value={salaryInfo.hraPercent?.toFixed(2) || ""}
+                            onChange={(e) => {
+                              const percent = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const amount = (basicSalary * percent) / 100;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                houseRentAllowance: amount,
+                                hraPercent: percent,
+                              });
+                            }}
+                            className="w-24"
+                            placeholder="%"
+                            step="0.01"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      {(!isEditingSalary || !isAdminOrPayroll) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(
+                              salaryInfo.houseRentAllowance || 0
+                            )}{" "}
+                            ₹/month
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {salaryInfo.hraPercent?.toFixed(2) || "0.00"} %
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Standard Allowance */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          Standard Allowance
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll && (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={salaryInfo.standardAllowance || ""}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                const monthWage = salaryInfo.monthWage || 0;
-                                const percent =
-                                  monthWage > 0 ? (value / monthWage) * 100 : 0;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  standardAllowance: value,
-                                  standardAllowancePercent: percent,
-                                });
-                              }}
-                              className="w-32"
-                              placeholder="Amount"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              ₹/month
-                            </span>
-                            <Input
-                              type="number"
-                              value={
-                                salaryInfo.standardAllowancePercent?.toFixed(
-                                  2
-                                ) || ""
-                              }
-                              onChange={(e) => {
-                                const percent = parseFloat(e.target.value) || 0;
-                                const monthWage = salaryInfo.monthWage || 0;
-                                const amount = (monthWage * percent) / 100;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  standardAllowance: amount,
-                                  standardAllowancePercent: percent,
-                                });
-                              }}
-                              className="w-24"
-                              placeholder="%"
-                              step="0.01"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                        )}
-                        {(!isEditingSalary || !isAdminOrPayroll) && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold">
-                              {formatCurrency(
-                                salaryInfo.standardAllowance || 0
-                              )}{" "}
-                              ₹/month
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {salaryInfo.standardAllowancePercent?.toFixed(
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Standard Allowance
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.standardAllowance || ""}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              const monthWage = salaryInfo.monthWage || 0;
+                              const percent =
+                                monthWage > 0 ? (value / monthWage) * 100 : 0;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                standardAllowance: value,
+                                standardAllowancePercent: percent,
+                              });
+                            }}
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                          <Input
+                            type="number"
+                            value={
+                              salaryInfo.standardAllowancePercent?.toFixed(
                                 2
-                              ) || "0.00"}{" "}
-                              %
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        A standard allowance is a predetermined, fixed amount
-                        provided to employee as part of their salary
-                      </p>
+                              ) || ""
+                            }
+                            onChange={(e) => {
+                              const percent = parseFloat(e.target.value) || 0;
+                              const monthWage = salaryInfo.monthWage || 0;
+                              const amount = (monthWage * percent) / 100;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                standardAllowance: amount,
+                                standardAllowancePercent: percent,
+                              });
+                            }}
+                            className="w-24"
+                            placeholder="%"
+                            step="0.01"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      {(!isEditingSalary || !isAdminOrPayroll) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(
+                              salaryInfo.standardAllowance || 0
+                            )}{" "}
+                            ₹/month
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {salaryInfo.standardAllowancePercent?.toFixed(
+                              2
+                            ) || "0.00"}{" "}
+                            %
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Performance Bonus */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          Performance Bonus
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll && (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={salaryInfo.performanceBonus || ""}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const percent =
-                                  basicSalary > 0
-                                    ? (value / basicSalary) * 100
-                                    : 0;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  performanceBonus: value,
-                                  performanceBonusPercent: percent,
-                                });
-                              }}
-                              className="w-32"
-                              placeholder="Amount"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              ₹/month
-                            </span>
-                            <Input
-                              type="number"
-                              value={
-                                salaryInfo.performanceBonusPercent?.toFixed(
-                                  2
-                                ) || ""
-                              }
-                              onChange={(e) => {
-                                const percent = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const amount = (basicSalary * percent) / 100;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  performanceBonus: amount,
-                                  performanceBonusPercent: percent,
-                                });
-                              }}
-                              className="w-24"
-                              placeholder="%"
-                              step="0.01"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                        )}
-                        {(!isEditingSalary || !isAdminOrPayroll) && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold">
-                              {formatCurrency(salaryInfo.performanceBonus || 0)}{" "}
-                              ₹/month
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {salaryInfo.performanceBonusPercent?.toFixed(2) ||
-                                "0.00"}{" "}
-                              %
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Variable amount paid during payroll. The value defined
-                        by the company and calculated as a % of the basic salary
-                      </p>
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Performance Bonus
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.performanceBonus || ""}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const percent =
+                                basicSalary > 0
+                                  ? (value / basicSalary) * 100
+                                  : 0;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                performanceBonus: value,
+                                performanceBonusPercent: percent,
+                              });
+                            }}
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                          <Input
+                            type="number"
+                            value={
+                              salaryInfo.performanceBonusPercent?.toFixed(
+                                2
+                              ) || ""
+                            }
+                            onChange={(e) => {
+                              const percent = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const amount = (basicSalary * percent) / 100;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                performanceBonus: amount,
+                                performanceBonusPercent: percent,
+                              });
+                            }}
+                            className="w-24"
+                            placeholder="%"
+                            step="0.01"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      {(!isEditingSalary || !isAdminOrPayroll) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(salaryInfo.performanceBonus || 0)}{" "}
+                            ₹/month
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {salaryInfo.performanceBonusPercent?.toFixed(2) ||
+                              "0.00"}{" "}
+                            %
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* LTA */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          Leave Travel Allowance (LTA)
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll && (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={salaryInfo.travelAllowance || ""}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const percent =
-                                  basicSalary > 0
-                                    ? (value / basicSalary) * 100
-                                    : 0;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  travelAllowance: value,
-                                  ltaPercent: percent,
-                                });
-                              }}
-                              className="w-32"
-                              placeholder="Amount"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              ₹/month
-                            </span>
-                            <Input
-                              type="number"
-                              value={salaryInfo.ltaPercent?.toFixed(2) || ""}
-                              onChange={(e) => {
-                                const percent = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const amount = (basicSalary * percent) / 100;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  travelAllowance: amount,
-                                  ltaPercent: percent,
-                                });
-                              }}
-                              className="w-24"
-                              placeholder="%"
-                              step="0.01"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                        )}
-                        {(!isEditingSalary || !isAdminOrPayroll) && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold">
-                              {formatCurrency(salaryInfo.travelAllowance || 0)}{" "}
-                              ₹/month
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {salaryInfo.ltaPercent?.toFixed(2) || "0.00"} %
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        LTA is paid by the company to employees to cover their
-                        travel expenses. and calculated as a % of the basic
-                        salary
-                      </p>
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Leave Travel Allowance (LTA)
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.travelAllowance || ""}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const percent =
+                                basicSalary > 0
+                                  ? (value / basicSalary) * 100
+                                  : 0;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                travelAllowance: value,
+                                ltaPercent: percent,
+                              });
+                            }}
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                          <Input
+                            type="number"
+                            value={salaryInfo.ltaPercent?.toFixed(2) || ""}
+                            onChange={(e) => {
+                              const percent = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const amount = (basicSalary * percent) / 100;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                travelAllowance: amount,
+                                ltaPercent: percent,
+                              });
+                            }}
+                            className="w-24"
+                            placeholder="%"
+                            step="0.01"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      {(!isEditingSalary || !isAdminOrPayroll) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(salaryInfo.travelAllowance || 0)}{" "}
+                            ₹/month
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {salaryInfo.ltaPercent?.toFixed(2) || "0.00"} %
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Fixed Allowance */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          Fixed Allowance
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll && (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={salaryInfo.fixedAllowance || ""}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                const monthWage = salaryInfo.monthWage || 0;
-                                const percent =
-                                  monthWage > 0 ? (value / monthWage) * 100 : 0;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  fixedAllowance: value,
-                                  fixedAllowancePercent: percent,
-                                });
-                              }}
-                              className="w-32"
-                              placeholder="Amount"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              ₹/month
-                            </span>
-                            <Input
-                              type="number"
-                              value={
-                                salaryInfo.fixedAllowancePercent?.toFixed(2) ||
-                                ""
-                              }
-                              onChange={(e) => {
-                                const percent = parseFloat(e.target.value) || 0;
-                                const monthWage = salaryInfo.monthWage || 0;
-                                const amount = (monthWage * percent) / 100;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  fixedAllowance: amount,
-                                  fixedAllowancePercent: percent,
-                                });
-                              }}
-                              className="w-24"
-                              placeholder="%"
-                              step="0.01"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                        )}
-                        {(!isEditingSalary || !isAdminOrPayroll) && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold">
-                              {formatCurrency(salaryInfo.fixedAllowance || 0)}{" "}
-                              ₹/month
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {salaryInfo.fixedAllowancePercent?.toFixed(2) ||
-                                "0.00"}{" "}
-                              %
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        fixed allowance portion of wages is determined after
-                        calculating all salary components
-                      </p>
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Fixed Allowance
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.fixedAllowance || ""}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              const monthWage = salaryInfo.monthWage || 0;
+                              const percent =
+                                monthWage > 0 ? (value / monthWage) * 100 : 0;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                fixedAllowance: value,
+                                fixedAllowancePercent: percent,
+                              });
+                            }}
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                          <Input
+                            type="number"
+                            value={
+                              salaryInfo.fixedAllowancePercent?.toFixed(2) ||
+                              ""
+                            }
+                            onChange={(e) => {
+                              const percent = parseFloat(e.target.value) || 0;
+                              const monthWage = salaryInfo.monthWage || 0;
+                              const amount = (monthWage * percent) / 100;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                fixedAllowance: amount,
+                                fixedAllowancePercent: percent,
+                              });
+                            }}
+                            className="w-24"
+                            placeholder="%"
+                            step="0.01"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      {(!isEditingSalary || !isAdminOrPayroll) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(salaryInfo.fixedAllowance || 0)}{" "}
+                            ₹/month
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {salaryInfo.fixedAllowancePercent?.toFixed(2) ||
+                              "0.00"}{" "}
+                            %
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Gross Salary */}
-                    <div className="space-y-2 p-4 border-2 border-primary rounded-lg bg-primary/5">
-                      <Label className="text-base font-semibold">
+                    <div className="col-span-full p-4 border-2 border-primary rounded-lg bg-primary/5 space-y-3">
+                      <Label className="text-base font-semibold block">
                         Gross Salary
                       </Label>
                       <p className="text-2xl font-bold text-primary">
                         {formatCurrency(salaryInfo.grossSalary || 0)}
                       </p>
+                    </div>
                     </div>
                   </div>
 
@@ -1831,77 +1797,74 @@ export default function Profile() {
                       Provident Fund (PF) Contribution
                     </h3>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* PF Employee */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          Employee
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll && (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={salaryInfo.pfEmployee || ""}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const percent =
-                                  basicSalary > 0
-                                    ? (value / basicSalary) * 100
-                                    : 0;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  pfEmployee: value,
-                                  pfEmployeePercent: percent,
-                                });
-                              }}
-                              className="w-32"
-                              placeholder="Amount"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              ₹/month
-                            </span>
-                            <Input
-                              type="number"
-                              value={
-                                salaryInfo.pfEmployeePercent?.toFixed(2) || ""
-                              }
-                              onChange={(e) => {
-                                const percent = parseFloat(e.target.value) || 0;
-                                const basicSalary = salaryInfo.basicSalary || 0;
-                                const amount = (basicSalary * percent) / 100;
-                                setSalaryInfo({
-                                  ...salaryInfo,
-                                  pfEmployee: amount,
-                                  pfEmployeePercent: percent,
-                                });
-                              }}
-                              className="w-24"
-                              placeholder="%"
-                              step="0.01"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                        )}
-                        {(!isEditingSalary || !isAdminOrPayroll) && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold">
-                              {formatCurrency(salaryInfo.pfEmployee || 0)}{" "}
-                              ₹/month
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {salaryInfo.pfEmployeePercent?.toFixed(2) ||
-                                "0.00"}{" "}
-                              %
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        PF is calculated based on the basic salary
-                      </p>
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Employee
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.pfEmployee || ""}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const percent =
+                                basicSalary > 0
+                                  ? (value / basicSalary) * 100
+                                  : 0;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                pfEmployee: value,
+                                pfEmployeePercent: percent,
+                              });
+                            }}
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                          <Input
+                            type="number"
+                            value={
+                              salaryInfo.pfEmployeePercent?.toFixed(2) || ""
+                            }
+                            onChange={(e) => {
+                              const percent = parseFloat(e.target.value) || 0;
+                              const basicSalary = salaryInfo.basicSalary || 0;
+                              const amount = (basicSalary * percent) / 100;
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                pfEmployee: amount,
+                                pfEmployeePercent: percent,
+                              });
+                            }}
+                            className="w-24"
+                            placeholder="%"
+                            step="0.01"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      )}
+                      {(!isEditingSalary || !isAdminOrPayroll) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(salaryInfo.pfEmployee || 0)}{" "}
+                            ₹/month
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {salaryInfo.pfEmployeePercent?.toFixed(2) ||
+                              "0.00"}{" "}
+                            %
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     </div>
                   </div>
 
@@ -1909,13 +1872,14 @@ export default function Profile() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Tax Deductions</h3>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Professional Tax */}
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-base font-semibold">
-                          Professional Tax
-                        </Label>
-                        {isEditingSalary && isAdminOrPayroll ? (
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Professional Tax
+                      </Label>
+                      {isEditingSalary && isAdminOrPayroll ? (
+                        <div className="flex items-center gap-2">
                           <Input
                             type="number"
                             value={salaryInfo.professionalTax || ""}
@@ -1929,22 +1893,25 @@ export default function Profile() {
                             className="w-32"
                             placeholder="Amount"
                           />
-                        ) : (
-                          <span className="text-lg font-semibold">
-                            {formatCurrency(salaryInfo.professionalTax || 0)}{" "}
+                          <span className="text-sm text-muted-foreground">
                             ₹/month
                           </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Professional Tax deducted from the Gross salary
-                      </p>
+                        </div>
+                      ) : (
+                        <div className="text-lg font-semibold">
+                          {formatCurrency(salaryInfo.professionalTax || 0)}{" "}
+                          <span className="text-sm text-muted-foreground font-normal">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     </div>
                   </div>
 
                   {/* Net Salary */}
-                  <div className="space-y-2 p-4 border-2 border-primary rounded-lg bg-primary/5">
-                    <Label className="text-base font-semibold">
+                  <div className="p-4 border-2 border-primary rounded-lg bg-primary/5 space-y-3">
+                    <Label className="text-base font-semibold block">
                       Net Salary
                     </Label>
                     <p className="text-2xl font-bold text-primary">

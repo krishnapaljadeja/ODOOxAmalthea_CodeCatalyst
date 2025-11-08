@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
-import { Save, Search, Eye } from 'lucide-react'
+import { Save, Search, Eye, Pencil } from 'lucide-react'
 import apiClient from '../lib/api'
 import { formatDate, formatCurrency } from '../lib/format'
 import { toast } from 'sonner'
@@ -30,6 +30,7 @@ export default function SalaryManagement() {
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [salaryInfo, setSalaryInfo] = useState(null)
+  const [isEditingSalary, setIsEditingSalary] = useState(false)
 
   useEffect(() => {
     fetchEmployees()
@@ -51,6 +52,7 @@ export default function SalaryManagement() {
   const handleViewSalary = async (employee) => {
     setSelectedEmployee(employee)
     setIsDialogOpen(true)
+    setIsEditingSalary(false)
     try {
       const response = await apiClient.get(`/employees/${employee.id}/salary`)
       const salaryData = response.data?.data || response.data
@@ -91,7 +93,7 @@ export default function SalaryManagement() {
     try {
       await apiClient.put(`/employees/${selectedEmployee.id}/salary`, salaryInfo)
       toast.success('Salary information updated successfully')
-      setIsDialogOpen(false)
+      setIsEditingSalary(false)
       fetchEmployees()
     } catch (error) {
       console.error('Failed to update salary:', error)
@@ -201,86 +203,232 @@ export default function SalaryManagement() {
 
         {/* Salary Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                Salary Information - {selectedEmployee?.firstName} {selectedEmployee?.lastName}
-              </DialogTitle>
-              <DialogDescription>
-                View and update employee salary details
-              </DialogDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle>
+                    Salary Information - {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+                  </DialogTitle>
+                  <DialogDescription>
+                    View and update employee salary details
+                  </DialogDescription>
+                </div>
+                {salaryInfo && (
+                  <Button
+                    variant={isEditingSalary ? "outline" : "default"}
+                    onClick={() => {
+                      if (isEditingSalary) {
+                        handleSaveSalary()
+                      } else {
+                        setIsEditingSalary(true)
+                      }
+                    }}
+                  >
+                    {isEditingSalary ? (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Changes
+                      </>
+                    ) : (
+                      <>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
             {salaryInfo && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Basic Salary</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.basicSalary || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          basicSalary: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
+              <div className="space-y-6">
+                {/* Salary Components */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Salary Components</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Basic Salary */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Label className="text-base font-semibold block">
+                      Basic Salary
+                    </Label>
+                    {isEditingSalary && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={salaryInfo.basicSalary || ""}
+                          onChange={(e) =>
+                            setSalaryInfo({
+                              ...salaryInfo,
+                              basicSalary: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="w-32"
+                          placeholder="Amount"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
+                    {!isEditingSalary && (
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(salaryInfo.basicSalary || 0)}{" "}
+                        <span className="text-sm text-muted-foreground font-normal">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label>HRA</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.hra || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          hra: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
+
+                  {/* HRA */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Label className="text-base font-semibold block">
+                      House Rent Allowance (HRA)
+                    </Label>
+                    {isEditingSalary && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={salaryInfo.hra || ""}
+                          onChange={(e) =>
+                            setSalaryInfo({
+                              ...salaryInfo,
+                              hra: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="w-32"
+                          placeholder="Amount"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
+                    {!isEditingSalary && (
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(salaryInfo.hra || 0)}{" "}
+                        <span className="text-sm text-muted-foreground font-normal">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label>Conveyance</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.conveyance || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          conveyance: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Medical Allowance</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.medicalAllowance || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          medicalAllowance: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Special Allowance</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.specialAllowance || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          specialAllowance: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Gross Salary</Label>
-                    <p className="text-lg font-semibold text-primary">
+
+                  {/* Conveyance */}
+                  {salaryInfo.conveyance !== undefined && (
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Conveyance
+                      </Label>
+                      {isEditingSalary && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.conveyance || ""}
+                            onChange={(e) =>
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                conveyance: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                      {!isEditingSalary && (
+                        <div className="text-lg font-semibold">
+                          {formatCurrency(salaryInfo.conveyance || 0)}{" "}
+                          <span className="text-sm text-muted-foreground font-normal">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Medical Allowance */}
+                  {salaryInfo.medicalAllowance !== undefined && (
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Medical Allowance
+                      </Label>
+                      {isEditingSalary && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.medicalAllowance || ""}
+                            onChange={(e) =>
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                medicalAllowance: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                      {!isEditingSalary && (
+                        <div className="text-lg font-semibold">
+                          {formatCurrency(salaryInfo.medicalAllowance || 0)}{" "}
+                          <span className="text-sm text-muted-foreground font-normal">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Special Allowance */}
+                  {salaryInfo.specialAllowance !== undefined && (
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        Special Allowance
+                      </Label>
+                      {isEditingSalary && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.specialAllowance || ""}
+                            onChange={(e) =>
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                specialAllowance: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                      {!isEditingSalary && (
+                        <div className="text-lg font-semibold">
+                          {formatCurrency(salaryInfo.specialAllowance || 0)}{" "}
+                          <span className="text-sm text-muted-foreground font-normal">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Gross Salary */}
+                  <div className="col-span-full p-4 border-2 border-primary rounded-lg bg-primary/5 space-y-3">
+                    <Label className="text-base font-semibold block">
+                      Gross Salary
+                    </Label>
+                    <p className="text-2xl font-bold text-primary">
                       {formatCurrency(
                         (salaryInfo.basicSalary || 0) +
                         (salaryInfo.hra || 0) +
@@ -290,70 +438,165 @@ export default function SalaryManagement() {
                       )}
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>PF</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.pf || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          pf: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>ESI</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.esi || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          esi: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
+                </div>
+
+                {/* Provident Fund Contribution */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">
+                    Provident Fund (PF) Contribution
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* PF Employee */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Label className="text-base font-semibold block">
+                      Employee
+                    </Label>
+                    {isEditingSalary && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={salaryInfo.pf || ""}
+                          onChange={(e) =>
+                            setSalaryInfo({
+                              ...salaryInfo,
+                              pf: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="w-32"
+                          placeholder="Amount"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
+                    {!isEditingSalary && (
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(salaryInfo.pf || 0)}{" "}
+                        <span className="text-sm text-muted-foreground font-normal">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label>Professional Tax</Label>
-                    <Input
-                      type="number"
-                      value={salaryInfo.professionalTax || 0}
-                      onChange={(e) =>
-                        setSalaryInfo({
-                          ...salaryInfo,
-                          professionalTax: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Net Salary</Label>
-                    <p className="text-2xl font-bold text-primary">
-                      {formatCurrency(
-                        ((salaryInfo.basicSalary || 0) +
-                        (salaryInfo.hra || 0) +
-                        (salaryInfo.conveyance || 0) +
-                        (salaryInfo.medicalAllowance || 0) +
-                        (salaryInfo.specialAllowance || 0)) -
-                        ((salaryInfo.pf || 0) +
-                        (salaryInfo.esi || 0) +
-                        (salaryInfo.professionalTax || 0))
+                </div>
+
+                {/* Tax Deductions */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Tax Deductions</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* ESI */}
+                  {salaryInfo.esi !== undefined && (
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <Label className="text-base font-semibold block">
+                        ESI
+                      </Label>
+                      {isEditingSalary && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={salaryInfo.esi || ""}
+                            onChange={(e) =>
+                              setSalaryInfo({
+                                ...salaryInfo,
+                                esi: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="w-32"
+                            placeholder="Amount"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            ₹/month
+                          </span>
+                        </div>
                       )}
-                    </p>
+                      {!isEditingSalary && (
+                        <div className="text-lg font-semibold">
+                          {formatCurrency(salaryInfo.esi || 0)}{" "}
+                          <span className="text-sm text-muted-foreground font-normal">
+                            ₹/month
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Professional Tax */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Label className="text-base font-semibold block">
+                      Professional Tax
+                    </Label>
+                    {isEditingSalary && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={salaryInfo.professionalTax || ""}
+                          onChange={(e) =>
+                            setSalaryInfo({
+                              ...salaryInfo,
+                              professionalTax: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="w-32"
+                          placeholder="Amount"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
+                    {!isEditingSalary && (
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(salaryInfo.professionalTax || 0)}{" "}
+                        <span className="text-sm text-muted-foreground font-normal">
+                          ₹/month
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSaveSalary}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Changes
-                  </Button>
+
+                {/* Net Salary */}
+                <div className="space-y-2 p-4 border-2 border-primary rounded-lg bg-primary/5">
+                  <Label className="text-base font-semibold">
+                    Net Salary
+                  </Label>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(
+                      ((salaryInfo.basicSalary || 0) +
+                      (salaryInfo.hra || 0) +
+                      (salaryInfo.conveyance || 0) +
+                      (salaryInfo.medicalAllowance || 0) +
+                      (salaryInfo.specialAllowance || 0)) -
+                      ((salaryInfo.pf || 0) +
+                      (salaryInfo.esi || 0) +
+                      (salaryInfo.professionalTax || 0))
+                    )}
+                  </p>
                 </div>
+
+                {isEditingSalary && (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingSalary(false)
+                        setIsDialogOpen(false)
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveSalary}>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </DialogContent>

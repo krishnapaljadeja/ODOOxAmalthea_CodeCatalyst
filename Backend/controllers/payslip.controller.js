@@ -394,9 +394,6 @@ export const getPayslip = async (req, res, next) => {
   }
 }
 
-/**
- * Get payslip by payroll ID
- */
 export const getPayslipByPayrollId = async (req, res, next) => {
   try {
     const { payrollId } = req.params
