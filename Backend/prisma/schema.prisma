@@ -73,7 +73,6 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // relations
   users     User[]
   employees Employee[]
 
@@ -98,8 +97,8 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // relations
-  employee       Employee?
+  
+  employee        Employee?
   attendances    Attendance[]
   leaves         Leave[]
   approvedLeaves Leave[]        @relation("LeaveApprover")
@@ -130,13 +129,10 @@ model Employee {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  // relations
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  attendances      Attendance[]
-  leaves           Leave[]
-  salaryStructures SalaryStructure[]
-  payrolls         Payroll[]
-  payslips         Payslip[]
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+  leaves      Leave[]
+  payslips    Payslip[]
 
   @@index([employeeId])
   @@index([department])

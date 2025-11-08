@@ -54,6 +54,13 @@ export const getLeaves = async (req, res, next) => {
       id: leave.id,
       employeeId: leave.employeeId,
       employeeName: `${leave.employee.firstName} ${leave.employee.lastName}`,
+      employee: {
+        id: leave.employee.id,
+        employeeId: leave.employee.employeeId,
+        firstName: leave.employee.firstName,
+        lastName: leave.employee.lastName,
+      },
+      userId: leave.userId,
       type: leave.type,
       startDate: leave.startDate.toISOString().split('T')[0],
       endDate: leave.endDate.toISOString().split('T')[0],
