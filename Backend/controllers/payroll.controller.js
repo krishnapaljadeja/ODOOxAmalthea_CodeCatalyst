@@ -270,7 +270,6 @@ export const getPayruns = async (req, res, next) => {
         gte: startOfMonth,
         lte: endOfMonth,
       };
-      };
     } else if (year) {
       const selectedYear = parseInt(year);
       // Use UTC to ensure correct date range regardless of server timezone
@@ -282,7 +281,6 @@ export const getPayruns = async (req, res, next) => {
       dateFilter.payPeriodStart = {
         gte: startOfYear,
         lte: endOfYear,
-      };
       };
     }
 
@@ -320,9 +318,7 @@ export const getPayruns = async (req, res, next) => {
 
     res.json({
       status: "success",
-      status: "success",
       data: formattedPayruns,
-    });
     });
   } catch (error) {
     next(error);

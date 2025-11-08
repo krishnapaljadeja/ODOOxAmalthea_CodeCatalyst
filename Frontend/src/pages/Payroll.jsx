@@ -461,12 +461,12 @@ export default function Payroll() {
           </div>
           {activeTab === "payrun" && (
             <div className="flex gap-2">
-              {currentMonthPayrun && currentMonthPayrun.status === "draft" && (
-                <Button variant="outline" onClick={handleProcessPayrun}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Process Payrun
-                </Button>
-              )}
+              {/* {currentMonthPayrun && currentMonthPayrun.status === "draft" && (
+                // <Button variant="outline" onClick={handleProcessPayrun}>
+                //   <Play className="mr-2 h-4 w-4" />
+                //   Process Payrun
+                // </Button>
+              )} */}
               {currentMonthPayrun &&
                 currentMonthPayrun.payrolls &&
                 currentMonthPayrun.payrolls.length > 0 &&
