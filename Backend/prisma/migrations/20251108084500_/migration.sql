@@ -16,6 +16,9 @@ CREATE TYPE "LeaveStatus" AS ENUM ('pending', 'approved', 'rejected', 'cancelled
 -- CreateEnum
 CREATE TYPE "PayrunStatus" AS ENUM ('draft', 'processing', 'completed', 'failed');
 
+-- CreateEnum
+CREATE TYPE "PayrollStatus" AS ENUM ('draft', 'computed', 'validated', 'cancelled');
+
 -- CreateTable
 CREATE TABLE "Company" (
     "id" TEXT NOT NULL,
@@ -62,7 +65,6 @@ CREATE TABLE "Employee" (
     "position" TEXT NOT NULL,
     "status" "EmployeeStatus" NOT NULL DEFAULT 'active',
     "hireDate" TIMESTAMP(3) NOT NULL,
-    "salary" DOUBLE PRECISION NOT NULL,
     "companyId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -79,6 +81,19 @@ CREATE TABLE "RefreshToken" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "RefreshToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PasswordResetToken" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "used" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PasswordResetToken_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -118,6 +133,33 @@ CREATE TABLE "Leave" (
 );
 
 -- CreateTable
+CREATE TABLE "SalaryStructure" (
+    "id" TEXT NOT NULL,
+    "employeeId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "effectiveFrom" TIMESTAMP(3) NOT NULL,
+    "effectiveTo" TIMESTAMP(3),
+    "basicSalary" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "houseRentAllowance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "standardAllowance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "bonus" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "travelAllowance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "pfEmployee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "pfEmployer" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "professionalTax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "tds" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "otherDeductions" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "grossSalary" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalDeductions" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "netSalary" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SalaryStructure_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Payrun" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -134,26 +176,32 @@ CREATE TABLE "Payrun" (
 );
 
 -- CreateTable
-CREATE TABLE "Payslip" (
+CREATE TABLE "Payroll" (
     "id" TEXT NOT NULL,
     "employeeId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
     "payrunId" TEXT NOT NULL,
-    "payPeriodStart" DATE NOT NULL,
-    "payPeriodEnd" DATE NOT NULL,
-    "payDate" DATE NOT NULL,
-    "baseSalary" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "overtime" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "bonus" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "allowances" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "grossPay" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "tax" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "insurance" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "other" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "status" "PayrollStatus" NOT NULL DEFAULT 'draft',
+    "grossSalary" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "totalDeductions" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "netPay" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "netSalary" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "computedAt" TIMESTAMP(3),
+    "validatedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Payroll_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Payslip" (
+    "id" TEXT NOT NULL,
+    "payrollId" TEXT NOT NULL,
+    "employeeId" TEXT NOT NULL,
+    "pdfUrl" TEXT,
+    "status" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userId" TEXT,
 
     CONSTRAINT "Payslip_pkey" PRIMARY KEY ("id")
 );
@@ -227,6 +275,18 @@ CREATE INDEX "RefreshToken_token_idx" ON "RefreshToken"("token");
 CREATE INDEX "RefreshToken_userId_idx" ON "RefreshToken"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "PasswordResetToken_token_key" ON "PasswordResetToken"("token");
+
+-- CreateIndex
+CREATE INDEX "PasswordResetToken_userId_idx" ON "PasswordResetToken"("userId");
+
+-- CreateIndex
+CREATE INDEX "PasswordResetToken_token_idx" ON "PasswordResetToken"("token");
+
+-- CreateIndex
+CREATE INDEX "PasswordResetToken_email_idx" ON "PasswordResetToken"("email");
+
+-- CreateIndex
 CREATE INDEX "Attendance_employeeId_idx" ON "Attendance"("employeeId");
 
 -- CreateIndex
@@ -251,25 +311,28 @@ CREATE INDEX "Leave_status_idx" ON "Leave"("status");
 CREATE INDEX "Leave_startDate_endDate_idx" ON "Leave"("startDate", "endDate");
 
 -- CreateIndex
+CREATE INDEX "SalaryStructure_employeeId_idx" ON "SalaryStructure"("employeeId");
+
+-- CreateIndex
+CREATE INDEX "SalaryStructure_effectiveFrom_effectiveTo_idx" ON "SalaryStructure"("effectiveFrom", "effectiveTo");
+
+-- CreateIndex
 CREATE INDEX "Payrun_status_idx" ON "Payrun"("status");
 
 -- CreateIndex
 CREATE INDEX "Payrun_payDate_idx" ON "Payrun"("payDate");
 
 -- CreateIndex
+CREATE INDEX "Payroll_status_idx" ON "Payroll"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Payroll_employeeId_payrunId_key" ON "Payroll"("employeeId", "payrunId");
+
+-- CreateIndex
 CREATE INDEX "Payslip_employeeId_idx" ON "Payslip"("employeeId");
 
 -- CreateIndex
-CREATE INDEX "Payslip_userId_idx" ON "Payslip"("userId");
-
--- CreateIndex
-CREATE INDEX "Payslip_payrunId_idx" ON "Payslip"("payrunId");
-
--- CreateIndex
-CREATE INDEX "Payslip_payDate_idx" ON "Payslip"("payDate");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Payslip_payrunId_employeeId_key" ON "Payslip"("payrunId", "employeeId");
+CREATE UNIQUE INDEX "Payslip_payrollId_key" ON "Payslip"("payrollId");
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -282,6 +345,9 @@ ALTER TABLE "Employee" ADD CONSTRAINT "Employee_userId_fkey" FOREIGN KEY ("userI
 
 -- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PasswordResetToken" ADD CONSTRAINT "PasswordResetToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -299,10 +365,19 @@ ALTER TABLE "Leave" ADD CONSTRAINT "Leave_userId_fkey" FOREIGN KEY ("userId") RE
 ALTER TABLE "Leave" ADD CONSTRAINT "Leave_approvedById_fkey" FOREIGN KEY ("approvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "SalaryStructure" ADD CONSTRAINT "SalaryStructure_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payroll" ADD CONSTRAINT "Payroll_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payroll" ADD CONSTRAINT "Payroll_payrunId_fkey" FOREIGN KEY ("payrunId") REFERENCES "Payrun"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payslip" ADD CONSTRAINT "Payslip_payrollId_fkey" FOREIGN KEY ("payrollId") REFERENCES "Payroll"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Payslip" ADD CONSTRAINT "Payslip_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Payslip" ADD CONSTRAINT "Payslip_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Payslip" ADD CONSTRAINT "Payslip_payrunId_fkey" FOREIGN KEY ("payrunId") REFERENCES "Payrun"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Payslip" ADD CONSTRAINT "Payslip_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -1,9 +1,3 @@
-// =============================
-// PRISMA SCHEMA FOR HRMS SYSTEM
-// =============================
-// Author: deep
-// Purpose: Full HRMS schema with Payroll, Payrun, Payslip, and SalaryStructure tracking
-// =============================================
 
 generator client {
   provider = "prisma-client-js"
@@ -14,7 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =============== ENUMS =================
 
 enum UserRole {
   admin
@@ -64,7 +57,13 @@ enum PayrollStatus {
   cancelled
 }
 
-// =============== COMPANY =================
+enum PayslipStatus {
+  draft
+  validated
+  printed
+  emailed
+}
+
 
 model Company {
   id        String   @id @default(uuid())
@@ -74,15 +73,13 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
+  // relations
   users     User[]
   employees Employee[]
 
   @@index([code])
   @@index([name])
 }
-
-// =============== USER =================
 
 model User {
   id         String   @id @default(uuid())
@@ -101,7 +98,7 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // Relations
+  // relations
   employee       Employee?
   attendances    Attendance[]
   leaves         Leave[]
@@ -114,8 +111,6 @@ model User {
   @@index([role])
   @@index([companyId])
 }
-
-// =============== EMPLOYEE =================
 
 model Employee {
   id         String         @id @default(uuid())
@@ -135,7 +130,7 @@ model Employee {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  // Relations
+  // relations
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   attendances      Attendance[]
   leaves           Leave[]
@@ -148,8 +143,6 @@ model Employee {
   @@index([status])
   @@index([companyId])
 }
-
-// =============== REFRESH TOKEN =================
 
 model RefreshToken {
   id        String   @id @default(uuid())
@@ -200,8 +193,6 @@ model Attendance {
   @@index([userId])
 }
 
-// =============== LEAVE =================
-
 model Leave {
   id              String      @id @default(uuid())
   employeeId      String
@@ -227,8 +218,6 @@ model Leave {
   @@index([startDate, endDate])
 }
 
-// =============== SALARY STRUCTURE (1:N per Employee, with history) =================
-
 model SalaryStructure {
   id            String    @id @default(uuid())
   employeeId    String
@@ -238,21 +227,21 @@ model SalaryStructure {
   effectiveFrom DateTime
   effectiveTo   DateTime?
 
-  // Earnings
+  // earnings
   basicSalary        Float @default(0)
   houseRentAllowance Float @default(0)
   standardAllowance  Float @default(0)
   bonus              Float @default(0)
   travelAllowance    Float @default(0)
 
-  // Deductions
+  // deductions
   pfEmployee      Float @default(0)
   pfEmployer      Float @default(0)
   professionalTax Float @default(0)
   tds             Float @default(0)
   otherDeductions Float @default(0)
 
-  // Computed
+  // final amounts
   grossSalary     Float @default(0)
   totalDeductions Float @default(0)
   netSalary       Float @default(0)
@@ -263,8 +252,6 @@ model SalaryStructure {
   @@index([employeeId])
   @@index([effectiveFrom, effectiveTo])
 }
-
-// =============== PAYRUN (monthly batch) =================
 
 model Payrun {
   id             String       @id @default(uuid())
@@ -285,8 +272,6 @@ model Payrun {
   @@index([payDate])
 }
 
-// =============== PAYROLL (computed salary per employee per payrun) =================
-
 model Payroll {
   id         String        @id @default(uuid())
   employeeId String
@@ -301,7 +286,7 @@ model Payroll {
   computedAt      DateTime?
   validatedAt     DateTime?
 
-  // Relations
+  // relations
   payslip Payslip?
 
   createdAt DateTime @default(now())
@@ -311,8 +296,6 @@ model Payroll {
   @@index([status])
 }
 
-// =============== PAYSLIP (generated document per payroll) =================
-
 model Payslip {
   id         String   @id @default(uuid())
   payrollId  String
@@ -320,7 +303,7 @@ model Payslip {
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   pdfUrl     String?
-  status     String? // draft, validated, printed, etc.
+  status     PayslipStatus?  
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   user       User?    @relation(fields: [userId], references: [id])
@@ -329,8 +312,6 @@ model Payslip {
   @@unique([payrollId])
   @@index([employeeId])
 }
-
-// =============== PAYROLL SETTINGS =================
 
 model PayrollSettings {
   id            String   @id @default("default")
