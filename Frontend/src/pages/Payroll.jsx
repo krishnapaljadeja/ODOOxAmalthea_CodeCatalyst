@@ -13,9 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from '../components/ui/label'
 import { useLocation } from 'react-router-dom'
 
-/**
- * Payroll page component with Dashboard and Payrun tabs
- */
 export default function Payroll() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -39,7 +36,6 @@ export default function Payroll() {
   const fetchPayruns = async () => {
     try {
       const response = await apiClient.get('/payroll/payruns')
-      // Backend returns { status: 'success', data: [...] }
       const payrunsData = response.data?.data || response.data || []
       setPayruns(payrunsData)
     } catch (error) {
@@ -54,7 +50,6 @@ export default function Payroll() {
     try {
       setLoading(true)
       const response = await apiClient.get('/payroll/payruns/current-month')
-      // Backend returns { status: 'success', data: {...} }
       const payrunData = response.data?.data || response.data
       if (payrunData) {
         setCurrentMonthPayrun(payrunData)
@@ -80,7 +75,6 @@ export default function Payroll() {
       setDashboardData(response.data)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
-      // Use mock data if API fails
       setDashboardData({
         warnings: [
           { type: 'noBankAccount', count: 1 },
@@ -177,11 +171,9 @@ export default function Payroll() {
   }
 
   const handlePayrollClick = (payroll) => {
-    // Navigate to payslip detail using payrollId, passing payrunId for back navigation
     if (payroll.payslipId) {
       navigate(`/payslips/${payroll.payslipId}?payrunId=${currentMonthPayrun?.id}`)
     } else {
-      // If no payslip exists yet, navigate using payrollId
       navigate(`/payslips/payroll/${payroll.id}?payrunId=${currentMonthPayrun?.id}`)
     }
   }
@@ -200,7 +192,6 @@ export default function Payroll() {
     }
   }
 
-  // Columns for payruns list (dashboard tab)
   const payrunColumns = [
     {
       header: 'Pay Period',
@@ -260,11 +251,25 @@ export default function Payroll() {
     },
   ]
 
-  // Columns for employee payroll list (payrun tab)
   const payrollColumns = [
     {
       header: 'Pay Period',
       accessor: 'payPeriod',
+      cell: (row) => {
+        // Try to get pay period from payroll object first
+        if (row.payPeriodStart && row.payPeriodEnd) {
+          return `${formatDate(row.payPeriodStart)} - ${formatDate(row.payPeriodEnd)}`
+        }
+        // Fallback to payrun's pay period
+        if (currentMonthPayrun?.payPeriodStart && currentMonthPayrun?.payPeriodEnd) {
+          return `${formatDate(currentMonthPayrun.payPeriodStart)} - ${formatDate(currentMonthPayrun.payPeriodEnd)}`
+        }
+        // If payPeriod is a string (from backend)
+        if (row.payPeriod) {
+          return row.payPeriod
+        }
+        return '-'
+      },
     },
     {
       header: 'Employee',

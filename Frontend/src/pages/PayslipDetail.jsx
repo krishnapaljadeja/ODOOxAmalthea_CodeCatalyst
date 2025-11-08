@@ -10,10 +10,6 @@ import apiClient from '../lib/api'
 import { formatDate, formatCurrency } from '../lib/format'
 import { toast } from 'sonner'
 
-/**
- * Individual Payslip Detail page with tabs
- * Shows worked days and salary computation - fully editable
- */
 export default function PayslipDetail() {
   const { payslipId, payrollId } = useParams()
   const [searchParams] = useSearchParams()
@@ -250,12 +246,7 @@ export default function PayslipDetail() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Payslip</h1>
-            <p className="text-muted-foreground">
-              {payslip.employee?.name || payslip.employeeName || 'N/A'} - {payslip.payrun?.name || formatDate(payDate || new Date())}
-            </p>
-          </div>
+          
         </div>
         <div className="flex gap-2">
           {!isEditing ? (
