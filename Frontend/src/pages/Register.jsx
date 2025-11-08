@@ -24,7 +24,12 @@ const registerSchema = z
       .string()
       .min(2, "Company name must be at least 2 characters"),
     name: z.string().min(1, "Name is required"),
-    email: z.string().email("Invalid email address"),
+    email: z.string().regex(
+      /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
+      {
+        message: "Invalid email address",
+      }
+    ),
     phone: z.string().optional().or(z.literal("")).refine(
       (val) => {
         if (!val || val === '') return true; // Allow empty

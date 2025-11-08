@@ -40,7 +40,12 @@ import {
 const employeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().regex(
+    /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
+    {
+      message: "Invalid email address",
+    }
+  ),
   phone: z.string().optional().or(z.literal("")).refine(
     (val) => {
       if (!val || val === '') return true; // Allow empty
@@ -94,6 +99,13 @@ export default function Employees() {
   });
 
   const formSelectedRole = watch("role");
+  const getTodayLocalDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Stable fetch functions
   const fetchEmployees = useCallback(async () => {
@@ -538,6 +550,7 @@ export default function Employees() {
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone</Label>
                       <Input id="phone" type="tel" {...register("phone")} aria-invalid={errors.phone ? "true" : "false"} />
+                      {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -563,7 +576,13 @@ export default function Employees() {
 
                       <div className="space-y-2">
                         <Label htmlFor="hireDate">Hire Date</Label>
-                        <Input id="hireDate" type="date" {...register("hireDate")} aria-invalid={errors.hireDate ? "true" : "false"} />
+                        <Input 
+                          id="hireDate" 
+                          type="date" 
+                          {...register("hireDate")} 
+                          min={getTodayLocalDate()}
+                          aria-invalid={errors.hireDate ? "true" : "false"} 
+                        />
                         {errors.hireDate && <p className="text-sm text-destructive">{errors.hireDate.message}</p>}
                       </div>
                     </div>
