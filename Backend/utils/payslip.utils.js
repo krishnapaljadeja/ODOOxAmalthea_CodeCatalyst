@@ -1,8 +1,5 @@
 import PDFDocument from 'pdfkit'
 
-/**
- * Generate payslip PDF
- */
 export const generatePayslipPDF = (payslip, employee) => {
   return new Promise((resolve, reject) => {
     try {
@@ -13,12 +10,10 @@ export const generatePayslipPDF = (payslip, employee) => {
       doc.on('end', () => resolve(Buffer.concat(chunks)))
       doc.on('error', reject)
 
-      // Header
       doc.fontSize(20).text('WorkZen HRMS', { align: 'center' })
       doc.fontSize(14).text('Payslip', { align: 'center' })
       doc.moveDown()
 
-      // Employee Info
       doc.fontSize(12)
       doc.text(`Employee: ${employee.firstName} ${employee.lastName}`)
       doc.text(`Employee ID: ${employee.employeeId}`)
@@ -36,7 +31,6 @@ export const generatePayslipPDF = (payslip, employee) => {
       doc.text(`Pay Date: ${payDate}`)
       doc.moveDown()
 
-      // Earnings
       doc.fontSize(14).text('Earnings', { underline: true })
       doc.fontSize(12)
       doc.text(`Base Salary: $${payslip.baseSalary.toFixed(2)}`)
@@ -52,7 +46,6 @@ export const generatePayslipPDF = (payslip, employee) => {
       doc.text(`Gross Pay: $${payslip.grossPay.toFixed(2)}`, { bold: true })
       doc.moveDown()
 
-      // Deductions
       doc.fontSize(14).text('Deductions', { underline: true })
       doc.fontSize(12)
       if (payslip.tax > 0) {
@@ -67,7 +60,6 @@ export const generatePayslipPDF = (payslip, employee) => {
       doc.text(`Total Deductions: $${payslip.totalDeductions.toFixed(2)}`, { bold: true })
       doc.moveDown()
 
-      // Net Pay
       doc.fontSize(16).text(`Net Pay: $${payslip.netPay.toFixed(2)}`, { bold: true, align: 'right' })
 
       doc.end()

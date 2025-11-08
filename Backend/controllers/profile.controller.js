@@ -3,14 +3,10 @@ import { hashPassword, comparePassword } from '../utils/password.utils.js'
 
 const prisma = new PrismaClient()
 
-/**
- * Get current user profile
- */
 export const getProfile = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get user with employee data if available
     const userWithEmployee = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
@@ -78,9 +74,6 @@ export const getProfile = async (req, res, next) => {
   }
 }
 
-/**
- * Update profile
- */
 export const updateProfile = async (req, res, next) => {
   try {
     const { 
@@ -98,7 +91,6 @@ export const updateProfile = async (req, res, next) => {
     } = req.body
     const user = req.user
 
-    // Check if email is already taken by another user
     if (email && email !== user.email) {
       const existingUser = await prisma.user.findUnique({
         where: { email },
@@ -113,7 +105,6 @@ export const updateProfile = async (req, res, next) => {
       }
     }
 
-    // Update user
     const updated = await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -149,7 +140,6 @@ export const updateProfile = async (req, res, next) => {
       },
     })
 
-    // Update employee data if provided
     if (employeeData && user.employeeId) {
       const employee = await prisma.employee.findUnique({
         where: { userId: user.id },
@@ -158,7 +148,6 @@ export const updateProfile = async (req, res, next) => {
       if (employee) {
         const updateData = {}
         
-        // Handle dateOfBirth
         if (employeeData.dateOfBirth !== undefined) {
           if (employeeData.dateOfBirth && employeeData.dateOfBirth.trim()) {
             updateData.dateOfBirth = new Date(employeeData.dateOfBirth)
@@ -167,7 +156,6 @@ export const updateProfile = async (req, res, next) => {
           }
         }
         
-        // Handle other optional fields
         const optionalFields = ['address', 'nationality', 'personalEmail', 'gender', 'maritalStatus', 'accountNumber', 'bankName', 'ifscCode', 'panNo', 'uanNo']
         optionalFields.forEach(field => {
           if (employeeData[field] !== undefined) {
@@ -195,20 +183,15 @@ export const updateProfile = async (req, res, next) => {
   }
 }
 
-/**
- * Change password
- */
 export const changePassword = async (req, res, next) => {
   try {
     const { oldPassword, newPassword } = req.body
     const user = req.user
 
-    // Get user with password
     const userWithPassword = await prisma.user.findUnique({
       where: { id: user.id },
     })
 
-    // Verify old password
     const isValid = await comparePassword(oldPassword, userWithPassword.password)
     if (!isValid) {
       return res.status(400).json({
@@ -218,10 +201,8 @@ export const changePassword = async (req, res, next) => {
       })
     }
 
-    // Hash new password
     const hashedPassword = await hashPassword(newPassword)
 
-    // Update password
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashedPassword },
@@ -238,14 +219,10 @@ export const changePassword = async (req, res, next) => {
   }
 }
 
-/**
- * Get salary information for current user
- */
 export const getSalaryInfo = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get employee data
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
       select: {
@@ -265,8 +242,7 @@ export const getSalaryInfo = async (req, res, next) => {
         error: 'Not Found',
       })
     }
-
-    // Get salary data from active salary structure
+    
     const { getSalaryData } = await import('../utils/salary.utils.js')
     const salaryData = await getSalaryData(employee.id, employee.salary)
 

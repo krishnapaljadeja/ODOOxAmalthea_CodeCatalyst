@@ -2,9 +2,6 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-/**
- * Get settings
- */
 export const getSettings = async (req, res, next) => {
   try {
     let settings = await prisma.payrollSettings.findFirst()
@@ -28,9 +25,6 @@ export const getSettings = async (req, res, next) => {
   }
 }
 
-/**
- * Update settings
- */
 export const updateSettings = async (req, res, next) => {
   try {
     const { taxRate, insuranceRate, payPeriodDays } = req.body

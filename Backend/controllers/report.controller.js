@@ -2,9 +2,7 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-/**
- * Get salary statement report
- */
+
 export const getSalaryStatementReport = async (req, res, next) => {
   try {
     const { employeeId, year } = req.query
@@ -17,7 +15,6 @@ export const getSalaryStatementReport = async (req, res, next) => {
       })
     }
 
-    // Get employee data
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       select: {
@@ -40,7 +37,6 @@ export const getSalaryStatementReport = async (req, res, next) => {
       })
     }
 
-    // Verify employee belongs to the same company as the requesting user
     if (user.companyId && employee.companyId !== user.companyId) {
       return res.status(403).json({
         status: 'error',
@@ -49,11 +45,9 @@ export const getSalaryStatementReport = async (req, res, next) => {
       })
     }
 
-    // Get payslips for the selected year
     const yearStart = new Date(`${year}-01-01`)
     const yearEnd = new Date(`${year}-12-31`)
     
-    // Fetch all payslips for this employee in the selected year
     const payslips = await prisma.payslip.findMany({
       where: {
         employeeId: employeeId,
@@ -80,16 +74,12 @@ export const getSalaryStatementReport = async (req, res, next) => {
       },
     })
 
-    // If payslips exist, aggregate data from payslips
-    // Otherwise, use salary structure effective during that year
     let earnings = []
     let deductions = []
     let netSalaryMonthly = 0
     let netSalaryYearly = 0
 
     if (payslips.length > 0) {
-      // Aggregate from payslips
-      // Get all unique pay periods
       const uniquePeriods = new Map()
       for (const payslip of payslips) {
         const payPeriodStart = payslip.payroll.payrun.payPeriodStart
@@ -99,7 +89,6 @@ export const getSalaryStatementReport = async (req, res, next) => {
         }
       }
 
-      // Get all salary structures for the year at once
       const salaryStructures = await prisma.salaryStructure.findMany({
         where: {
           employeeId: employeeId,
@@ -114,10 +103,8 @@ export const getSalaryStatementReport = async (req, res, next) => {
         },
       })
 
-      // Map each period to its salary structure
       const salaryDataMap = new Map()
       for (const [key, periodStart] of uniquePeriods) {
-        // Find the salary structure effective during this period
         const salaryStructure = salaryStructures.find((ss) => {
           const effectiveFrom = new Date(ss.effectiveFrom)
           const effectiveTo = ss.effectiveTo ? new Date(ss.effectiveTo) : null
@@ -143,7 +130,6 @@ export const getSalaryStatementReport = async (req, res, next) => {
         }
       }
 
-      // Calculate averages from all months
       let totalBasicSalary = 0
       let totalHRA = 0
       let totalStandardAllowance = 0
@@ -168,7 +154,6 @@ export const getSalaryStatementReport = async (req, res, next) => {
         monthCount++
       })
 
-      // Calculate monthly averages
       const avgBasicSalary = monthCount > 0 ? totalBasicSalary / monthCount : 0
       const avgHRA = monthCount > 0 ? totalHRA / monthCount : 0
       const avgStandardAllowance = monthCount > 0 ? totalStandardAllowance / monthCount : 0
@@ -227,8 +212,7 @@ export const getSalaryStatementReport = async (req, res, next) => {
 
       netSalaryYearly = netSalaryMonthly * 12
     } else {
-      // No payslips found, use salary structure effective during that year
-      const yearMid = new Date(`${year}-06-01`) // Use mid-year as reference
+      const yearMid = new Date(`${year}-06-01`)
       
       const salaryStructure = await prisma.salaryStructure.findFirst({
         where: {
@@ -303,7 +287,7 @@ export const getSalaryStatementReport = async (req, res, next) => {
 
         netSalaryYearly = netSalaryMonthly * 12
       } else {
-        // Fallback to current employee salary data using salary utils
+
         const { getSalaryData } = await import('../utils/salary.utils.js')
         const salaryData = await getSalaryData(employeeId, employee.salary || 0)
         
@@ -373,11 +357,6 @@ export const getSalaryStatementReport = async (req, res, next) => {
   }
 }
 
-/**
- * Download salary statement report as PDF
- * Note: This is a placeholder - you'll need to implement PDF generation
- * using a library like pdfkit, puppeteer, or similar
- */
 export const downloadSalaryStatementReport = async (req, res, next) => {
   try {
     const { employeeId, year } = req.query
@@ -390,7 +369,6 @@ export const downloadSalaryStatementReport = async (req, res, next) => {
       })
     }
 
-    // Get employee data (same as getSalaryStatementReport)
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       select: {
@@ -413,7 +391,6 @@ export const downloadSalaryStatementReport = async (req, res, next) => {
       })
     }
 
-    // Verify employee belongs to the same company
     if (user.companyId && employee.companyId !== user.companyId) {
       return res.status(403).json({
         status: 'error',
@@ -422,12 +399,6 @@ export const downloadSalaryStatementReport = async (req, res, next) => {
       })
     }
 
-    // For now, return JSON data
-    // TODO: Implement PDF generation using pdfkit, puppeteer, or similar library
-    // This is a placeholder that returns the data as JSON
-    // You should replace this with actual PDF generation
-    
-    // Get salary data from active salary structure
     const { getSalaryData } = await import('../utils/salary.utils.js')
     const salaryData = await getSalaryData(employeeId, employee.salary || 0)
     
@@ -443,26 +414,12 @@ export const downloadSalaryStatementReport = async (req, res, next) => {
     const professionalTax = salaryData.professionalTax
     const netSalary = salaryData.netSalary
 
-    // Return JSON for now - frontend can handle PDF generation client-side
-    // or you can implement server-side PDF generation here
     res.status(501).json({
       status: 'error',
       message: 'PDF download not yet implemented. Please use the print functionality.',
     })
 
-    // TODO: Uncomment and implement when PDF library is added
-    // const PDFDocument = require('pdfkit')
-    // const doc = new PDFDocument()
-    // 
-    // res.setHeader('Content-Type', 'application/pdf')
-    // res.setHeader(
-    //   'Content-Disposition',
-    //   `attachment; filename=salary-statement-${employee.employeeId}-${year}.pdf`
-    // )
-    // 
-    // doc.pipe(res)
-    // // Add PDF content here
-    // doc.end()
+
   } catch (error) {
     next(error)
   }
