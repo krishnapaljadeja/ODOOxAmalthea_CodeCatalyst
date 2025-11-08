@@ -48,7 +48,6 @@ export default function Topbar() {
       const attendanceData = response.data?.data || response.data
       setTodayAttendance(attendanceData)
     } catch (error) {
-      // If 404, it means no attendance record for today (not an error)
       if (error.response?.status === 404) {
         setTodayAttendance(null)
       } else {
@@ -198,12 +197,6 @@ export default function Topbar() {
                 <Link to="/profile" className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
                   Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
