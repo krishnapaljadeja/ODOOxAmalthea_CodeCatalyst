@@ -260,7 +260,6 @@ model SalaryStructure {
 
   // deductions
   pfEmployee      Float @default(0)
-  pfEmployer      Float @default(0)
   professionalTax Float @default(0)
   tds             Float @default(0)
   otherDeductions Float @default(0)

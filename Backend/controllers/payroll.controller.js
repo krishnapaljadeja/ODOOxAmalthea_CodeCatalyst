@@ -40,7 +40,7 @@ export const getPayruns = async (req, res, next) => {
 /**
  * Get current month's payrun with all payrolls
  */
-export const getCurrentMonthPayrun = async (req, res, next) => {
+export const  getCurrentMonthPayrun = async (req, res, next) => {
   try {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)

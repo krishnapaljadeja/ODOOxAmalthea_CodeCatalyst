@@ -382,6 +382,10 @@ export const getPayslip = async (req, res, next) => {
         netSalary: payslip.payroll.netSalary,
         pdfUrl: payslip.pdfUrl,
         status: payslip.status,
+        payroll: {
+          id: payslip.payroll.id,
+          status: payslip.payroll.status,
+        },
         createdAt: payslip.createdAt.toISOString(),
       },
     })

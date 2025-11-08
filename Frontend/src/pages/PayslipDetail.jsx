@@ -90,6 +90,12 @@ export default function PayslipDetail() {
   }
 
   const handleEdit = () => {
+    // Check if payroll is validated before allowing edit
+    const isValidated = payslip?.payroll?.status === 'validated' || payslip?.status === 'validated'
+    if (isValidated) {
+      toast.error('Cannot edit validated payroll')
+      return
+    }
     setIsEditing(true)
   }
 
@@ -218,6 +224,11 @@ export default function PayslipDetail() {
 
   const totals = calculateTotals()
 
+  // Check if payroll is validated
+  // When viewing via payslipId, check payslip.payroll.status
+  // When viewing via payrollId, check payslip.status directly
+  const isValidated = payslip?.payroll?.status === 'validated' || payslip?.status === 'validated'
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Loading...</div>
   }
@@ -249,14 +260,18 @@ export default function PayslipDetail() {
         <div className="flex gap-2">
           {!isEditing ? (
             <>
-              <Button variant="outline" onClick={handleEdit}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Payslip
-              </Button>
-              <Button variant="outline" onClick={handleValidate}>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Validate
-              </Button>
+              {!isValidated && (
+                <Button variant="outline" onClick={handleEdit}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Payslip
+                </Button>
+              )}
+              {!isValidated && (
+                <Button variant="outline" onClick={handleValidate}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Validate
+                </Button>
+              )}
               <Button variant="outline" onClick={handleCancel}>
                 <XCircle className="mr-2 h-4 w-4" />
                 Cancel
@@ -411,7 +426,7 @@ export default function PayslipDetail() {
                               <TableCell>{item.ruleName}</TableCell>
                               <TableCell className="text-right">{item.rate}%</TableCell>
                               <TableCell className="text-right">
-                                {isEditing ? (
+                                {isEditing && !isValidated ? (
                                   <Input
                                     type="number"
                                     step="0.01"
@@ -458,7 +473,7 @@ export default function PayslipDetail() {
                               <TableCell>{item.ruleName}</TableCell>
                               <TableCell className="text-right">{item.rate}%</TableCell>
                               <TableCell className="text-right">
-                                {isEditing ? (
+                                {isEditing && !isValidated ? (
                                   <Input
                                     type="number"
                                     step="0.01"
