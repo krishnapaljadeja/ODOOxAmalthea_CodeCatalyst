@@ -15,19 +15,22 @@ import apiClient from "../lib/api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
 import { useAuthStore } from "../store/auth";
 import PasswordModal from "../components/PasswordModal";
 import ProfileResumeTab from "../components/ProfileResumeTab";
 import ProfilePrivateInfoTab from "../components/ProfilePrivateInfoTab";
 import ProfileSalaryInfoTab from "../components/ProfileSalaryInfoTab";
 import ProfileSecurityTab from "../components/ProfileSecurityTab";
-import { formatDate } from "../lib/format";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().regex(
+    /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
+    {
+      message: "Invalid email address",
+    }
+  ),
   phone: z.string().optional(),
   address: z.string().optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
@@ -35,7 +38,12 @@ const profileSchema = z.object({
   nationality: z.string().optional().or(z.literal("")),
   personalEmail: z
     .string()
-    .email("Invalid email address")
+    .regex(
+      /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
+      {
+        message: "Invalid email address",
+      }
+    )
     .optional()
     .or(z.literal(""))
     .or(z.undefined()),
@@ -64,9 +72,6 @@ export default function Profile() {
   const [isEditingSalary, setIsEditingSalary] = useState(false);
 
   const {
-    register,
-    handleSubmit,
-    formState: { errors },
     reset,
   } = useForm({
     resolver: zodResolver(profileSchema),
@@ -75,8 +80,6 @@ export default function Profile() {
 
   const {
     register: registerEmergency,
-    handleSubmit: handleSubmitEmergency,
-    formState: { errors: emergencyErrors },
     reset: resetEmergency,
   } = useForm({
     resolver: zodResolver(emergencyContactSchema),
