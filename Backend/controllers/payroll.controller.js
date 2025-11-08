@@ -241,6 +241,7 @@ export const getPayruns = async (req, res, next) => {
     const user = req.user;
     const { year, month } = req.query;
 
+
     const companyFilter = user.companyId
       ? {
           payrolls: {
@@ -269,6 +270,7 @@ export const getPayruns = async (req, res, next) => {
         gte: startOfMonth,
         lte: endOfMonth,
       };
+      };
     } else if (year) {
       const selectedYear = parseInt(year);
       // Use UTC to ensure correct date range regardless of server timezone
@@ -280,6 +282,7 @@ export const getPayruns = async (req, res, next) => {
       dateFilter.payPeriodStart = {
         gte: startOfYear,
         lte: endOfYear,
+      };
       };
     }
 
@@ -293,6 +296,7 @@ export const getPayruns = async (req, res, next) => {
       where,
       orderBy: {
         createdAt: "desc",
+        createdAt: "desc",
       },
     });
 
@@ -301,6 +305,9 @@ export const getPayruns = async (req, res, next) => {
     const formattedPayruns = payruns.map((payrun) => ({
       id: payrun.id,
       name: payrun.name,
+      payPeriodStart: payrun.payPeriodStart.toISOString().split("T")[0],
+      payPeriodEnd: payrun.payPeriodEnd.toISOString().split("T")[0],
+      payDate: payrun.payDate.toISOString().split("T")[0],
       payPeriodStart: payrun.payPeriodStart.toISOString().split("T")[0],
       payPeriodEnd: payrun.payPeriodEnd.toISOString().split("T")[0],
       payDate: payrun.payDate.toISOString().split("T")[0],
@@ -313,7 +320,9 @@ export const getPayruns = async (req, res, next) => {
 
     res.json({
       status: "success",
+      status: "success",
       data: formattedPayruns,
+    });
     });
   } catch (error) {
     next(error);

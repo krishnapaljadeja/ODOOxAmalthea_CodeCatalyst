@@ -3,6 +3,198 @@ import { generatePayslipPDF } from '../utils/payslip.utils.js'
 
 const prisma = new PrismaClient()
 
+// Helper function to calculate salary computation based on attendance
+const calculateSalaryComputation = (salaryStructure, daysPresent, totalPaidLeaves, totalWorkingDays = 22) => {
+  // Total working days = present days + paid leaves
+  const workingDays = daysPresent + totalPaidLeaves
+
+  // Calculate attendance ratio = workingDays / totalWorkingDays
+  // If attendance data is missing, fallback to 100%
+  const attendanceRatio = workingDays > 0 && totalWorkingDays > 0
+    ? workingDays / totalWorkingDays
+    : 1.0
+
+  // Get base basic salary from structure
+  const baseBasicSalary = salaryStructure.basicSalary || 0
+
+  // Calculate pro-rated basic salary
+  const proratedBasic = Math.round((baseBasicSalary * attendanceRatio) * 100) / 100
+
+  // Calculate HRA as percentage of prorated basic
+  let hraPercent = salaryStructure.hraPercent
+  if (!hraPercent && baseBasicSalary > 0 && salaryStructure.houseRentAllowance > 0) {
+    hraPercent = (salaryStructure.houseRentAllowance / baseBasicSalary) * 100
+  }
+  hraPercent = hraPercent || 0
+  const roundedHraPercent = Math.round(hraPercent * 100) / 100
+  const hra = Math.round((proratedBasic * roundedHraPercent / 100) * 100) / 100
+
+  // Calculate Standard Allowance as percentage of prorated basic
+  const standardAllowancePercent = salaryStructure.standardAllowancePercent || 0
+  const roundedStandardPercent = Math.round(standardAllowancePercent * 100) / 100
+  const standardAllowance = roundedStandardPercent > 0
+    ? Math.round((proratedBasic * roundedStandardPercent / 100) * 100) / 100
+    : Math.round(((salaryStructure.standardAllowance || 0) * attendanceRatio) * 100) / 100
+
+  // Calculate LTA as percentage of prorated basic
+  const ltaPercent = salaryStructure.ltaPercent || 0
+  const roundedLtaPercent = Math.round(ltaPercent * 100) / 100
+  const lta = Math.round((proratedBasic * roundedLtaPercent / 100) * 100) / 100
+
+  // Calculate Performance Bonus: Use percentage if available, otherwise use fixed amount with attendance ratio
+  let bonusPercent = salaryStructure.performanceBonusPercent || 0
+  if (!bonusPercent && baseBasicSalary > 0 && salaryStructure.performanceBonus > 0) {
+    bonusPercent = (salaryStructure.performanceBonus / baseBasicSalary) * 100
+  }
+  bonusPercent = bonusPercent || 0
+  const roundedBonusPercent = Math.round(bonusPercent * 100) / 100
+  const bonus = roundedBonusPercent > 0
+    ? Math.round((proratedBasic * roundedBonusPercent / 100) * 100) / 100
+    : Math.round(((salaryStructure.performanceBonus || 0) * attendanceRatio) * 100) / 100
+
+  // Fixed Allowance: Use percentage if available, otherwise use fixed amount with attendance ratio
+  let fixedAllowancePercent = salaryStructure.fixedAllowancePercent || 0
+  if (!fixedAllowancePercent && baseBasicSalary > 0 && salaryStructure.fixedAllowance > 0) {
+    fixedAllowancePercent = (salaryStructure.fixedAllowance / baseBasicSalary) * 100
+  }
+  fixedAllowancePercent = fixedAllowancePercent || 0
+  const roundedFixedAllowancePercent = Math.round(fixedAllowancePercent * 100) / 100
+  const fixedAllowance = roundedFixedAllowancePercent > 0
+    ? Math.round((proratedBasic * roundedFixedAllowancePercent / 100) * 100) / 100
+    : Math.round(((salaryStructure.fixedAllowance || 0) * attendanceRatio) * 100) / 100
+
+  // Calculate gross salary
+  const grossTotal = Math.round((proratedBasic + hra + standardAllowance + lta + bonus + fixedAllowance) * 100) / 100
+
+  // Calculate deductions based on prorated basic salary
+  // PF Employee: Use percentage if available, otherwise use fixed amount with attendance ratio
+  let pfEmployeePercent = salaryStructure.pfEmployeePercent || 0
+  if (!pfEmployeePercent && baseBasicSalary > 0 && salaryStructure.pfEmployee > 0) {
+    pfEmployeePercent = (salaryStructure.pfEmployee / baseBasicSalary) * 100
+  }
+  pfEmployeePercent = pfEmployeePercent || 0
+  const roundedPfEmployeePercent = Math.round(pfEmployeePercent * 100) / 100
+  const pfEmployee = roundedPfEmployeePercent > 0
+    ? Math.round((proratedBasic * roundedPfEmployeePercent / 100) * 100) / 100
+    : Math.round(((salaryStructure.pfEmployee || 0) * attendanceRatio) * 100) / 100
+
+  // PF Employer: Use percentage if available, otherwise use fixed amount with attendance ratio
+  let pfEmployerPercent = salaryStructure.pfEmployerPercent || 0
+  if (!pfEmployerPercent && baseBasicSalary > 0 && salaryStructure.pfEmployer > 0) {
+    pfEmployerPercent = (salaryStructure.pfEmployer / baseBasicSalary) * 100
+  }
+  pfEmployerPercent = pfEmployerPercent || 0
+  const roundedPfEmployerPercent = Math.round(pfEmployerPercent * 100) / 100
+  const pfEmployer = roundedPfEmployerPercent > 0
+    ? Math.round((proratedBasic * roundedPfEmployerPercent / 100) * 100) / 100
+    : Math.round(((salaryStructure.pfEmployer || 0) * attendanceRatio) * 100) / 100
+
+  // Professional Tax: Fixed amount (not affected by attendance)
+  const professionalTax = 200
+
+  // Other Deductions: Percentage of prorated basic if percentage exists, otherwise apply attendance ratio
+  const otherDeductionsPercent = salaryStructure.otherDeductionsPercent || 0
+  const roundedOtherDeductionsPercent = Math.round(otherDeductionsPercent * 100) / 100
+  const otherDeductions = roundedOtherDeductionsPercent > 0
+    ? Math.round((proratedBasic * roundedOtherDeductionsPercent / 100) * 100) / 100
+    : Math.round(((salaryStructure.otherDeductions || 0) * attendanceRatio) * 100) / 100
+
+  const deductionsTotal = Math.round((pfEmployee + pfEmployer + professionalTax + otherDeductions) * 100) / 100
+  const netAmount = Math.round((grossTotal - deductionsTotal) * 100) / 100
+
+  // Calculate rates for display (percentage of prorated basic, rounded to 2 decimal places)
+  const hraRate = roundedHraPercent
+  const standardAllowanceRate = roundedStandardPercent > 0 
+    ? roundedStandardPercent 
+    : (proratedBasic > 0 ? Math.round((standardAllowance / proratedBasic * 100) * 100) / 100 : 0)
+  const pfEmployeeRate = roundedPfEmployeePercent
+  const pfEmployerRate = roundedPfEmployerPercent
+  const performanceBonusRate = roundedBonusPercent
+  const travelAllowanceRate = roundedLtaPercent
+  const fixedAllowanceRate = roundedFixedAllowancePercent > 0
+    ? roundedFixedAllowancePercent
+    : (proratedBasic > 0 ? Math.round((fixedAllowance / proratedBasic * 100) * 100) / 100 : 0)
+  
+  // Calculate base salary percentage for display (percentage of total base salary)
+  const baseSalaryPercent = baseBasicSalary > 0 ? Math.round((proratedBasic / baseBasicSalary * 100) * 100) / 100 : 100
+
+  // Calculate deduction rates
+  const professionalTaxRate = proratedBasic > 0 ? Math.round((professionalTax / proratedBasic * 100) * 100) / 100 : 0
+  const otherDeductionsRate = roundedOtherDeductionsPercent > 0 ? roundedOtherDeductionsPercent : (proratedBasic > 0 ? Math.round((otherDeductions / proratedBasic * 100) * 100) / 100 : 0)
+
+  // Always include all salary components, even if they are 0
+  const grossEarnings = [
+    {
+      ruleName: 'Basic Salary',
+      rate: baseSalaryPercent,
+      amount: proratedBasic,
+    },
+    {
+      ruleName: 'House Rent Allowance',
+      rate: hraRate,
+      amount: hra,
+    },
+    {
+      ruleName: 'Standard Allowance',
+      rate: standardAllowanceRate,
+      amount: standardAllowance,
+    },
+    {
+      ruleName: 'Performance Bonus',
+      rate: performanceBonusRate,
+      amount: bonus,
+    },
+    {
+      ruleName: 'Leave Travel Allowance',
+      rate: travelAllowanceRate,
+      amount: lta,
+    },
+    {
+      ruleName: 'Fixed Allowance',
+      rate: fixedAllowanceRate,
+      amount: fixedAllowance,
+    },
+  ]
+
+  // Always include all deductions, even if they are 0
+  const deductions = [
+    {
+      ruleName: 'PF Employee',
+      rate: pfEmployeeRate,
+      amount: -pfEmployee,
+    },
+    {
+      ruleName: 'PF Employer',
+      rate: pfEmployerRate,
+      amount: -pfEmployer,
+    },
+    {
+      ruleName: 'Professional Tax',
+      rate: professionalTaxRate,
+      amount: -professionalTax,
+    },
+    {
+      ruleName: 'Other Deductions',
+      rate: otherDeductionsRate,
+      amount: -otherDeductions,
+    },
+  ]
+
+  return {
+    grossEarnings,
+    deductions,
+    grossTotal,
+    deductionsTotal,
+    netAmount,
+    computedBaseSalary: proratedBasic,
+    attendanceRatio,
+    workingDays,
+    daysPresent,
+    totalPaidLeaves,
+    totalWorkingDays,
+  }
+}
+
 export const getPayslips = async (req, res, next) => {
   try {
     const { payrunId, employeeId } = req.query
@@ -227,92 +419,20 @@ export const getPayslip = async (req, res, next) => {
       })
 
       if (salaryStructure) {
-        const totalDaysInMonth = Math.ceil(
-          (payrun.payPeriodEnd - payrun.payPeriodStart) / (1000 * 60 * 60 * 24)
-        ) + 1
-        const dailyRate = salaryStructure.grossSalary / totalDaysInMonth
+        const totalWorkingDays = 22
+        const baseBasicSalary = salaryStructure.basicSalary || 0
+        const dailyRate = baseBasicSalary / totalWorkingDays
 
-        workedDays[0].amount = dailyRate * totalWorkedDays
-        workedDays[1].amount = dailyRate * totalPaidLeaves
+        workedDays[0].amount = Math.round((dailyRate * totalWorkedDays) * 100) / 100
+        workedDays[1].amount = Math.round((dailyRate * totalPaidLeaves) * 100) / 100
 
-        const grossEarnings = [
-          {
-            ruleName: 'Basic Salary',
-            rate: 100,
-            amount: salaryStructure.basicSalary,
-          },
-          {
-            ruleName: 'House Rent Allowance',
-            rate: 100,
-            amount: salaryStructure.houseRentAllowance,
-          },
-          {
-            ruleName: 'Standard Allowance',
-            rate: 100,
-            amount: salaryStructure.standardAllowance,
-          },
-          {
-            ruleName: 'Performance Bonus',
-            rate: 100,
-            amount: salaryStructure.bonus,
-          },
-          {
-            ruleName: 'Leave Travel Allowance',
-            rate: 100,
-            amount: salaryStructure.travelAllowance,
-          },
-        ]
-
-        const fixedAllowance = salaryStructure.grossSalary - grossEarnings.reduce((sum, item) => sum + item.amount, 0)
-        if (fixedAllowance > 0) {
-          grossEarnings.push({
-            ruleName: 'Fixed Allowance',
-            rate: 100,
-            amount: fixedAllowance,
-          })
-        }
-
-        const deductions = [
-          {
-            ruleName: 'PF Employee',
-            rate: 100,
-            amount: -salaryStructure.pfEmployee,
-          },
-          {
-            ruleName: 'PF Employer',
-            rate: 100,
-            amount: -salaryStructure.pfEmployer,
-          },
-          {
-            ruleName: 'Professional Tax',
-            rate: 100,
-            amount: -salaryStructure.professionalTax,
-          },
-        ]
-
-        if (salaryStructure.tds > 0) {
-          deductions.push({
-            ruleName: 'TDS',
-            rate: 100,
-            amount: -salaryStructure.tds,
-          })
-        }
-
-        if (salaryStructure.otherDeductions > 0) {
-          deductions.push({
-            ruleName: 'Other Deductions',
-            rate: 100,
-            amount: -salaryStructure.otherDeductions,
-          })
-        }
-
-        salaryComputation = {
-          grossEarnings,
-          deductions,
-          grossTotal: salaryStructure.grossSalary,
-          deductionsTotal: salaryStructure.totalDeductions,
-          netAmount: salaryStructure.netSalary,
-        }
+        // Calculate salary computation based on attendance
+        salaryComputation = calculateSalaryComputation(
+          salaryStructure,
+          totalWorkedDays,
+          totalPaidLeaves,
+          totalWorkingDays
+        )
       }
     }
 
@@ -354,11 +474,16 @@ export const getPayslip = async (req, res, next) => {
           items: workedDays,
           totalDays: totalWorkedDays + totalPaidLeaves,
           totalAmount: workedDays.reduce((sum, item) => sum + item.amount, 0),
+          daysPresent: totalWorkedDays,
+          paidLeaves: totalPaidLeaves,
+          totalWorkingDays: salaryComputation?.totalWorkingDays || 22,
+          attendanceRatio: salaryComputation?.attendanceRatio || 1.0,
+          attendancePercent: salaryComputation ? Math.round(salaryComputation.attendanceRatio * 100 * 100) / 100 : 100,
         },
         salaryComputation,
-        grossSalary: payslip.payroll.grossSalary,
-        totalDeductions: payslip.payroll.totalDeductions,
-        netSalary: payslip.payroll.netSalary,
+        grossSalary: salaryComputation?.grossTotal || payslip.payroll.grossSalary,
+        totalDeductions: salaryComputation?.deductionsTotal || payslip.payroll.totalDeductions,
+        netSalary: salaryComputation?.netAmount || payslip.payroll.netSalary,
         pdfUrl: payslip.pdfUrl,
         status: payslip.status,
         payroll: {
@@ -498,48 +623,20 @@ export const getPayslipByPayrollId = async (req, res, next) => {
       })
 
       if (salaryStructure) {
-        const totalDaysInMonth = Math.ceil(
-          (payroll.payrun.payPeriodEnd - payroll.payrun.payPeriodStart) / (1000 * 60 * 60 * 24)
-        ) + 1
-        const dailyRate = salaryStructure.grossSalary / totalDaysInMonth
+        const totalWorkingDays = 22
+        const baseBasicSalary = salaryStructure.basicSalary || 0
+        const dailyRate = baseBasicSalary / totalWorkingDays
 
-        workedDays[0].amount = dailyRate * totalWorkedDays
-        workedDays[1].amount = dailyRate * totalPaidLeaves
+        workedDays[0].amount = Math.round((dailyRate * totalWorkedDays) * 100) / 100
+        workedDays[1].amount = Math.round((dailyRate * totalPaidLeaves) * 100) / 100
 
-        const grossEarnings = [
-          { ruleName: 'Basic Salary', rate: 100, amount: salaryStructure.basicSalary },
-          { ruleName: 'House Rent Allowance', rate: 100, amount: salaryStructure.houseRentAllowance },
-          { ruleName: 'Standard Allowance', rate: 100, amount: salaryStructure.standardAllowance },
-          { ruleName: 'Performance Bonus', rate: 100, amount: salaryStructure.bonus },
-          { ruleName: 'Leave Travel Allowance', rate: 100, amount: salaryStructure.travelAllowance },
-        ]
-
-        const fixedAllowance = salaryStructure.grossSalary - grossEarnings.reduce((sum, item) => sum + item.amount, 0)
-        if (fixedAllowance > 0) {
-          grossEarnings.push({ ruleName: 'Fixed Allowance', rate: 100, amount: fixedAllowance })
-        }
-
-        const deductions = [
-          { ruleName: 'PF Employee', rate: 100, amount: -salaryStructure.pfEmployee },
-          { ruleName: 'PF Employer', rate: 100, amount: -salaryStructure.pfEmployer },
-          { ruleName: 'Professional Tax', rate: 100, amount: -salaryStructure.professionalTax },
-        ]
-
-        if (salaryStructure.tds > 0) {
-          deductions.push({ ruleName: 'TDS', rate: 100, amount: -salaryStructure.tds })
-        }
-
-        if (salaryStructure.otherDeductions > 0) {
-          deductions.push({ ruleName: 'Other Deductions', rate: 100, amount: -salaryStructure.otherDeductions })
-        }
-
-        salaryComputation = {
-          grossEarnings,
-          deductions,
-          grossTotal: salaryStructure.grossSalary,
-          deductionsTotal: salaryStructure.totalDeductions,
-          netAmount: salaryStructure.netSalary,
-        }
+        // Calculate salary computation based on attendance
+        salaryComputation = calculateSalaryComputation(
+          salaryStructure,
+          totalWorkedDays,
+          totalPaidLeaves,
+          totalWorkingDays
+        )
       }
     }
 
@@ -580,11 +677,16 @@ export const getPayslipByPayrollId = async (req, res, next) => {
           items: workedDays,
           totalDays: totalWorkedDays + totalPaidLeaves,
           totalAmount: workedDays.reduce((sum, item) => sum + item.amount, 0),
+          daysPresent: totalWorkedDays,
+          paidLeaves: totalPaidLeaves,
+          totalWorkingDays: salaryComputation?.totalWorkingDays || 22,
+          attendanceRatio: salaryComputation?.attendanceRatio || 1.0,
+          attendancePercent: salaryComputation ? Math.round(salaryComputation.attendanceRatio * 100 * 100) / 100 : 100,
         },
         salaryComputation,
-        grossSalary: payroll.grossSalary,
-        totalDeductions: payroll.totalDeductions,
-        netSalary: payroll.netSalary,
+        grossSalary: salaryComputation?.grossTotal || payroll.grossSalary,
+        totalDeductions: salaryComputation?.deductionsTotal || payroll.totalDeductions,
+        netSalary: salaryComputation?.netAmount || payroll.netSalary,
         status: payroll.status,
       },
     })
