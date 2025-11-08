@@ -25,6 +25,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 const employeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -78,8 +85,11 @@ export default function Employees() {
     try {
       const todayStr = new Date().toISOString().split("T")[0];
       // Fetch today's attendance
-      const attendanceResponse = await apiClient.get(`/attendance?date=${todayStr}`);
-      const attendanceData = attendanceResponse.data?.data || attendanceResponse.data || [];
+      const attendanceResponse = await apiClient.get(
+        `/attendance?date=${todayStr}`
+      );
+      const attendanceData =
+        attendanceResponse.data?.data || attendanceResponse.data || [];
       setTodayAttendance(Array.isArray(attendanceData) ? attendanceData : []);
 
       // Fetch today's leaves (approved leaves that include today)
@@ -90,8 +100,8 @@ export default function Employees() {
       const todayLeavesList = Array.isArray(leavesData)
         ? leavesData.filter((leave) => {
             // Leave dates are in YYYY-MM-DD format (strings)
-            const startDate = new Date(leave.startDate + 'T00:00:00.000Z');
-            const endDate = new Date(leave.endDate + 'T23:59:59.999Z');
+            const startDate = new Date(leave.startDate + "T00:00:00.000Z");
+            const endDate = new Date(leave.endDate + "T23:59:59.999Z");
             startDate.setHours(0, 0, 0, 0);
             endDate.setHours(0, 0, 0, 0);
             return (
@@ -210,13 +220,30 @@ export default function Employees() {
     }
   };
 
+  const handleDownloadSample = () => {
+    const sampleData = `First Name,Last Name,Email,Phone,Department,Position,Salary,Hire Date
+John,Smith,john.smith@example.com,+1234567890,Engineering,Software Engineer,75000,2025-01-15
+Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,85000,2025-01-20
+Michael,Williams,michael.williams@example.com,+1234567892,Sales,Sales Representative,60000,2025-02-01`;
+    const blob = new Blob([sampleData], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "employee-import-sample.csv");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success("Sample template downloaded");
+  };
+
   // Get employee status (present, on leave, or absent)
   const getEmployeeStatus = (employee) => {
     // Check if employee is on leave today
     // Leave.employeeId is the Employee's database ID
     const onLeave = todayLeaves.some(
-      (leave) => 
-        leave.employeeId === employee.id || 
+      (leave) =>
+        leave.employeeId === employee.id ||
         (leave.employee && leave.employee.id === employee.id) ||
         (employee.userId && leave.userId === employee.userId)
     );
@@ -230,14 +257,17 @@ export default function Employees() {
         (att.employee && att.employee.id === employee.id) ||
         (att.employee && att.employee.employeeId === employee.employeeId)
     );
-    
+
     if (attendance && attendance.checkIn && !attendance.checkOut) {
       return "present"; // Checked in but not checked out
     }
     if (attendance && attendance.checkIn && attendance.checkOut) {
       return "checked-out"; // Checked in and checked out
     }
-    if (attendance && (attendance.status === "present" || attendance.status === "late")) {
+    if (
+      attendance &&
+      (attendance.status === "present" || attendance.status === "late")
+    ) {
       return "present";
     }
 
@@ -245,13 +275,14 @@ export default function Employees() {
     return "absent";
   };
 
-
   // Filter employees based on search term
   const filteredEmployees = employees.filter((employee) => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
     return (
-      `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchLower) ||
+      `${employee.firstName} ${employee.lastName}`
+        .toLowerCase()
+        .includes(searchLower) ||
       employee.email?.toLowerCase().includes(searchLower) ||
       employee.employeeId?.toLowerCase().includes(searchLower) ||
       employee.department?.toLowerCase().includes(searchLower) ||
@@ -294,198 +325,212 @@ export default function Employees() {
           <h1 className="text-3xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage your employees</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            disabled={isImporting}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => document.getElementById("employee-import")?.click()}
-            disabled={isImporting}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            {isImporting ? "Importing..." : "Import"}
-          </Button>
-          <input
-            id="employee-import"
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImport(file);
-            }}
-          />
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Employee
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Employee</DialogTitle>
-                <DialogDescription>
-                  Fill in the details to create a new employee record.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={isImporting}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                document.getElementById("employee-import")?.click()
+              }
+              disabled={isImporting}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {isImporting ? "Importing..." : "Import"}
+            </Button>
+            <input
+              id="employee-import"
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImport(file);
+              }}
+            />
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Employee
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Employee</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details to create a new employee record.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        {...register("firstName")}
+                        aria-invalid={errors.firstName ? "true" : "false"}
+                      />
+                      {errors.firstName && (
+                        <p className="text-sm text-destructive">
+                          {errors.firstName.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        {...register("lastName")}
+                        aria-invalid={errors.lastName ? "true" : "false"}
+                      />
+                      {errors.lastName && (
+                        <p className="text-sm text-destructive">
+                          {errors.lastName.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
-                      id="firstName"
-                      {...register("firstName")}
-                      aria-invalid={errors.firstName ? "true" : "false"}
+                      id="email"
+                      type="email"
+                      {...register("email")}
+                      aria-invalid={errors.email ? "true" : "false"}
                     />
-                    {errors.firstName && (
+                    {errors.email && (
                       <p className="text-sm text-destructive">
-                        {errors.firstName.message}
+                        {errors.email.message}
                       </p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="phone">Phone</Label>
                     <Input
-                      id="lastName"
-                      {...register("lastName")}
-                      aria-invalid={errors.lastName ? "true" : "false"}
+                      id="phone"
+                      type="tel"
+                      {...register("phone")}
+                      aria-invalid={errors.phone ? "true" : "false"}
                     />
-                    {errors.lastName && (
-                      <p className="text-sm text-destructive">
-                        {errors.lastName.message}
-                      </p>
-                    )}
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    {...register("email")}
-                    aria-invalid={errors.email ? "true" : "false"}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">
-                      {errors.email.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    {...register("phone")}
-                    aria-invalid={errors.phone ? "true" : "false"}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Input
-                      id="department"
-                      {...register("department")}
-                      aria-invalid={errors.department ? "true" : "false"}
-                    />
-                    {errors.department && (
-                      <p className="text-sm text-destructive">
-                        {errors.department.message}
-                      </p>
-                    )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Input
+                        id="department"
+                        {...register("department")}
+                        aria-invalid={errors.department ? "true" : "false"}
+                      />
+                      {errors.department && (
+                        <p className="text-sm text-destructive">
+                          {errors.department.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="position">Position</Label>
+                      <Input
+                        id="position"
+                        {...register("position")}
+                        aria-invalid={errors.position ? "true" : "false"}
+                      />
+                      {errors.position && (
+                        <p className="text-sm text-destructive">
+                          {errors.position.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="position">Position</Label>
-                    <Input
-                      id="position"
-                      {...register("position")}
-                      aria-invalid={errors.position ? "true" : "false"}
-                    />
-                    {errors.position && (
-                      <p className="text-sm text-destructive">
-                        {errors.position.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="salary">Salary</Label>
-                    <Input
-                      id="salary"
-                      type="number"
-                      {...register("salary", { valueAsNumber: true })}
-                      aria-invalid={errors.salary ? "true" : "false"}
-                    />
-                    {errors.salary && (
-                      <p className="text-sm text-destructive">
-                        {errors.salary.message}
-                      </p>
-                    )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="salary">Salary</Label>
+                      <Input
+                        id="salary"
+                        type="number"
+                        {...register("salary", { valueAsNumber: true })}
+                        aria-invalid={errors.salary ? "true" : "false"}
+                      />
+                      {errors.salary && (
+                        <p className="text-sm text-destructive">
+                          {errors.salary.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hireDate">Hire Date</Label>
+                      <Input
+                        id="hireDate"
+                        type="date"
+                        {...register("hireDate")}
+                        aria-invalid={errors.hireDate ? "true" : "false"}
+                      />
+                      {errors.hireDate && (
+                        <p className="text-sm text-destructive">
+                          {errors.hireDate.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="hireDate">Hire Date</Label>
-                    <Input
-                      id="hireDate"
-                      type="date"
-                      {...register("hireDate")}
-                      aria-invalid={errors.hireDate ? "true" : "false"}
-                    />
-                    {errors.hireDate && (
-                      <p className="text-sm text-destructive">
-                        {errors.hireDate.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select
-                    value={selectedRole || "employee"}
-                    onValueChange={(value) => setValue("role", value)}
-                  >
-                    <SelectTrigger
-                      id="role"
-                      aria-invalid={errors.role ? "true" : "false"}
+                    <Label htmlFor="role">Role</Label>
+                    <Select
+                      value={selectedRole || "employee"}
+                      onValueChange={(value) => setValue("role", value)}
                     >
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="employee">Employee</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="hr">HR</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.role && (
-                    <p className="text-sm text-destructive">
-                      {errors.role.message}
+                      <SelectTrigger
+                        id="role"
+                        aria-invalid={errors.role ? "true" : "false"}
+                      >
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="employee">Employee</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="hr">HR</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.role && (
+                      <p className="text-sm text-destructive">
+                        {errors.role.message}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Select the role for this employee. They will receive login
+                      credentials via email.
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Select the role for this employee. They will receive login credentials via email.
-                  </p>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">Create Employee</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCreateOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">Create Employee</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="flex gap-3 text-xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={handleDownloadSample}
+              className="hover:text-foreground underline"
+            >
+              Download Sample Template
+            </button>
+          </div>
         </div>
 
         <Card className="w-full">
@@ -516,7 +561,9 @@ export default function Employees() {
               </div>
             ) : filteredEmployees.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {searchTerm ? "No employees found matching your search." : "No employees found."}
+                {searchTerm
+                  ? "No employees found matching your search."
+                  : "No employees found."}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -567,10 +614,11 @@ export default function Employees() {
                           <p className="truncate">{employee.department}</p>
                         )}
                         {employee.employeeId && (
-                          <p className="text-xs mt-2">ID: {employee.employeeId}</p>
+                          <p className="text-xs mt-2">
+                            ID: {employee.employeeId}
+                          </p>
                         )}
                       </div>
-
                     </div>
                   );
                 })}
