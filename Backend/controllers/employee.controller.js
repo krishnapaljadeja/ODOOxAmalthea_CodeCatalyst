@@ -16,21 +16,15 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-/**
- * Get list of employees
- */
+
 export const getEmployees = async (req, res, next) => {
   try {
     const { search, department, status } = req.query;
     const user = req.user;
 
-    // Build where clause
     const where = {};
 
     // Role-based filtering
-    // Employees can view all employees in their company (view-only access)
-    // Admin and HR can view and manage all employees in their company
-    // Also filter by company
     if (user.companyId) {
       where.companyId = user.companyId;
     }
@@ -76,7 +70,6 @@ export const getEmployees = async (req, res, next) => {
       },
     });
 
-    // Format response
     const formattedEmployees = employees.map((emp) => ({
       id: emp.id,
       employeeId: emp.employeeId,
@@ -111,10 +104,6 @@ export const getEmployees = async (req, res, next) => {
   }
 };
 
-/**
- * Create new employee
- * Employee automatically inherits the company from the admin/hr creating them
- */
 export const createEmployee = async (req, res, next) => {
   try {
     const {
@@ -126,12 +115,11 @@ export const createEmployee = async (req, res, next) => {
       position,
       salary,
       hireDate,
-      role, // Role selection for the new employee
+      role, 
     } = req.body;
 
-    const currentUser = req.user; // Admin/HR creating the employee
+    const currentUser = req.user; // Admin/HR
 
-    // Get company from the logged-in user (admin/hr)
     if (!currentUser.companyId) {
       return res.status(400).json({
         status: "error",
@@ -141,7 +129,6 @@ export const createEmployee = async (req, res, next) => {
       });
     }
 
-    // Get company
     const company = await prisma.company.findUnique({
       where: { id: currentUser.companyId },
     });
@@ -154,7 +141,6 @@ export const createEmployee = async (req, res, next) => {
       });
     }
 
-    // Check if email already exists in the same company
     const existingUser = await prisma.user.findFirst({
       where: {
         email,
@@ -170,7 +156,6 @@ export const createEmployee = async (req, res, next) => {
       });
     }
 
-    // Check if phone already exists in the same company (if provided)
     if (phone) {
       const existingPhone = await prisma.user.findFirst({
         where: {
@@ -198,7 +183,6 @@ export const createEmployee = async (req, res, next) => {
       company.id
     );
 
-    // Generate random password for new employee
     const randomPassword = generateRandomPassword(12);
     const hashedPassword = await hashPassword(randomPassword);
 
@@ -214,7 +198,6 @@ export const createEmployee = async (req, res, next) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
 
-    // Create user
     const user = await prisma.user.create({
       data: {
         email,
@@ -275,7 +258,6 @@ export const createEmployee = async (req, res, next) => {
       },
     });
 
-    // Send account creation email with credentials
     try {
       await sendAccountCreationEmail(
         email,
@@ -316,9 +298,6 @@ export const createEmployee = async (req, res, next) => {
   }
 };
 
-/**
- * Import employees from CSV/Excel
- */
 export const importEmployees = async (req, res, next) => {
   try {
     if (!req.file) {
@@ -331,7 +310,6 @@ export const importEmployees = async (req, res, next) => {
 
     const currentUser = req.user;
 
-    // Get company from the logged-in user
     if (!currentUser.companyId) {
       return res.status(400).json({
         status: "error",
@@ -951,14 +929,11 @@ export const importEmployees = async (req, res, next) => {
   }
 };
 
-/**
- * Export employees to CSV
- */
+
 export const exportEmployees = async (req, res, next) => {
   try {
     const user = req.user;
 
-    // Build where clause to filter by company
     const where = {};
     if (user.companyId) {
       where.companyId = user.companyId;
