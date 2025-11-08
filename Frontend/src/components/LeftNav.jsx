@@ -13,14 +13,15 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from './ui/button'
+import { useAuthStore } from '../store/auth'
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/employees', label: 'Employees', icon: Users },
   { path: '/attendance', label: 'Attendance', icon: Clock },
-  { path: '/leaves', label: 'Leaves', icon: Calendar },
+  { path: '/leaves', label: 'Time Off', icon: Calendar },
   { path: '/payroll', label: 'Payroll', icon: DollarSign },
-  { path: '/payslips', label: 'Payslips', icon: FileText },
+  { path: '/reports', label: 'Reports', icon: FileText, roles: ['admin', 'hr'] },
   { path: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -30,32 +31,43 @@ const navItems = [
 export default function LeftNav() {
   const location = useLocation()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const { user } = useAuthStore()
 
-  const NavContent = () => (
-    <nav className="flex flex-col space-y-1 p-4">
-      {navItems.map((item) => {
-        const Icon = item.icon
-        const isActive = location.pathname === item.path
+  const NavContent = () => {
+    // Filter nav items based on user role
+    const filteredItems = navItems.filter((item) => {
+      if (item.roles && user?.role) {
+        return item.roles.includes(user.role)
+      }
+      return true
+    })
 
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={() => setIsMobileOpen(false)}
-            className={cn(
-              'flex items-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            )}
-          >
-            <Icon className="h-5 w-5" />
-            <span>{item.label}</span>
-          </Link>
-        )
-      })}
-    </nav>
-  )
+    return (
+      <nav className="flex flex-col space-y-1 p-4">
+        {filteredItems.map((item) => {
+          const Icon = item.icon
+          const isActive = location.pathname === item.path
+
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={() => setIsMobileOpen(false)}
+              className={cn(
+                'flex items-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+    )
+  }
 
   return (
     <>

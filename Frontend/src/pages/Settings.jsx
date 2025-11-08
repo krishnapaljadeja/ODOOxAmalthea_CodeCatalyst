@@ -3,12 +3,14 @@ import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Save } from 'lucide-react'
+import { Save, Users } from 'lucide-react'
 import apiClient from '../lib/api'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
+import { useAuthStore } from '../store/auth'
 
 const settingsSchema = z.object({
   taxRate: z.number().min(0).max(100),
@@ -62,11 +64,24 @@ export default function Settings() {
     return <div>Loading...</div>
   }
 
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage payroll settings</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="text-muted-foreground">Manage system settings</p>
+        </div>
+        {isAdmin && (
+          <Link to="/user-settings">
+            <Button variant="outline">
+              <Users className="mr-2 h-4 w-4" />
+              User Settings
+            </Button>
+          </Link>
+        )}
       </div>
 
       <Card>

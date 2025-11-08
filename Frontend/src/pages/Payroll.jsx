@@ -4,14 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import DataTable from '../components/DataTable'
-import { Plus, Eye, Play } from 'lucide-react'
+import { Plus, Eye, Play, AlertTriangle, TrendingUp } from 'lucide-react'
 import apiClient from '../lib/api'
 import { formatDate, formatCurrency } from '../lib/format'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const payrunSchema = z.object({
   name: z.string().min(1, 'Payrun name is required'),
@@ -21,7 +23,7 @@ const payrunSchema = z.object({
 })
 
 /**
- * Payroll page component
+ * Payroll page component with Dashboard and Payrun tabs
  */
 export default function Payroll() {
   const [payruns, setPayruns] = useState([])
@@ -29,6 +31,8 @@ export default function Payroll() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [selectedPayrun, setSelectedPayrun] = useState(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [dashboardData, setDashboardData] = useState(null)
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   const {
     register,
@@ -41,6 +45,7 @@ export default function Payroll() {
 
   useEffect(() => {
     fetchPayruns()
+    fetchDashboardData()
   }, [])
 
   const fetchPayruns = async () => {
@@ -54,6 +59,59 @@ export default function Payroll() {
     }
   }
 
+  const fetchDashboardData = async () => {
+    try {
+      const response = await apiClient.get('/payroll/dashboard')
+      setDashboardData(response.data)
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error)
+      // Use mock data if API fails
+      setDashboardData({
+        warnings: [
+          { type: 'noBankAccount', count: 1 },
+          { type: 'noManager', count: 1 },
+        ],
+        recentPayruns: payruns.slice(0, 2),
+        employeeCost: {
+          annually: [
+            { month: 'Jan 2025', cost: 50000 },
+            { month: 'Feb 2025', cost: 52000 },
+            { month: 'Mar 2025', cost: 48000 },
+            { month: 'Apr 2025', cost: 55000 },
+            { month: 'May 2025', cost: 53000 },
+            { month: 'Jun 2025', cost: 51000 },
+          ],
+          monthly: [
+            { month: 'Jan 2025', cost: 50000 },
+            { month: 'Feb 2025', cost: 52000 },
+            { month: 'Mar 2025', cost: 48000 },
+            { month: 'Apr 2025', cost: 55000 },
+            { month: 'May 2025', cost: 53000 },
+            { month: 'Jun 2025', cost: 51000 },
+          ],
+        },
+        employeeCount: {
+          annually: [
+            { month: 'Jan 2025', count: 10 },
+            { month: 'Feb 2025', count: 12 },
+            { month: 'Mar 2025', count: 11 },
+            { month: 'Apr 2025', count: 13 },
+            { month: 'May 2025', count: 12 },
+            { month: 'Jun 2025', count: 11 },
+          ],
+          monthly: [
+            { month: 'Jan 2025', count: 10 },
+            { month: 'Feb 2025', count: 12 },
+            { month: 'Mar 2025', count: 11 },
+            { month: 'Apr 2025', count: 13 },
+            { month: 'May 2025', count: 12 },
+            { month: 'Jun 2025', count: 11 },
+          ],
+        },
+      })
+    }
+  }
+
   const onSubmit = async (data) => {
     try {
       const response = await apiClient.post('/payroll/payruns', data)
@@ -61,6 +119,7 @@ export default function Payroll() {
       setIsCreateOpen(false)
       reset()
       fetchPayruns()
+      fetchDashboardData()
     } catch (error) {
       console.error('Failed to create payrun:', error)
     }
@@ -81,71 +140,76 @@ export default function Payroll() {
       await apiClient.post(`/payroll/payruns/${payrunId}/process`)
       toast.success('Payrun processed successfully')
       fetchPayruns()
+      fetchDashboardData()
     } catch (error) {
       console.error('Failed to process payrun:', error)
     }
   }
 
+  const handleValidate = async (payrunId) => {
+    try {
+      await apiClient.post(`/payroll/payruns/${payrunId}/validate`)
+      toast.success('Payrun validated successfully')
+      fetchPayruns()
+      fetchDashboardData()
+    } catch (error) {
+      console.error('Failed to validate payrun:', error)
+    }
+  }
+
   const columns = [
-    {
-      header: 'Name',
-      accessor: 'name',
-    },
     {
       header: 'Pay Period',
       accessor: (row) =>
         `${formatDate(row.payPeriodStart)} - ${formatDate(row.payPeriodEnd)}`,
     },
     {
-      header: 'Pay Date',
-      accessor: 'payDate',
-      cell: (row) => formatDate(row.payDate),
+      header: 'Employee',
+      accessor: (row) => `${row.totalEmployees} Employee${row.totalEmployees !== 1 ? 's' : ''}`,
     },
     {
-      header: 'Employees',
-      accessor: 'totalEmployees',
+      header: 'Employer Cost',
+      accessor: 'employerCost',
+      cell: (row) => formatCurrency(row.employerCost || row.totalAmount * 0.2),
     },
     {
-      header: 'Total Amount',
-      accessor: 'totalAmount',
-      cell: (row) => formatCurrency(row.totalAmount),
+      header: 'Basic Wage',
+      accessor: 'basicWage',
+      cell: (row) => formatCurrency(row.basicWage || row.totalAmount * 0.6),
+    },
+    {
+      header: 'Gross Wage',
+      accessor: 'grossWage',
+      cell: (row) => formatCurrency(row.grossWage || row.totalAmount * 0.8),
+    },
+    {
+      header: 'Net Wage',
+      accessor: 'netWage',
+      cell: (row) => formatCurrency(row.netWage || row.totalAmount),
     },
     {
       header: 'Status',
       accessor: 'status',
       cell: (row) => (
-        <span
-          className={`rounded-full px-2 py-1 text-xs ${
-            row.status === 'completed'
-              ? 'bg-green-100 text-green-800'
-              : row.status === 'processing'
-              ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-gray-100 text-gray-800'
-          }`}
-        >
-          {row.status}
-        </span>
-      ),
-    },
-    {
-      header: 'Actions',
-      cell: (row) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handlePreview(row.id)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          {row.status === 'draft' && (
+        <div className="flex items-center gap-2">
+          {row.status === 'completed' ? (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => handleProcess(row.id)}
+              className="bg-green-100 text-green-800 border-green-300"
             >
-              <Play className="h-4 w-4" />
+              Done
             </Button>
+          ) : (
+            <span
+              className={`rounded-full px-2 py-1 text-xs ${
+                row.status === 'processing'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}
+            >
+              {row.status}
+            </span>
           )}
         </div>
       ),
@@ -157,113 +221,279 @@ export default function Payroll() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Payroll</h1>
-          <p className="text-muted-foreground">Manage payroll and payruns</p>
+          <p className="text-muted-foreground">
+            The Payroll menu is accessible only to users with Admin/Payroll Officer access rights
+          </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Payrun
+        {activeTab === 'payrun' && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => handleValidate(payruns[0]?.id)}>
+              Validate
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Payrun</DialogTitle>
-              <DialogDescription>
-                Create a new payrun for processing payroll
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Payrun Name</Label>
-                <Input
-                  id="name"
-                  {...register('name')}
-                  aria-invalid={errors.name ? 'true' : 'false'}
-                />
-                {errors.name && (
-                  <p className="text-sm text-destructive">
-                    {errors.name.message}
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="payPeriodStart">Pay Period Start</Label>
-                  <Input
-                    id="payPeriodStart"
-                    type="date"
-                    {...register('payPeriodStart')}
-                    aria-invalid={errors.payPeriodStart ? 'true' : 'false'}
-                  />
-                  {errors.payPeriodStart && (
-                    <p className="text-sm text-destructive">
-                      {errors.payPeriodStart.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payPeriodEnd">Pay Period End</Label>
-                  <Input
-                    id="payPeriodEnd"
-                    type="date"
-                    {...register('payPeriodEnd')}
-                    aria-invalid={errors.payPeriodEnd ? 'true' : 'false'}
-                  />
-                  {errors.payPeriodEnd && (
-                    <p className="text-sm text-destructive">
-                      {errors.payPeriodEnd.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="payDate">Pay Date</Label>
-                <Input
-                  id="payDate"
-                  type="date"
-                  {...register('payDate')}
-                  aria-invalid={errors.payDate ? 'true' : 'false'}
-                />
-                {errors.payDate && (
-                  <p className="text-sm text-destructive">
-                    {errors.payDate.message}
-                  </p>
-                )}
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsCreateOpen(false)}
-                >
-                  Cancel
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Payrun
                 </Button>
-                <Button type="submit">Create Payrun</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Payrun</DialogTitle>
+                  <DialogDescription>
+                    The Payroll Payrun allows you to generate payslips for all employees at once. When you click the Payrun button, all employee payslips are created automatically.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Payrun Name</Label>
+                    <Input
+                      id="name"
+                      {...register('name')}
+                      aria-invalid={errors.name ? 'true' : 'false'}
+                    />
+                    {errors.name && (
+                      <p className="text-sm text-destructive">
+                        {errors.name.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="payPeriodStart">Pay Period Start</Label>
+                      <Input
+                        id="payPeriodStart"
+                        type="date"
+                        {...register('payPeriodStart')}
+                        aria-invalid={errors.payPeriodStart ? 'true' : 'false'}
+                      />
+                      {errors.payPeriodStart && (
+                        <p className="text-sm text-destructive">
+                          {errors.payPeriodStart.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payPeriodEnd">Pay Period End</Label>
+                      <Input
+                        id="payPeriodEnd"
+                        type="date"
+                        {...register('payPeriodEnd')}
+                        aria-invalid={errors.payPeriodEnd ? 'true' : 'false'}
+                      />
+                      {errors.payPeriodEnd && (
+                        <p className="text-sm text-destructive">
+                          {errors.payPeriodEnd.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payDate">Pay Date</Label>
+                    <Input
+                      id="payDate"
+                      type="date"
+                      {...register('payDate')}
+                      aria-invalid={errors.payDate ? 'true' : 'false'}
+                    />
+                    {errors.payDate && (
+                      <p className="text-sm text-destructive">
+                        {errors.payDate.message}
+                      </p>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCreateOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">Create Payrun</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Payruns</CardTitle>
-          <CardDescription>
-            View and manage all payruns
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            data={payruns}
-            columns={columns}
-            searchable
-            searchPlaceholder="Search payruns..."
-            paginated
-            pageSize={10}
-          />
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="payrun">Payrun</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-4">
+          {/* Warning Cards */}
+          {dashboardData?.warnings && dashboardData.warnings.length > 0 && (
+            <Card className="border-yellow-200 bg-yellow-50">
+              <CardHeader>
+                <CardTitle className="flex items-center text-yellow-800">
+                  <AlertTriangle className="mr-2 h-5 w-5" />
+                  Warning
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {dashboardData.warnings.map((warning, index) => (
+                    <p key={index} className="text-sm text-yellow-800">
+                      {warning.count} Employee{warning.count !== 1 ? 's' : ''} without{' '}
+                      {warning.type === 'noBankAccount' ? 'Bank Acc' : 'Manager'}
+                    </p>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recent Payruns */}
+          {dashboardData?.recentPayruns && dashboardData.recentPayruns.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Payrun</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {dashboardData.recentPayruns.map((payrun) => (
+                    <div
+                      key={payrun.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{payrun.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          ({payrun.totalEmployees || 1} Payslip{payrun.totalEmployees !== 1 ? 's' : ''})
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs ${
+                          payrun.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {payrun.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Employee Cost Charts */}
+          {dashboardData?.employeeCost && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Employee Cost</CardTitle>
+                  <CardDescription>Annually</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dashboardData.employeeCost.annually}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => formatCurrency(value)} />
+                      <Legend />
+                      <Bar dataKey="cost" fill="#3b82f6" name="Cost" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Employee Cost</CardTitle>
+                  <CardDescription>Monthly</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dashboardData.employeeCost.monthly}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => formatCurrency(value)} />
+                      <Legend />
+                      <Bar dataKey="cost" fill="#3b82f6" name="Cost" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Employee Count Charts */}
+          {dashboardData?.employeeCount && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Employee Count</CardTitle>
+                  <CardDescription>Annually</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dashboardData.employeeCount.annually}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="count" fill="#3b82f6" name="Count" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Employee Count</CardTitle>
+                  <CardDescription>Monthly</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dashboardData.employeeCount.monthly}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="count" fill="#3b82f6" name="Count" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="payrun" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payruns</CardTitle>
+              <CardDescription>
+                The payslip of an individual employee is generated on the basis of attendance of that employee in a particular month.
+              </CardDescription>
+              <CardDescription className="mt-2">
+                Done status show once any payrun/payslip has been validated.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={payruns}
+                columns={columns}
+                searchable
+                searchPlaceholder="Search payruns..."
+                paginated
+                pageSize={10}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
@@ -325,4 +555,3 @@ export default function Payroll() {
     </div>
   )
 }
-

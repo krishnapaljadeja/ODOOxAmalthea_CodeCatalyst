@@ -6,13 +6,17 @@ import Layout from './components/Layout'
 
 // Pages
 import Login from './pages/Login'
+import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Employees from './pages/Employees'
 import Attendance from './pages/Attendance'
 import Leaves from './pages/Leaves'
 import Payroll from './pages/Payroll'
 import Payslips from './pages/Payslips'
+import PayslipDetail from './pages/PayslipDetail'
+import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import UserSettings from './pages/UserSettings'
 import Profile from './pages/Profile'
 import NotFound from './pages/NotFound'
 
@@ -30,6 +34,12 @@ function App() {
           }
         />
         <Route
+          path="/register"
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />
+          }
+        />
+        <Route
           path="/"
           element={
             <ProtectedRoute>
@@ -44,7 +54,10 @@ function App() {
           <Route path="leaves" element={<Leaves />} />
           <Route path="payroll" element={<Payroll />} />
           <Route path="payslips" element={<Payslips />} />
+          <Route path="payslips/:payslipId" element={<PayslipDetail />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="user-settings" element={<UserSettings />} />
           <Route path="profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Route>

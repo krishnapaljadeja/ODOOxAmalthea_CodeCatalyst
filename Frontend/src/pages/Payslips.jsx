@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog'
@@ -13,6 +14,7 @@ import { toast } from 'sonner'
  * Payslips page component
  */
 export default function Payslips() {
+  const navigate = useNavigate()
   const [payslips, setPayslips] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedPayslip, setSelectedPayslip] = useState(null)
@@ -33,14 +35,9 @@ export default function Payslips() {
     }
   }
 
-  const handleView = async (payslipId) => {
-    try {
-      const response = await apiClient.get(`/payslips/${payslipId}`)
-      setSelectedPayslip(response.data)
-      setIsViewerOpen(true)
-    } catch (error) {
-      console.error('Failed to fetch payslip:', error)
-    }
+  const handleView = (payslipId) => {
+    // Navigate to detailed payslip view
+    navigate(`/payslips/${payslipId}`)
   }
 
   const handleDownload = async (payslipId) => {

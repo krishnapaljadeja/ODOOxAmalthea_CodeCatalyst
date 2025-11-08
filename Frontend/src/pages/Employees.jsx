@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import DataTable from '../components/DataTable'
-import { Plus, Eye, Edit } from 'lucide-react'
+import { Plus, Eye, Edit, Upload, Download } from 'lucide-react'
 import apiClient from '../lib/api'
 import { formatDate, formatPhone } from '../lib/format'
 import { useForm } from 'react-hook-form'
@@ -34,6 +34,7 @@ export default function Employees() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
 
   const {
     register,
@@ -74,6 +75,45 @@ export default function Employees() {
   const handleViewEmployee = (employee) => {
     setSelectedEmployee(employee)
     setIsViewOpen(true)
+  }
+
+  const handleImport = async (file) => {
+    setIsImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await apiClient.post('/employees/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      toast.success(`Successfully imported ${response.data.count} employees`)
+      fetchEmployees()
+    } catch (error) {
+      console.error('Failed to import employees:', error)
+      toast.error('Failed to import employees. Please check the file format.')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      const response = await apiClient.get('/employees/export', {
+        responseType: 'blob',
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `employees-${new Date().toISOString().split('T')[0]}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      toast.success('Employees exported successfully')
+    } catch (error) {
+      console.error('Failed to export employees:', error)
+      toast.error('Failed to export employees')
+    }
   }
 
   const columns = [
@@ -133,13 +173,40 @@ export default function Employees() {
           <h1 className="text-3xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage your employees</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Employee
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={isImporting}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => document.getElementById('employee-import')?.click()}
+            disabled={isImporting}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {isImporting ? 'Importing...' : 'Import'}
+          </Button>
+          <input
+            id="employee-import"
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleImport(file)
+            }}
+          />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Employee
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Employee</DialogTitle>
