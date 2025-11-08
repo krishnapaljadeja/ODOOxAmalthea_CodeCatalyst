@@ -425,17 +425,41 @@ export default function Payroll() {
               <CardHeader>
                 <CardTitle className="flex items-center text-yellow-800">
                   <AlertTriangle className="mr-2 h-5 w-5" />
-                  Warning
+                  Warnings
                 </CardTitle>
+                <CardDescription className="text-yellow-700">
+                  Please review and update missing employee information
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {dashboardData.warnings.map((warning, index) => (
-                    <p key={index} className="text-sm text-yellow-800">
-                      {warning.count} Employee{warning.count !== 1 ? 's' : ''} without{' '}
-                      {warning.type === 'noBankAccount' ? 'Bank Acc' : 'Manager'}
-                    </p>
-                  ))}
+                  {dashboardData.warnings.map((warning, index) => {
+                    const getWarningLabel = (type) => {
+                      switch (type) {
+                        case 'noBankAccount':
+                          return 'Bank Account'
+                        case 'noPhone':
+                          return 'Phone Number'
+                        case 'noPAN':
+                          return 'PAN Number'
+                        case 'noUAN':
+                          return 'UAN Number'
+                        case 'noAddress':
+                          return 'Address'
+                        default:
+                          return 'Information'
+                      }
+                    }
+                    
+                    return (
+                      <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-yellow-100">
+                        <AlertTriangle className="h-4 w-4 text-yellow-700 flex-shrink-0" />
+                        <p className="text-sm text-yellow-800">
+                          <span className="font-semibold">{warning.count}</span> Employee{warning.count !== 1 ? 's' : ''} without <span className="font-medium">{getWarningLabel(warning.type)}</span>
+                        </p>
+                      </div>
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>

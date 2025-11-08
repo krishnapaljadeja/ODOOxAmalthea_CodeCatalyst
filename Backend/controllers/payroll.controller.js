@@ -38,6 +38,7 @@ export const getPayrollDashboard = async (req, res, next) => {
 
     const warnings = []
 
+    // Check for employees without bank account
     const employeesWithoutBank = await prisma.employee.count({
       where: {
         status: 'active',
@@ -56,6 +57,86 @@ export const getPayrollDashboard = async (req, res, next) => {
         type: 'noBankAccount',
         count: employeesWithoutBank,
         message: `${employeesWithoutBank} employee(s) without bank account details`,
+      })
+    }
+
+    // Check for employees without phone number
+    const employeesWithoutPhone = await prisma.employee.count({
+      where: {
+        status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
+        OR: [
+          { phone: null },
+          { phone: '' },
+        ],
+      },
+    })
+
+    if (employeesWithoutPhone > 0) {
+      warnings.push({
+        type: 'noPhone',
+        count: employeesWithoutPhone,
+        message: `${employeesWithoutPhone} employee(s) without phone number`,
+      })
+    }
+
+    // Check for employees without PAN number
+    const employeesWithoutPAN = await prisma.employee.count({
+      where: {
+        status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
+        OR: [
+          { panNo: null },
+          { panNo: '' },
+        ],
+      },
+    })
+
+    if (employeesWithoutPAN > 0) {
+      warnings.push({
+        type: 'noPAN',
+        count: employeesWithoutPAN,
+        message: `${employeesWithoutPAN} employee(s) without PAN number`,
+      })
+    }
+
+    // Check for employees without UAN number
+    const employeesWithoutUAN = await prisma.employee.count({
+      where: {
+        status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
+        OR: [
+          { uanNo: null },
+          { uanNo: '' },
+        ],
+      },
+    })
+
+    if (employeesWithoutUAN > 0) {
+      warnings.push({
+        type: 'noUAN',
+        count: employeesWithoutUAN,
+        message: `${employeesWithoutUAN} employee(s) without UAN number`,
+      })
+    }
+
+    // Check for employees without address
+    const employeesWithoutAddress = await prisma.employee.count({
+      where: {
+        status: 'active',
+        ...(user.companyId ? { companyId: user.companyId } : {}),
+        OR: [
+          { address: null },
+          { address: '' },
+        ],
+      },
+    })
+
+    if (employeesWithoutAddress > 0) {
+      warnings.push({
+        type: 'noAddress',
+        count: employeesWithoutAddress,
+        message: `${employeesWithoutAddress} employee(s) without address`,
       })
     }
 
