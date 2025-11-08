@@ -2,10 +2,6 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-/**
- * Create or update salary structure for an employee
- * Closes current active structure and creates a new one
- */
 export const upsertSalaryStructure = async (req, res, next) => {
   try {
     const { employeeId } = req.params
@@ -41,7 +37,6 @@ export const upsertSalaryStructure = async (req, res, next) => {
       otherDeductions,
     } = req.body
 
-    // Verify employee exists
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
     })
@@ -54,7 +49,6 @@ export const upsertSalaryStructure = async (req, res, next) => {
       })
     }
 
-    // Find and close current active structure
     const activeStructure = await prisma.salaryStructure.findFirst({
       where: {
         employeeId,
@@ -65,7 +59,6 @@ export const upsertSalaryStructure = async (req, res, next) => {
     const currentDate = new Date()
     const effectiveFromDate = effectiveFrom ? new Date(effectiveFrom) : currentDate
 
-    // Close active structure if exists
     if (activeStructure) {
       await prisma.salaryStructure.update({
         where: { id: activeStructure.id },
@@ -73,7 +66,6 @@ export const upsertSalaryStructure = async (req, res, next) => {
       })
     }
 
-    // Calculate totals
     const basic = basicSalary || 0
     const hra = houseRentAllowance || 0
     const standard = standardAllowance || 0
@@ -94,14 +86,13 @@ export const upsertSalaryStructure = async (req, res, next) => {
     const totalDeductions = pfEmp + profTax + tdsAmount + other
     const netSalary = grossSalary - totalDeductions
 
-    // Create new salary structure
     const structure = await prisma.salaryStructure.create({
       data: {
         employeeId,
         name: name || (activeStructure ? 'Revised Structure' : 'Default Structure'),
         description: description || null,
         effectiveFrom: effectiveFromDate,
-        effectiveTo: null, // Active structure
+        effectiveTo: null,
         // General work info
         monthWage: monthWage !== undefined ? monthWage : null,
         yearlyWage: yearlyWage !== undefined ? yearlyWage : null,
@@ -165,9 +156,6 @@ export const upsertSalaryStructure = async (req, res, next) => {
   }
 }
 
-/**
- * Get active salary structure for an employee
- */
 export const getActiveSalaryStructure = async (req, res, next) => {
   try {
     const { employeeId } = req.params
@@ -209,9 +197,6 @@ export const getActiveSalaryStructure = async (req, res, next) => {
   }
 }
 
-/**
- * Get salary history for an employee
- */
 export const getSalaryHistory = async (req, res, next) => {
   try {
     const { employeeId } = req.params

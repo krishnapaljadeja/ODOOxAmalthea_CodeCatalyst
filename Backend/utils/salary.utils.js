@@ -2,10 +2,6 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-/**
- * Get active salary structure for an employee
- * Returns the salary structure or null if not found
- */
 export const getActiveSalaryStructure = async (employeeId, asOfDate = new Date()) => {
   return await prisma.salaryStructure.findFirst({
     where: {
@@ -22,10 +18,6 @@ export const getActiveSalaryStructure = async (employeeId, asOfDate = new Date()
   })
 }
 
-/**
- * Get salary structure data with fallback to defaults
- * Returns salary data from active structure or calculated defaults
- */
 export const getSalaryData = async (employeeId, employeeSalary = 0) => {
   const salaryStructure = await getActiveSalaryStructure(employeeId)
   
@@ -60,7 +52,6 @@ export const getSalaryData = async (employeeId, employeeSalary = 0) => {
     }
   }
   
-  // Fallback to calculated defaults
   const monthWage = employeeSalary || 0
   const basicSalary = monthWage * 0.5
   const hra = basicSalary * 0.5

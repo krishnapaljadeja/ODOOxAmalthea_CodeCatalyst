@@ -10,9 +10,6 @@ import { formatDate, formatCurrency } from '../lib/format'
 import PayslipViewer from '../components/PayslipViewer'
 import { toast } from 'sonner'
 
-/**
- * Payslips page component
- */
 export default function Payslips() {
   const navigate = useNavigate()
   const [payslips, setPayslips] = useState([])

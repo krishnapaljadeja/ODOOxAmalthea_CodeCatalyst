@@ -4,10 +4,7 @@ import apiClient from '../lib/api'
 import { setTokens, clearTokens } from '../lib/auth'
 import { toast } from 'sonner'
 
-/**
- * Auth store using Zustand
- * Manages authentication state and user data
- */
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -15,12 +12,6 @@ const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
 
-      /**
-       * Login user
-       * @param {string} email - User email
-       * @param {string} password - User password
-       * @returns {Promise<boolean>} Success status
-       */
       login: async (email, password) => {
         set({ isLoading: true })
         try {
@@ -49,9 +40,6 @@ const useAuthStore = create(
         }
       },
 
-      /**
-       * Logout user
-       */
       logout: async () => {
         try {
           await apiClient.post('/auth/logout')
@@ -67,10 +55,6 @@ const useAuthStore = create(
         }
       },
 
-      /**
-       * Get current user
-       * @returns {Promise<void>}
-       */
       fetchUser: async () => {
         set({ isLoading: true })
         try {
@@ -90,10 +74,6 @@ const useAuthStore = create(
         }
       },
 
-      /**
-       * Update user data
-       * @param {Object} userData - User data to update
-       */
       updateUser: (userData) => {
         set((state) => ({
           user: { ...state.user, ...userData },

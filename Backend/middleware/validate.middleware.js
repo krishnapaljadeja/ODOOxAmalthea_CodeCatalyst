@@ -1,7 +1,4 @@
-/**
- * Validation middleware factory
- * @param {z.ZodSchema} schema - Zod schema to validate against
- */
+
 export const validate = (schema) => {
   return (req, res, next) => {
     try {

@@ -3,18 +3,13 @@ import { generatePayslipPDF } from '../utils/payslip.utils.js'
 
 const prisma = new PrismaClient()
 
-/**
- * Get payslips
- */
 export const getPayslips = async (req, res, next) => {
   try {
     const { payrunId, employeeId } = req.query
     const user = req.user
 
-    // Build where clause
     const where = {}
 
-    // Role-based filtering
     if (user.role === 'employee') {
       const employee = await prisma.employee.findUnique({
         where: { userId: user.id },
@@ -30,9 +25,7 @@ export const getPayslips = async (req, res, next) => {
     } else if (employeeId) {
       where.employeeId = employeeId
     }
-    // Admin and HR can see all
 
-    // If payrunId is provided, filter by payrolls in that payrun
     if (payrunId) {
       const payrolls = await prisma.payroll.findMany({
         where: { payrunId },
@@ -75,7 +68,6 @@ export const getPayslips = async (req, res, next) => {
       },
     })
 
-    // Format response
     const formattedPayslips = payslips.map((payslip) => ({
       id: payslip.id,
       employeeId: payslip.employeeId,
@@ -107,9 +99,6 @@ export const getPayslips = async (req, res, next) => {
   }
 }
 
-/**
- * Get single payslip with worked days and salary computation
- */
 export const getPayslip = async (req, res, next) => {
   try {
     const { payslipId } = req.params
@@ -152,7 +141,6 @@ export const getPayslip = async (req, res, next) => {
       })
     }
 
-    // Check access
     if (user.role === 'employee') {
       const employee = await prisma.employee.findUnique({
         where: { userId: user.id },
@@ -166,14 +154,12 @@ export const getPayslip = async (req, res, next) => {
       }
     }
 
-    // Get worked days (attendance) for the pay period
     const payrun = payslip.payroll.payrun
     let workedDays = []
     let totalWorkedDays = 0
     let totalPaidLeaves = 0
 
     if (payrun) {
-      // Get attendance records
       const attendances = await prisma.attendance.findMany({
         where: {
           employeeId: payslip.employeeId,
@@ -187,18 +173,16 @@ export const getPayslip = async (req, res, next) => {
         },
       })
 
-      // Get approved paid leaves
       const paidLeaves = await prisma.leave.findMany({
         where: {
           employeeId: payslip.employeeId,
-          type: { in: ['sick', 'vacation', 'personal'] }, // Paid leave types
+          type: { in: ['sick', 'vacation', 'personal'] },
           status: 'approved',
           startDate: { lte: payrun.payPeriodEnd },
           endDate: { gte: payrun.payPeriodStart },
         },
       })
 
-      // Calculate worked days
       const presentDays = attendances.filter((a) => a.status === 'present').length
       totalWorkedDays = presentDays
       totalPaidLeaves = paidLeaves.reduce((sum, leave) => {
@@ -213,18 +197,17 @@ export const getPayslip = async (req, res, next) => {
           type: 'Attendance',
           days: totalWorkedDays,
           description: 'Working days in period',
-          amount: 0, // Will be calculated based on salary structure
+          amount: 0,
         },
         {
           type: 'Paid Time Off',
           days: totalPaidLeaves,
           description: 'Paid leaves in period',
-          amount: 0, // Will be calculated based on salary structure
+          amount: 0,
         },
       ]
     }
 
-    // Get active salary structure for the pay period
     let salaryStructure = null
     let salaryComputation = null
 
@@ -244,17 +227,14 @@ export const getPayslip = async (req, res, next) => {
       })
 
       if (salaryStructure) {
-        // Calculate daily rate
         const totalDaysInMonth = Math.ceil(
           (payrun.payPeriodEnd - payrun.payPeriodStart) / (1000 * 60 * 60 * 24)
         ) + 1
         const dailyRate = salaryStructure.grossSalary / totalDaysInMonth
 
-        // Update worked days amounts
         workedDays[0].amount = dailyRate * totalWorkedDays
         workedDays[1].amount = dailyRate * totalPaidLeaves
 
-        // Build salary computation breakdown
         const grossEarnings = [
           {
             ruleName: 'Basic Salary',
@@ -283,7 +263,6 @@ export const getPayslip = async (req, res, next) => {
           },
         ]
 
-        // Add fixed allowance if any (can be calculated from other fields)
         const fixedAllowance = salaryStructure.grossSalary - grossEarnings.reduce((sum, item) => sum + item.amount, 0)
         if (fixedAllowance > 0) {
           grossEarnings.push({
@@ -399,7 +378,6 @@ export const getPayslipByPayrollId = async (req, res, next) => {
     const { payrollId } = req.params
     const user = req.user
 
-    // Get payroll
     const payroll = await prisma.payroll.findUnique({
       where: { id: payrollId },
       include: {
@@ -434,7 +412,6 @@ export const getPayslipByPayrollId = async (req, res, next) => {
       })
     }
 
-    // Check access
     if (user.role === 'employee') {
       const employee = await prisma.employee.findUnique({
         where: { userId: user.id },
@@ -448,15 +425,11 @@ export const getPayslipByPayrollId = async (req, res, next) => {
       }
     }
 
-    // If payslip exists, return it using the getPayslip logic
     if (payroll.payslip) {
-      // Redirect to getPayslip endpoint logic
       req.params.payslipId = payroll.payslip.id
       return getPayslip(req, res, next)
     }
 
-    // If no payslip exists, return payroll data (for preview/computation)
-    // Get worked days and salary computation similar to getPayslip
     let workedDays = []
     let totalWorkedDays = 0
     let totalPaidLeaves = 0
@@ -506,7 +479,6 @@ export const getPayslipByPayrollId = async (req, res, next) => {
       ]
     }
 
-    // Get salary structure
     let salaryStructure = null
     let salaryComputation = null
 
@@ -574,7 +546,7 @@ export const getPayslipByPayrollId = async (req, res, next) => {
     res.json({
       status: 'success',
       data: {
-        id: null, // No payslip yet
+        id: null,
         payrollId: payroll.id,
         employee: {
           id: payroll.employee.id,
@@ -621,9 +593,6 @@ export const getPayslipByPayrollId = async (req, res, next) => {
   }
 }
 
-/**
- * Generate payslips for all validated payrolls in a payrun
- */
 export const generatePayslipsForPayrun = async (req, res, next) => {
   try {
     const { payrunId } = req.params
@@ -648,7 +617,6 @@ export const generatePayslipsForPayrun = async (req, res, next) => {
       })
     }
 
-    // Get all validated payrolls for this payrun
     const validatedPayrolls = await prisma.payroll.findMany({
       where: {
         payrunId,
@@ -677,7 +645,6 @@ export const generatePayslipsForPayrun = async (req, res, next) => {
       })
     }
 
-    // Check which payrolls already have payslips
     const existingPayslips = await prisma.payslip.findMany({
       where: {
         payrollId: {
@@ -692,7 +659,6 @@ export const generatePayslipsForPayrun = async (req, res, next) => {
       (p) => !existingPayrollIds.has(p.id)
     )
 
-    // Generate payslips
     const createdPayslips = []
 
     for (const payroll of payrollsToProcess) {
@@ -722,9 +688,6 @@ export const generatePayslipsForPayrun = async (req, res, next) => {
   }
 }
 
-/**
- * Download payslip PDF
- */
 export const downloadPayslip = async (req, res, next) => {
   try {
     const { payslipId } = req.params
@@ -759,7 +722,6 @@ export const downloadPayslip = async (req, res, next) => {
       })
     }
 
-    // Check access
     if (user.role === 'employee') {
       const employee = await prisma.employee.findUnique({
         where: { userId: user.id },
@@ -773,16 +735,13 @@ export const downloadPayslip = async (req, res, next) => {
       }
     }
 
-    // Generate PDF (you may need to update generatePayslipPDF to work with new structure)
-    // For now, we'll create a simple response
-    // TODO: Update generatePayslipPDF utility to work with Payroll-based structure
+    
     try {
       const pdfBuffer = await generatePayslipPDF(payslip, payslip.employee, payslip.payroll)
       res.setHeader('Content-Type', 'application/pdf')
       res.setHeader('Content-Disposition', `attachment; filename=payslip-${payslipId}.pdf`)
       res.send(pdfBuffer)
     } catch (pdfError) {
-      // If PDF generation fails, return payslip data as JSON
       res.json({
         status: 'success',
         message: 'PDF generation not available, returning payslip data',

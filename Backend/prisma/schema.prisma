@@ -252,30 +252,30 @@ model SalaryStructure {
   effectiveTo   DateTime?
 
   // General work info
-  monthWage          Float?  // Monthly wage
-  yearlyWage         Float?  // Yearly wage
-  workingDaysPerWeek Int?    // No of working days in a week
-  breakTime          Float?  // Break time in hours
+  monthWage          Float?  
+  yearlyWage         Float? 
+  workingDaysPerWeek Int?    
+  breakTime          Float? 
 
   // earnings
   basicSalary        Float @default(0)
-  basicSalaryPercent Float? // Percentage of monthly wage
+  basicSalaryPercent Float? 
   houseRentAllowance Float @default(0)
-  hraPercent         Float? // Percentage of basic salary
+  hraPercent         Float? 
   standardAllowance  Float @default(0)
-  standardAllowancePercent Float? // Percentage of monthly wage
+  standardAllowancePercent Float? 
   performanceBonus   Float @default(0)
-  performanceBonusPercent Float? // Percentage of basic salary
+  performanceBonusPercent Float? 
   travelAllowance    Float @default(0)
-  ltaPercent         Float? // Percentage of basic salary
+  ltaPercent         Float? 
   fixedAllowance     Float @default(0)
-  fixedAllowancePercent Float? // Percentage of monthly wage
+  fixedAllowancePercent Float? 
 
   // deductions
   pfEmployee      Float @default(0)
-  pfEmployeePercent Float? // Percentage of basic salary
+  pfEmployeePercent Float? 
   pfEmployer      Float @default(0)
-  pfEmployerPercent Float? // Percentage of basic salary
+  pfEmployerPercent Float? 
   professionalTax Float @default(0)
   tds             Float @default(0)
   otherDeductions Float @default(0)

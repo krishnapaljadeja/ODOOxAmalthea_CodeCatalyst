@@ -1,10 +1,6 @@
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 
-/**
- * Create email transporter
- * Configure this based on your email service (Gmail, SendGrid, etc.)
- */
 const createTransporter = () => {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -17,9 +13,6 @@ const createTransporter = () => {
   });
 };
 
-/**
- * Generate a random password
- */
 export const generateRandomPassword = (length = 12) => {
   const charset =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -30,16 +23,10 @@ export const generateRandomPassword = (length = 12) => {
   return password;
 };
 
-/**
- * Generate password reset token
- */
 export const generatePasswordResetToken = () => {
   return crypto.randomBytes(32).toString("hex");
 };
 
-/**
- * Send account creation email with credentials
- */
 export const sendAccountCreationEmail = async (
   email,
   loginId,
@@ -135,9 +122,6 @@ export const sendAccountCreationEmail = async (
   }
 };
 
-/**
- * Send password reset email
- */
 export const sendPasswordResetEmail = async (email, firstName, resetToken) => {
   try {
     const transporter = createTransporter();
