@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -22,6 +23,8 @@ export default function ProfileSalaryInfoTab({
   employeeData,
   fetchSalaryInfo,
 }) {
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleSaveSalary = async () => {
     if (!salaryInfo || !isAdminOrPayroll) return;
 
@@ -36,9 +39,11 @@ export default function ProfileSalaryInfoTab({
         (salaryInfo.fixedAllowance || 0);
 
       const netSalary =
-        grossSalary -
-        (salaryInfo.pfEmployee || 0) -
-        (salaryInfo.professionalTax || 0);
+        grossSalary <= 0
+          ? 0
+          : grossSalary -
+            (salaryInfo.pfEmployee || 0) -
+            (salaryInfo.professionalTax || 0);
 
       const updatedSalaryInfo = {
         ...salaryInfo,
@@ -128,31 +133,27 @@ export default function ProfileSalaryInfoTab({
                       step="0.01"
                       value={salaryInfo.monthWage || ""}
                       onChange={(e) => {
-                        const value = Math.max(0, parseFloat(e.target.value) || 0);
+                        const value = Math.max(
+                          0,
+                          parseFloat(e.target.value) || 0
+                        );
                         const yearlyWage = value * 12;
 
                         // Auto-calculate all components based on new wage
                         const basicSalary =
-                          (value *
-                            (salaryInfo.basicSalaryPercent || 50)) /
-                          100;
+                          (value * (salaryInfo.basicSalaryPercent || 50)) / 100;
                         const hra =
-                          (basicSalary * (salaryInfo.hraPercent || 50)) /
-                          100;
+                          (basicSalary * (salaryInfo.hraPercent || 50)) / 100;
                         const standardAllowance =
                           (value *
-                            (salaryInfo.standardAllowancePercent ||
-                              16.67)) /
+                            (salaryInfo.standardAllowancePercent || 16.67)) /
                           100;
                         const performanceBonus =
                           (basicSalary *
-                            (salaryInfo.performanceBonusPercent ||
-                              8.33)) /
+                            (salaryInfo.performanceBonusPercent || 8.33)) /
                           100;
                         const travelAllowance =
-                          (basicSalary *
-                            (salaryInfo.ltaPercent || 8.33)) /
-                          100;
+                          (basicSalary * (salaryInfo.ltaPercent || 8.33)) / 100;
 
                         // Calculate fixed allowance as remaining amount
                         const otherComponents =
@@ -170,8 +171,7 @@ export default function ProfileSalaryInfoTab({
 
                         // Recalculate PF based on new basic salary
                         const pfEmployee =
-                          (basicSalary *
-                            (salaryInfo.pfEmployeePercent || 12)) /
+                          (basicSalary * (salaryInfo.pfEmployeePercent || 12)) /
                           100;
 
                         setSalaryInfo({
@@ -205,32 +205,27 @@ export default function ProfileSalaryInfoTab({
                       step="0.01"
                       value={salaryInfo.yearlyWage || ""}
                       onChange={(e) => {
-                        const yearlyValue =
-                          Math.max(0, parseFloat(e.target.value) || 0);
+                        const yearlyValue = Math.max(
+                          0,
+                          parseFloat(e.target.value) || 0
+                        );
                         const value = yearlyValue / 12;
 
                         // Auto-calculate all components based on new wage
                         const basicSalary =
-                          (value *
-                            (salaryInfo.basicSalaryPercent || 50)) /
-                          100;
+                          (value * (salaryInfo.basicSalaryPercent || 50)) / 100;
                         const hra =
-                          (basicSalary * (salaryInfo.hraPercent || 50)) /
-                          100;
+                          (basicSalary * (salaryInfo.hraPercent || 50)) / 100;
                         const standardAllowance =
                           (value *
-                            (salaryInfo.standardAllowancePercent ||
-                              16.67)) /
+                            (salaryInfo.standardAllowancePercent || 16.67)) /
                           100;
                         const performanceBonus =
                           (basicSalary *
-                            (salaryInfo.performanceBonusPercent ||
-                              8.33)) /
+                            (salaryInfo.performanceBonusPercent || 8.33)) /
                           100;
                         const travelAllowance =
-                          (basicSalary *
-                            (salaryInfo.ltaPercent || 8.33)) /
-                          100;
+                          (basicSalary * (salaryInfo.ltaPercent || 8.33)) / 100;
 
                         // Calculate fixed allowance as remaining amount
                         const otherComponents =
@@ -248,8 +243,7 @@ export default function ProfileSalaryInfoTab({
 
                         // Recalculate PF based on new basic salary
                         const pfEmployee =
-                          (basicSalary *
-                            (salaryInfo.pfEmployeePercent || 12)) /
+                          (basicSalary * (salaryInfo.pfEmployeePercent || 12)) /
                           100;
 
                         setSalaryInfo({
@@ -270,8 +264,7 @@ export default function ProfileSalaryInfoTab({
                     />
                   ) : (
                     <p className="text-lg font-semibold">
-                      {formatCurrency(salaryInfo.yearlyWage || 0)} /
-                      Yearly
+                      {formatCurrency(salaryInfo.yearlyWage || 0)} / Yearly
                     </p>
                   )}
                 </div>
@@ -284,8 +277,7 @@ export default function ProfileSalaryInfoTab({
                       onChange={(e) => {
                         setSalaryInfo({
                           ...salaryInfo,
-                          workingDaysPerWeek:
-                            parseInt(e.target.value) || null,
+                          workingDaysPerWeek: parseInt(e.target.value) || null,
                         });
                       }}
                       placeholder="Working days per week"
@@ -342,7 +334,10 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.basicSalary || ""}
                         onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          const value = Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          );
                           const monthWage = salaryInfo.monthWage || 0;
                           const percent =
                             monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -352,21 +347,17 @@ export default function ProfileSalaryInfoTab({
                             (value * (salaryInfo.hraPercent || 50)) / 100;
                           const performanceBonus =
                             (value *
-                              (salaryInfo.performanceBonusPercent ||
-                                8.33)) /
+                              (salaryInfo.performanceBonusPercent || 8.33)) /
                             100;
                           const travelAllowance =
-                            (value * (salaryInfo.ltaPercent || 8.33)) /
-                            100;
+                            (value * (salaryInfo.ltaPercent || 8.33)) / 100;
 
                           // Recalculate PF based on new basic salary
                           const pfEmployee =
-                            (value *
-                              (salaryInfo.pfEmployeePercent || 12)) /
+                            (value * (salaryInfo.pfEmployeePercent || 12)) /
                             100;
                           const pfEmployer =
-                            (value *
-                              (salaryInfo.pfEmployerPercent || 12)) /
+                            (value * (salaryInfo.pfEmployerPercent || 12)) /
                             100;
 
                           // Recalculate fixed allowance
@@ -409,35 +400,31 @@ export default function ProfileSalaryInfoTab({
                         min="0"
                         max="100"
                         step="0.01"
-                        value={
-                          salaryInfo.basicSalaryPercent?.toFixed(2) || ""
-                        }
+                        value={salaryInfo.basicSalaryPercent?.toFixed(2) || ""}
                         onChange={(e) => {
-                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                          const percent = Math.max(
+                            0,
+                            Math.min(100, parseFloat(e.target.value) || 0)
+                          );
                           const monthWage = salaryInfo.monthWage || 0;
                           const amount = (monthWage * percent) / 100;
 
                           // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
                           const hra =
-                            (amount * (salaryInfo.hraPercent || 50)) /
-                            100;
+                            (amount * (salaryInfo.hraPercent || 50)) / 100;
                           const performanceBonus =
                             (amount *
-                              (salaryInfo.performanceBonusPercent ||
-                                8.33)) /
+                              (salaryInfo.performanceBonusPercent || 8.33)) /
                             100;
                           const travelAllowance =
-                            (amount * (salaryInfo.ltaPercent || 8.33)) /
-                            100;
+                            (amount * (salaryInfo.ltaPercent || 8.33)) / 100;
 
                           // Recalculate PF based on new basic salary
                           const pfEmployee =
-                            (amount *
-                              (salaryInfo.pfEmployeePercent || 12)) /
+                            (amount * (salaryInfo.pfEmployeePercent || 12)) /
                             100;
                           const pfEmployer =
-                            (amount *
-                              (salaryInfo.pfEmployerPercent || 12)) /
+                            (amount * (salaryInfo.pfEmployerPercent || 12)) /
                             100;
 
                           // Recalculate fixed allowance
@@ -472,21 +459,16 @@ export default function ProfileSalaryInfoTab({
                         className="w-24"
                         placeholder="%"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        %
-                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
                     </div>
                   )}
                   {(!isEditingSalary || !isAdminOrPayroll) && (
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-semibold">
-                        {formatCurrency(salaryInfo.basicSalary || 0)}{" "}
-                        ₹/month
+                        {formatCurrency(salaryInfo.basicSalary || 0)} ₹/month
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {salaryInfo.basicSalaryPercent?.toFixed(2) ||
-                          "0.00"}{" "}
-                        %
+                        {salaryInfo.basicSalaryPercent?.toFixed(2) || "0.00"} %
                       </span>
                     </div>
                   )}
@@ -505,12 +487,13 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.houseRentAllowance || ""}
                         onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          const value = Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
-                            basicSalary > 0
-                              ? (value / basicSalary) * 100
-                              : 0;
+                            basicSalary > 0 ? (value / basicSalary) * 100 : 0;
                           setSalaryInfo({
                             ...salaryInfo,
                             houseRentAllowance: value,
@@ -530,7 +513,10 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.hraPercent?.toFixed(2) || ""}
                         onChange={(e) => {
-                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                          const percent = Math.max(
+                            0,
+                            Math.min(100, parseFloat(e.target.value) || 0)
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -542,17 +528,13 @@ export default function ProfileSalaryInfoTab({
                         className="w-24"
                         placeholder="%"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        %
-                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
                     </div>
                   )}
                   {(!isEditingSalary || !isAdminOrPayroll) && (
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-semibold">
-                        {formatCurrency(
-                          salaryInfo.houseRentAllowance || 0
-                        )}{" "}
+                        {formatCurrency(salaryInfo.houseRentAllowance || 0)}{" "}
                         ₹/month
                       </span>
                       <span className="text-sm text-muted-foreground">
@@ -575,7 +557,10 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.standardAllowance || ""}
                         onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          const value = Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          );
                           const monthWage = salaryInfo.monthWage || 0;
                           const percent =
                             monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -597,12 +582,13 @@ export default function ProfileSalaryInfoTab({
                         max="100"
                         step="0.01"
                         value={
-                          salaryInfo.standardAllowancePercent?.toFixed(
-                            2
-                          ) || ""
+                          salaryInfo.standardAllowancePercent?.toFixed(2) || ""
                         }
                         onChange={(e) => {
-                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                          const percent = Math.max(
+                            0,
+                            Math.min(100, parseFloat(e.target.value) || 0)
+                          );
                           const monthWage = salaryInfo.monthWage || 0;
                           const amount = (monthWage * percent) / 100;
                           setSalaryInfo({
@@ -614,23 +600,18 @@ export default function ProfileSalaryInfoTab({
                         className="w-24"
                         placeholder="%"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        %
-                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
                     </div>
                   )}
                   {(!isEditingSalary || !isAdminOrPayroll) && (
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-semibold">
-                        {formatCurrency(
-                          salaryInfo.standardAllowance || 0
-                        )}{" "}
+                        {formatCurrency(salaryInfo.standardAllowance || 0)}{" "}
                         ₹/month
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {salaryInfo.standardAllowancePercent?.toFixed(
-                          2
-                        ) || "0.00"}{" "}
+                        {salaryInfo.standardAllowancePercent?.toFixed(2) ||
+                          "0.00"}{" "}
                         %
                       </span>
                     </div>
@@ -650,12 +631,13 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.performanceBonus || ""}
                         onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          const value = Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
-                            basicSalary > 0
-                              ? (value / basicSalary) * 100
-                              : 0;
+                            basicSalary > 0 ? (value / basicSalary) * 100 : 0;
                           setSalaryInfo({
                             ...salaryInfo,
                             performanceBonus: value,
@@ -674,12 +656,13 @@ export default function ProfileSalaryInfoTab({
                         max="100"
                         step="0.01"
                         value={
-                          salaryInfo.performanceBonusPercent?.toFixed(
-                            2
-                          ) || ""
+                          salaryInfo.performanceBonusPercent?.toFixed(2) || ""
                         }
                         onChange={(e) => {
-                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                          const percent = Math.max(
+                            0,
+                            Math.min(100, parseFloat(e.target.value) || 0)
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -691,9 +674,7 @@ export default function ProfileSalaryInfoTab({
                         className="w-24"
                         placeholder="%"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        %
-                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
                     </div>
                   )}
                   {(!isEditingSalary || !isAdminOrPayroll) && (
@@ -724,12 +705,13 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.travelAllowance || ""}
                         onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          const value = Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
-                            basicSalary > 0
-                              ? (value / basicSalary) * 100
-                              : 0;
+                            basicSalary > 0 ? (value / basicSalary) * 100 : 0;
                           setSalaryInfo({
                             ...salaryInfo,
                             travelAllowance: value,
@@ -749,7 +731,10 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.ltaPercent?.toFixed(2) || ""}
                         onChange={(e) => {
-                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                          const percent = Math.max(
+                            0,
+                            Math.min(100, parseFloat(e.target.value) || 0)
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -761,9 +746,7 @@ export default function ProfileSalaryInfoTab({
                         className="w-24"
                         placeholder="%"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        %
-                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
                     </div>
                   )}
                   {(!isEditingSalary || !isAdminOrPayroll) && (
@@ -792,7 +775,10 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.fixedAllowance || ""}
                         onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          const value = Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          );
                           const monthWage = salaryInfo.monthWage || 0;
                           const percent =
                             monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -814,11 +800,13 @@ export default function ProfileSalaryInfoTab({
                         max="100"
                         step="0.01"
                         value={
-                          salaryInfo.fixedAllowancePercent?.toFixed(2) ||
-                          ""
+                          salaryInfo.fixedAllowancePercent?.toFixed(2) || ""
                         }
                         onChange={(e) => {
-                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                          const percent = Math.max(
+                            0,
+                            Math.min(100, parseFloat(e.target.value) || 0)
+                          );
                           const monthWage = salaryInfo.monthWage || 0;
                           const amount = (monthWage * percent) / 100;
                           setSalaryInfo({
@@ -830,20 +818,16 @@ export default function ProfileSalaryInfoTab({
                         className="w-24"
                         placeholder="%"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        %
-                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
                     </div>
                   )}
                   {(!isEditingSalary || !isAdminOrPayroll) && (
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-semibold">
-                        {formatCurrency(salaryInfo.fixedAllowance || 0)}{" "}
-                        ₹/month
+                        {formatCurrency(salaryInfo.fixedAllowance || 0)} ₹/month
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {salaryInfo.fixedAllowancePercent?.toFixed(2) ||
-                          "0.00"}{" "}
+                        {salaryInfo.fixedAllowancePercent?.toFixed(2) || "0.00"}{" "}
                         %
                       </span>
                     </div>
@@ -882,12 +866,13 @@ export default function ProfileSalaryInfoTab({
                         step="0.01"
                         value={salaryInfo.pfEmployee || ""}
                         onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          const value = Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
-                            basicSalary > 0
-                              ? (value / basicSalary) * 100
-                              : 0;
+                            basicSalary > 0 ? (value / basicSalary) * 100 : 0;
                           setSalaryInfo({
                             ...salaryInfo,
                             pfEmployee: value,
@@ -905,11 +890,12 @@ export default function ProfileSalaryInfoTab({
                         min="0"
                         max="100"
                         step="0.01"
-                        value={
-                          salaryInfo.pfEmployeePercent?.toFixed(2) || ""
-                        }
+                        value={salaryInfo.pfEmployeePercent?.toFixed(2) || ""}
                         onChange={(e) => {
-                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                          const percent = Math.max(
+                            0,
+                            Math.min(100, parseFloat(e.target.value) || 0)
+                          );
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -921,21 +907,16 @@ export default function ProfileSalaryInfoTab({
                         className="w-24"
                         placeholder="%"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        %
-                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
                     </div>
                   )}
                   {(!isEditingSalary || !isAdminOrPayroll) && (
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-semibold">
-                        {formatCurrency(salaryInfo.pfEmployee || 0)}{" "}
-                        ₹/month
+                        {formatCurrency(salaryInfo.pfEmployee || 0)} ₹/month
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {salaryInfo.pfEmployeePercent?.toFixed(2) ||
-                          "0.00"}{" "}
-                        %
+                        {salaryInfo.pfEmployeePercent?.toFixed(2) || "0.00"} %
                       </span>
                     </div>
                   )}
@@ -963,8 +944,10 @@ export default function ProfileSalaryInfoTab({
                         onChange={(e) => {
                           setSalaryInfo({
                             ...salaryInfo,
-                            professionalTax:
-                              Math.max(0, parseFloat(e.target.value) || 0),
+                            professionalTax: Math.max(
+                              0,
+                              parseFloat(e.target.value) || 0
+                            ),
                           });
                         }}
                         className="w-32"
@@ -998,9 +981,9 @@ export default function ProfileSalaryInfoTab({
 
             {isEditingSalary && isAdminOrPayroll && (
               <div className="flex gap-2">
-                <Button type="submit">
+                <Button type="submit" disabled={isSaving}>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button
                   type="button"
@@ -1009,6 +992,7 @@ export default function ProfileSalaryInfoTab({
                     setIsEditingSalary(false);
                     fetchSalaryInfo();
                   }}
+                  disabled={isSaving}
                 >
                   <X className="mr-2 h-4 w-4" />
                   Cancel
@@ -1025,4 +1009,3 @@ export default function ProfileSalaryInfoTab({
     </Card>
   );
 }
-

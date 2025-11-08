@@ -225,6 +225,16 @@ export default function Attendance() {
       .toDate()
     // Ensure we use local date to avoid timezone issues
     const localDate = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate())
+    
+    // Prevent navigation to future dates
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const newDateNormalized = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate())
+    
+    if (newDateNormalized > today) {
+      return // Don't allow navigation to future dates
+    }
+    
     setSelectedDate(localDate)
   }
 
@@ -566,13 +576,22 @@ export default function Attendance() {
               <Input
                 type="date"
                 value={dayjs(selectedDate).format('YYYY-MM-DD')}
+                max={dayjs().format('YYYY-MM-DD')}
                 onChange={(e) => {
                   const dateValue = e.target.value
                   if (dateValue) {
                     // Create date in local timezone to avoid timezone shift
                     const [year, month, day] = dateValue.split('-').map(Number)
                     const localDate = new Date(year, month - 1, day)
-                    setSelectedDate(localDate)
+                    
+                    // Prevent selecting future dates
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    const selectedDateNormalized = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate())
+                    
+                    if (selectedDateNormalized <= today) {
+                      setSelectedDate(localDate)
+                    }
                   }
                 }}
                 className="w-40"
@@ -581,6 +600,12 @@ export default function Attendance() {
                 variant="outline"
                 size="icon"
                 onClick={() => handleDateChange('next')}
+                disabled={(() => {
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  const selectedDateNormalized = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+                  return selectedDateNormalized >= today
+                })()}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -727,7 +752,24 @@ export default function Attendance() {
                     <Input
                       type="date"
                       value={dayjs(employeeSelectedDate).format('YYYY-MM-DD')}
-                      onChange={(e) => setEmployeeSelectedDate(new Date(e.target.value))}
+                      max={dayjs().format('YYYY-MM-DD')}
+                      onChange={(e) => {
+                        const dateValue = e.target.value
+                        if (dateValue) {
+                          // Create date in local timezone to avoid timezone shift
+                          const [year, month, day] = dateValue.split('-').map(Number)
+                          const localDate = new Date(year, month - 1, day)
+                          
+                          // Prevent selecting future dates
+                          const today = new Date()
+                          today.setHours(0, 0, 0, 0)
+                          const selectedDateNormalized = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate())
+                          
+                          if (selectedDateNormalized <= today) {
+                            setEmployeeSelectedDate(localDate)
+                          }
+                        }
+                      }}
                       className="w-40"
                     />
                     <Button
@@ -736,8 +778,22 @@ export default function Attendance() {
                       onClick={() => {
                         const newDate = new Date(employeeSelectedDate)
                         newDate.setDate(newDate.getDate() + 1)
-                        setEmployeeSelectedDate(newDate)
+                        
+                        // Prevent navigation to future dates
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        const newDateNormalized = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate())
+                        
+                        if (newDateNormalized <= today) {
+                          setEmployeeSelectedDate(newDate)
+                        }
                       }}
+                      disabled={(() => {
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        const selectedDateNormalized = new Date(employeeSelectedDate.getFullYear(), employeeSelectedDate.getMonth(), employeeSelectedDate.getDate())
+                        return selectedDateNormalized >= today
+                      })()}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -772,7 +828,22 @@ export default function Attendance() {
                     <Input
                       type="month"
                       value={dayjs(employeeSelectedMonth).format('YYYY-MM')}
-                      onChange={(e) => setEmployeeSelectedMonth(new Date(e.target.value + '-01'))}
+                      max={dayjs().format('YYYY-MM')}
+                      onChange={(e) => {
+                        const monthValue = e.target.value
+                        if (monthValue) {
+                          const [year, month] = monthValue.split('-').map(Number)
+                          const selectedMonth = new Date(year, month - 1, 1)
+                          
+                          // Prevent selecting future months
+                          const today = new Date()
+                          const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+                          
+                          if (selectedMonth <= currentMonth) {
+                            setEmployeeSelectedMonth(selectedMonth)
+                          }
+                        }
+                      }}
                       className="w-40"
                     />
                     <Button
@@ -781,8 +852,22 @@ export default function Attendance() {
                       onClick={() => {
                         const newMonth = new Date(employeeSelectedMonth)
                         newMonth.setMonth(newMonth.getMonth() + 1)
-                        setEmployeeSelectedMonth(newMonth)
+                        
+                        // Prevent navigation to future months
+                        const today = new Date()
+                        const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+                        const newMonthNormalized = new Date(newMonth.getFullYear(), newMonth.getMonth(), 1)
+                        
+                        if (newMonthNormalized <= currentMonth) {
+                          setEmployeeSelectedMonth(newMonth)
+                        }
                       }}
+                      disabled={(() => {
+                        const today = new Date()
+                        const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+                        const selectedMonthNormalized = new Date(employeeSelectedMonth.getFullYear(), employeeSelectedMonth.getMonth(), 1)
+                        return selectedMonthNormalized >= currentMonth
+                      })()}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>

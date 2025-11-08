@@ -8,7 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +25,16 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Plus, Download, Search, Plane, Save, Pencil, Grid3x3, List } from "lucide-react";
+import {
+  Plus,
+  Download,
+  Search,
+  Plane,
+  Save,
+  Pencil,
+  Grid3x3,
+  List,
+} from "lucide-react";
 import apiClient from "../lib/api";
 import { formatDate, formatPhone, formatCurrency } from "../lib/format";
 import { useForm } from "react-hook-form";
@@ -38,26 +52,45 @@ import {
 
 // Adjusted zod schema to allow string input for salary (coerce on submit)
 const employeeSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().regex(
-    /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
-    {
-      message: "Invalid email address",
-    }
-  ),
-  phone: z.string().optional().or(z.literal("")).refine(
-    (val) => {
-      if (!val || val === '') return true; // Allow empty
-      // Remove all non-digit characters except +
-      const cleaned = val.replace(/[^\d+]/g, '');
-      // Check if it matches phone number pattern: optional +, then 10-15 digits
-      return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
-    },
-    {
-      message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
-    }
-  ),
+  firstName: z
+    .string()
+    .min(1, "First name is required")
+    .regex(
+      /^[a-zA-Z\s'-]+$/,
+      "First name must contain only letters, spaces, hyphens, and apostrophes"
+    ),
+  lastName: z
+    .string()
+    .min(1, "Last name is required")
+    .regex(
+      /^[a-zA-Z\s'-]+$/,
+      "Last name must contain only letters, spaces, hyphens, and apostrophes"
+    ),
+  email: z
+    .string()
+    .regex(
+      /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
+      {
+        message: "Invalid email address",
+      }
+    ),
+  phone: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (val) => {
+        if (!val || val === "") return true; // Allow empty
+        // Remove all non-digit characters except +
+        const cleaned = val.replace(/[^\d+]/g, "");
+        // Check if it matches phone number pattern: optional +, then 10-15 digits
+        return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+      },
+      {
+        message:
+          "Phone number must be in valid format (10-15 digits, optional + prefix)",
+      }
+    ),
   department: z.string().min(1, "Department is required"),
   position: z.string().min(1, "Position is required"),
   // allow strings from inputs; we'll coerce to number in onSubmit
@@ -83,6 +116,8 @@ export default function Employees() {
   const [employeeSalaryInfo, setEmployeeSalaryInfo] = useState(null);
   const [employeeViewTab, setEmployeeViewTab] = useState("details");
   const [isEditingEmployeeSalary, setIsEditingEmployeeSalary] = useState(false);
+  const [isCreatingEmployee, setIsCreatingEmployee] = useState(false);
+  const [isSavingEmployeeSalary, setIsSavingEmployeeSalary] = useState(false);
 
   const {
     register,
@@ -102,8 +137,8 @@ export default function Employees() {
   const getTodayLocalDate = () => {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
@@ -113,13 +148,15 @@ export default function Employees() {
     try {
       // Build query parameters
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (selectedDepartment && selectedDepartment !== 'all') params.append('department', selectedDepartment);
-      if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus);
-      
+      if (searchTerm) params.append("search", searchTerm);
+      if (selectedDepartment && selectedDepartment !== "all")
+        params.append("department", selectedDepartment);
+      if (selectedStatus && selectedStatus !== "all")
+        params.append("status", selectedStatus);
+
       const queryString = params.toString();
-      const url = queryString ? `/employees?${queryString}` : '/employees';
-      
+      const url = queryString ? `/employees?${queryString}` : "/employees";
+
       const response = await apiClient.get(url);
       const employeesData = response.data?.data || response.data || [];
       setEmployees(Array.isArray(employeesData) ? employeesData : []);
@@ -175,13 +212,16 @@ export default function Employees() {
 
   // Extract unique departments, positions, and roles from employees
   const departments = useMemo(() => {
-    const depts = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+    const depts = [
+      ...new Set(employees.map((emp) => emp.department).filter(Boolean)),
+    ];
     return depts.sort();
   }, [employees]);
 
-
   const roles = useMemo(() => {
-    const rls = [...new Set(employees.map(emp => emp.user?.role).filter(Boolean))];
+    const rls = [
+      ...new Set(employees.map((emp) => emp.user?.role).filter(Boolean)),
+    ];
     return rls.sort();
   }, [employees]);
 
@@ -196,15 +236,17 @@ export default function Employees() {
     let filtered = employees;
 
     // Apply role filter (client-side)
-    if (selectedRole && selectedRole !== 'all') {
-      filtered = filtered.filter(emp => emp.user?.role === selectedRole);
+    if (selectedRole && selectedRole !== "all") {
+      filtered = filtered.filter((emp) => emp.user?.role === selectedRole);
     }
 
     // Apply search filter (client-side for additional filtering)
     if (debouncedSearch) {
       const s = debouncedSearch.toLowerCase();
       filtered = filtered.filter((employee) => {
-        const name = `${employee.firstName || ""} ${employee.lastName || ""}`.toLowerCase();
+        const name = `${employee.firstName || ""} ${
+          employee.lastName || ""
+        }`.toLowerCase();
         return (
           name.includes(s) ||
           (employee.email || "").toLowerCase().includes(s) ||
@@ -220,15 +262,25 @@ export default function Employees() {
 
   const onSubmit = async (data) => {
     try {
+      setIsCreatingEmployee(true);
       // coerce salary
       const salaryVal =
         typeof data.salary === "number"
           ? data.salary
           : parseFloat(String(data.salary).replace(/,/g, "")) || 0;
 
+      if (salaryVal < 0) {
+        toast.error("Salary cannot be negative");
+        setIsCreatingEmployee(false);
+        return;
+      }
+
       const payload = {
         ...data,
-        phone: data.phone && data.phone.trim() !== "" ? data.phone.trim() : undefined,
+        phone:
+          data.phone && data.phone.trim() !== ""
+            ? data.phone.trim()
+            : undefined,
         salary: Number.isFinite(salaryVal) ? salaryVal : 0,
       };
 
@@ -246,6 +298,8 @@ export default function Employees() {
         error.response?.data?.error ||
         "Failed to create employee. Please check all fields.";
       toast.error(errorMessage);
+    } finally {
+      setIsCreatingEmployee(false);
     }
   };
 
@@ -254,7 +308,7 @@ export default function Employees() {
     const errorMessages = Object.entries(errors).map(([field, error]) => {
       return error?.message || `${field}: Validation failed`;
     });
-    
+
     // Show first error or all errors
     if (errorMessages.length > 0) {
       errorMessages.forEach((msg) => {
@@ -269,6 +323,47 @@ export default function Employees() {
     if (!selectedEmployee || !employeeSalaryInfo) return;
 
     try {
+      setIsSavingEmployeeSalary(true);
+
+      // Validate all salary fields are non-negative
+      const salaryFields = [
+        { name: "Month Wage", value: employeeSalaryInfo.monthWage },
+        { name: "Yearly Wage", value: employeeSalaryInfo.yearlyWage },
+        { name: "Basic Salary", value: employeeSalaryInfo.basicSalary },
+        {
+          name: "House Rent Allowance",
+          value:
+            employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance,
+        },
+        {
+          name: "Standard Allowance",
+          value: employeeSalaryInfo.standardAllowance,
+        },
+        {
+          name: "Performance Bonus",
+          value: employeeSalaryInfo.performanceBonus,
+        },
+        { name: "Travel Allowance", value: employeeSalaryInfo.travelAllowance },
+        { name: "Fixed Allowance", value: employeeSalaryInfo.fixedAllowance },
+        {
+          name: "PF Employee",
+          value: employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee,
+        },
+        { name: "Professional Tax", value: employeeSalaryInfo.professionalTax },
+      ];
+
+      for (const field of salaryFields) {
+        if (
+          field.value !== null &&
+          field.value !== undefined &&
+          field.value < 0
+        ) {
+          toast.error(`${field.name} cannot be negative`);
+          setIsSavingEmployeeSalary(false);
+          return;
+        }
+      }
+
       // Calculate gross and net salary
       const grossSalary =
         (employeeSalaryInfo.basicSalary || 0) +
@@ -279,9 +374,11 @@ export default function Employees() {
         (employeeSalaryInfo.fixedAllowance || 0);
 
       const netSalary =
-        grossSalary -
-        (employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || 0) -
-        (employeeSalaryInfo.professionalTax || 0);
+        grossSalary <= 0
+          ? 0
+          : grossSalary -
+            (employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || 0) -
+            (employeeSalaryInfo.professionalTax || 0);
 
       await apiClient.put(`/employees/${selectedEmployee.id}/salary`, {
         monthWage: employeeSalaryInfo.monthWage,
@@ -290,7 +387,8 @@ export default function Employees() {
         breakTime: employeeSalaryInfo.breakTime,
         basicSalary: employeeSalaryInfo.basicSalary,
         basicSalaryPercent: employeeSalaryInfo.basicSalaryPercent,
-        houseRentAllowance: employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance,
+        houseRentAllowance:
+          employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance,
         hraPercent: employeeSalaryInfo.hraPercent,
         standardAllowance: employeeSalaryInfo.standardAllowance,
         standardAllowancePercent: employeeSalaryInfo.standardAllowancePercent,
@@ -301,7 +399,8 @@ export default function Employees() {
         fixedAllowance: employeeSalaryInfo.fixedAllowance,
         fixedAllowancePercent: employeeSalaryInfo.fixedAllowancePercent,
         pfEmployee: employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee,
-        pfEmployeePercent: employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent,
+        pfEmployeePercent:
+          employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent,
         pfEmployer: employeeSalaryInfo.pfEmployer || 0,
         pfEmployerPercent: employeeSalaryInfo.pfEmployerPercent,
         professionalTax: employeeSalaryInfo.professionalTax,
@@ -313,6 +412,8 @@ export default function Employees() {
     } catch (error) {
       console.error("Failed to update salary:", error);
       toast.error("Failed to update salary information");
+    } finally {
+      setIsSavingEmployeeSalary(false);
     }
   };
 
@@ -323,37 +424,65 @@ export default function Employees() {
     setIsEditingEmployeeSalary(false);
     if (["admin", "hr"].includes(user?.role) && employee?.id) {
       try {
-        const response = await apiClient.get(`/employees/${employee.id}/salary`);
+        const response = await apiClient.get(
+          `/employees/${employee.id}/salary`
+        );
         const salaryData = response.data?.data || response.data;
-        
+
         // Calculate percentages if not present
-        const monthWage = salaryData.monthWage || salaryData.grossSalary || employee.salary || 0;
+        const monthWage =
+          salaryData.monthWage ||
+          salaryData.grossSalary ||
+          employee.salary ||
+          0;
         const basicSalary = salaryData.basicSalary || 0;
         const hra = salaryData.hra || salaryData.houseRentAllowance || 0;
         const grossSalary = salaryData.grossSalary || monthWage;
-        
+
         // Calculate percentages
-        const basicSalaryPercent = monthWage > 0 ? (basicSalary / monthWage) * 100 : 0;
+        const basicSalaryPercent =
+          monthWage > 0 ? (basicSalary / monthWage) * 100 : 0;
         const hraPercent = basicSalary > 0 ? (hra / basicSalary) * 100 : 0;
-        const standardAllowancePercent = monthWage > 0 ? ((salaryData.standardAllowance || 0) / monthWage) * 100 : 0;
-        const performanceBonusPercent = basicSalary > 0 ? ((salaryData.performanceBonus || 0) / basicSalary) * 100 : 0;
-        const ltaPercent = basicSalary > 0 ? ((salaryData.travelAllowance || 0) / basicSalary) * 100 : 0;
-        const fixedAllowancePercent = monthWage > 0 ? ((salaryData.fixedAllowance || 0) / monthWage) * 100 : 0;
-        const pfPercent = basicSalary > 0 ? ((salaryData.pf || salaryData.pfEmployee || 0) / basicSalary) * 100 : 0;
-        
+        const standardAllowancePercent =
+          monthWage > 0
+            ? ((salaryData.standardAllowance || 0) / monthWage) * 100
+            : 0;
+        const performanceBonusPercent =
+          basicSalary > 0
+            ? ((salaryData.performanceBonus || 0) / basicSalary) * 100
+            : 0;
+        const ltaPercent =
+          basicSalary > 0
+            ? ((salaryData.travelAllowance || 0) / basicSalary) * 100
+            : 0;
+        const fixedAllowancePercent =
+          monthWage > 0
+            ? ((salaryData.fixedAllowance || 0) / monthWage) * 100
+            : 0;
+        const pfPercent =
+          basicSalary > 0
+            ? ((salaryData.pf || salaryData.pfEmployee || 0) / basicSalary) *
+              100
+            : 0;
+
         setEmployeeSalaryInfo({
           ...salaryData,
           monthWage: monthWage || salaryData.monthWage,
           basicSalary,
           hra: hra || salaryData.houseRentAllowance,
           houseRentAllowance: hra || salaryData.houseRentAllowance,
-          basicSalaryPercent: salaryData.basicSalaryPercent || basicSalaryPercent,
+          basicSalaryPercent:
+            salaryData.basicSalaryPercent || basicSalaryPercent,
           hraPercent: salaryData.hraPercent || hraPercent,
-          standardAllowancePercent: salaryData.standardAllowancePercent || standardAllowancePercent,
-          performanceBonusPercent: salaryData.performanceBonusPercent || performanceBonusPercent,
+          standardAllowancePercent:
+            salaryData.standardAllowancePercent || standardAllowancePercent,
+          performanceBonusPercent:
+            salaryData.performanceBonusPercent || performanceBonusPercent,
           ltaPercent: salaryData.ltaPercent || ltaPercent,
-          fixedAllowancePercent: salaryData.fixedAllowancePercent || fixedAllowancePercent,
-          pfPercent: salaryData.pfEmployeePercent || salaryData.pfPercent || pfPercent,
+          fixedAllowancePercent:
+            salaryData.fixedAllowancePercent || fixedAllowancePercent,
+          pfPercent:
+            salaryData.pfEmployeePercent || salaryData.pfPercent || pfPercent,
         });
       } catch (error) {
         console.error("Failed to fetch salary info:", error);
@@ -365,7 +494,7 @@ export default function Employees() {
           const standardAllowance = employee.salary * 0.1667;
           const performanceBonus = basicSalary * 0.0833;
           const travelAllowance = basicSalary * 0.0833;
-          
+
           // Calculate fixed allowance as remaining amount
           const otherComponents =
             basicSalary +
@@ -374,12 +503,13 @@ export default function Employees() {
             performanceBonus +
             travelAllowance;
           const fixedAllowance = Math.max(0, monthWage - otherComponents);
-          
+
           const grossSalary = employee.salary;
           const pf = basicSalary * 0.12;
           const professionalTax = 200;
-          const netSalary = grossSalary - pf - professionalTax;
-          
+          const netSalary =
+            grossSalary <= 0 ? 0 : grossSalary - pf - professionalTax;
+
           setEmployeeSalaryInfo({
             monthWage,
             yearlyWage: monthWage * 12,
@@ -400,7 +530,8 @@ export default function Employees() {
             standardAllowancePercent: 16.67,
             performanceBonusPercent: 8.33,
             ltaPercent: 8.33,
-            fixedAllowancePercent: monthWage > 0 ? (fixedAllowance / monthWage) * 100 : 0,
+            fixedAllowancePercent:
+              monthWage > 0 ? (fixedAllowance / monthWage) * 100 : 0,
             pfPercent: 12,
             pfEmployeePercent: 12,
           });
@@ -459,9 +590,14 @@ export default function Employees() {
         (att.employee && att.employee.employeeId === employee.employeeId)
     );
 
-    if (attendance && attendance.checkIn && !attendance.checkOut) return "present";
-    if (attendance && attendance.checkIn && attendance.checkOut) return "checked-out";
-    if (attendance && (attendance.status === "present" || attendance.status === "late"))
+    if (attendance && attendance.checkIn && !attendance.checkOut)
+      return "present";
+    if (attendance && attendance.checkIn && attendance.checkOut)
+      return "checked-out";
+    if (
+      attendance &&
+      (attendance.status === "present" || attendance.status === "late")
+    )
       return "present";
 
     return "absent";
@@ -526,71 +662,143 @@ export default function Employees() {
                     </DialogDescription>
                   </DialogHeader>
 
-                  <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-4">
+                  <form
+                    onSubmit={handleSubmit(onSubmit, onError)}
+                    className="space-y-4"
+                  >
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
-                        <Input id="firstName" {...register("firstName")} aria-invalid={errors.firstName ? "true" : "false"} />
-                        {errors.firstName && <p className="text-sm text-destructive">{errors.firstName.message}</p>}
+                        <Input
+                          id="firstName"
+                          {...register("firstName")}
+                          aria-invalid={errors.firstName ? "true" : "false"}
+                        />
+                        {errors.firstName && (
+                          <p className="text-sm text-destructive">
+                            {errors.firstName.message}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="lastName">Last Name</Label>
-                        <Input id="lastName" {...register("lastName")} aria-invalid={errors.lastName ? "true" : "false"} />
-                        {errors.lastName && <p className="text-sm text-destructive">{errors.lastName.message}</p>}
+                        <Input
+                          id="lastName"
+                          {...register("lastName")}
+                          aria-invalid={errors.lastName ? "true" : "false"}
+                        />
+                        {errors.lastName && (
+                          <p className="text-sm text-destructive">
+                            {errors.lastName.message}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" {...register("email")} aria-invalid={errors.email ? "true" : "false"} />
-                      {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+                      <Input
+                        id="email"
+                        type="email"
+                        {...register("email")}
+                        aria-invalid={errors.email ? "true" : "false"}
+                      />
+                      {errors.email && (
+                        <p className="text-sm text-destructive">
+                          {errors.email.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone</Label>
-                      <Input id="phone" type="tel" {...register("phone")} aria-invalid={errors.phone ? "true" : "false"} />
-                      {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
+                      <Input
+                        id="phone"
+                        type="tel"
+                        {...register("phone")}
+                        aria-invalid={errors.phone ? "true" : "false"}
+                      />
+                      {errors.phone && (
+                        <p className="text-sm text-destructive">
+                          {errors.phone.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="department">Department</Label>
-                        <Input id="department" {...register("department")} aria-invalid={errors.department ? "true" : "false"} />
-                        {errors.department && <p className="text-sm text-destructive">{errors.department.message}</p>}
+                        <Input
+                          id="department"
+                          {...register("department")}
+                          aria-invalid={errors.department ? "true" : "false"}
+                        />
+                        {errors.department && (
+                          <p className="text-sm text-destructive">
+                            {errors.department.message}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="position">Position</Label>
-                        <Input id="position" {...register("position")} aria-invalid={errors.position ? "true" : "false"} />
-                        {errors.position && <p className="text-sm text-destructive">{errors.position.message}</p>}
+                        <Input
+                          id="position"
+                          {...register("position")}
+                          aria-invalid={errors.position ? "true" : "false"}
+                        />
+                        {errors.position && (
+                          <p className="text-sm text-destructive">
+                            {errors.position.message}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="salary">Salary</Label>
-                        <Input id="salary" type="number" {...register("salary", { valueAsNumber: true })} aria-invalid={errors.salary ? "true" : "false"} />
-                        {errors.salary && <p className="text-sm text-destructive">{errors.salary.message}</p>}
+                        <Input
+                          id="salary"
+                          type="number"
+                          {...register("salary", { valueAsNumber: true })}
+                          aria-invalid={errors.salary ? "true" : "false"}
+                        />
+                        {errors.salary && (
+                          <p className="text-sm text-destructive">
+                            {errors.salary.message}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="hireDate">Hire Date</Label>
-                        <Input 
-                          id="hireDate" 
-                          type="date" 
-                          {...register("hireDate")} 
+                        <Input
+                          id="hireDate"
+                          type="date"
+                          {...register("hireDate")}
                           min={getTodayLocalDate()}
-                          aria-invalid={errors.hireDate ? "true" : "false"} 
+                          aria-invalid={errors.hireDate ? "true" : "false"}
                         />
-                        {errors.hireDate && <p className="text-sm text-destructive">{errors.hireDate.message}</p>}
+                        {errors.hireDate && (
+                          <p className="text-sm text-destructive">
+                            {errors.hireDate.message}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
-                      <Select value={formSelectedRole || "employee"} onValueChange={(value) => setValue("role", value)}>
-                        <SelectTrigger id="role" aria-invalid={errors.role ? "true" : "false"}>
+                      <Select
+                        value={formSelectedRole || "employee"}
+                        onValueChange={(value) => setValue("role", value)}
+                      >
+                        <SelectTrigger
+                          id="role"
+                          aria-invalid={errors.role ? "true" : "false"}
+                        >
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
                         <SelectContent>
@@ -600,13 +808,29 @@ export default function Employees() {
                           <SelectItem value="payroll">Payroll</SelectItem>
                         </SelectContent>
                       </Select>
-                      {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
-                      <p className="text-xs text-muted-foreground">Select the role for this employee. They will receive login credentials via email.</p>
+                      {errors.role && (
+                        <p className="text-sm text-destructive">
+                          {errors.role.message}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Select the role for this employee. They will receive
+                        login credentials via email.
+                      </p>
                     </div>
 
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                      <Button type="submit">Create Employee</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCreateOpen(false)}
+                        disabled={isCreatingEmployee}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isCreatingEmployee}>
+                        {isCreatingEmployee ? "Creating..." : "Create Employee"}
+                      </Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -619,7 +843,9 @@ export default function Employees() {
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Employee List</CardTitle>
-          <CardDescription>View and manage all employees in your organization</CardDescription>
+          <CardDescription>
+            View and manage all employees in your organization
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -658,10 +884,18 @@ export default function Employees() {
             {/* Filter Options */}
             <div className="flex flex-wrap gap-4 items-center">
               <div className="flex-1 min-w-[200px]">
-                <Label htmlFor="department-filter" className="text-xs text-muted-foreground mb-1 block">
+                <Label
+                  htmlFor="department-filter"
+                  className="text-xs text-muted-foreground mb-1 block"
+                >
                   Department
                 </Label>
-                <Select value={selectedDepartment || 'all'} onValueChange={(value) => setSelectedDepartment(value === 'all' ? null : value)}>
+                <Select
+                  value={selectedDepartment || "all"}
+                  onValueChange={(value) =>
+                    setSelectedDepartment(value === "all" ? null : value)
+                  }
+                >
                   <SelectTrigger id="department-filter" className="w-full">
                     <SelectValue placeholder="All Departments" />
                   </SelectTrigger>
@@ -677,10 +911,18 @@ export default function Employees() {
               </div>
 
               <div className="flex-1 min-w-[200px]">
-                <Label htmlFor="status-filter" className="text-xs text-muted-foreground mb-1 block">
+                <Label
+                  htmlFor="status-filter"
+                  className="text-xs text-muted-foreground mb-1 block"
+                >
                   Status
                 </Label>
-                <Select value={selectedStatus || 'all'} onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)}>
+                <Select
+                  value={selectedStatus || "all"}
+                  onValueChange={(value) =>
+                    setSelectedStatus(value === "all" ? null : value)
+                  }
+                >
                   <SelectTrigger id="status-filter" className="w-full">
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
@@ -694,10 +936,18 @@ export default function Employees() {
               </div>
 
               <div className="flex-1 min-w-[200px]">
-                <Label htmlFor="role-filter" className="text-xs text-muted-foreground mb-1 block">
+                <Label
+                  htmlFor="role-filter"
+                  className="text-xs text-muted-foreground mb-1 block"
+                >
                   Role
                 </Label>
-                <Select value={selectedRole || 'all'} onValueChange={(value) => setSelectedRole(value === 'all' ? null : value)}>
+                <Select
+                  value={selectedRole || "all"}
+                  onValueChange={(value) =>
+                    setSelectedRole(value === "all" ? null : value)
+                  }
+                >
                   <SelectTrigger id="role-filter" className="w-full">
                     <SelectValue placeholder="All Roles" />
                   </SelectTrigger>
@@ -731,10 +981,15 @@ export default function Employees() {
           </div>
 
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading employees...</div>
+            <div className="text-center py-8 text-muted-foreground">
+              Loading employees...
+            </div>
           ) : filteredEmployees.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm || selectedDepartment || selectedStatus || selectedRole
+              {searchTerm ||
+              selectedDepartment ||
+              selectedStatus ||
+              selectedRole
                 ? "No employees found matching your filters."
                 : "No employees found."}
             </div>
@@ -742,12 +997,20 @@ export default function Employees() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredEmployees.map((employee) => {
                 const status = getEmployeeStatus(employee);
-                const fullName = `${employee.firstName || ""} ${employee.lastName || ""}`.trim();
-                const initials = `${employee.firstName?.[0] || ""}${employee.lastName?.[0] || ""}`.toUpperCase();
+                const fullName = `${employee.firstName || ""} ${
+                  employee.lastName || ""
+                }`.trim();
+                const initials = `${employee.firstName?.[0] || ""}${
+                  employee.lastName?.[0] || ""
+                }`.toUpperCase();
 
                 return (
                   <div
-                    key={employee.id || employee.employeeId || `${fullName}-${Math.random()}`}
+                    key={
+                      employee.id ||
+                      employee.employeeId ||
+                      `${fullName}-${Math.random()}`
+                    }
                     className="relative border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white"
                     onClick={() => handleViewEmployee(employee)}
                   >
@@ -755,20 +1018,36 @@ export default function Employees() {
 
                     <div className="flex justify-center mb-3">
                       {employee.avatar || employee.user?.avatar ? (
-                        <img src={employee.avatar || employee.user?.avatar} alt={fullName} className="w-24 h-24 rounded-lg object-cover border-2 border-gray-200" />
+                        <img
+                          src={employee.avatar || employee.user?.avatar}
+                          alt={fullName}
+                          className="w-24 h-24 rounded-lg object-cover border-2 border-gray-200"
+                        />
                       ) : (
                         <div className="w-24 h-24 rounded-lg bg-primary/10 flex items-center justify-center border-2 border-gray-200">
-                          <span className="text-xl font-semibold text-primary">{initials}</span>
+                          <span className="text-xl font-semibold text-primary">
+                            {initials}
+                          </span>
                         </div>
                       )}
                     </div>
 
-                    <h3 className="text-center font-semibold text-lg mb-1">{fullName}</h3>
+                    <h3 className="text-center font-semibold text-lg mb-1">
+                      {fullName}
+                    </h3>
 
                     <div className="text-center text-sm text-muted-foreground space-y-1">
-                      {employee.position && <p className="truncate">{employee.position}</p>}
-                      {employee.department && <p className="truncate">{employee.department}</p>}
-                      {employee.employeeId && <p className="text-xs mt-2">ID: {employee.employeeId}</p>}
+                      {employee.position && (
+                        <p className="truncate">{employee.position}</p>
+                      )}
+                      {employee.department && (
+                        <p className="truncate">{employee.department}</p>
+                      )}
+                      {employee.employeeId && (
+                        <p className="text-xs mt-2">
+                          ID: {employee.employeeId}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -779,24 +1058,46 @@ export default function Employees() {
               <table className="w-full">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Employee</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Employee ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Department</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Position</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Today</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Employee
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Employee ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Department
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Position
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Today
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEmployees.map((employee) => {
                     const status = getEmployeeStatus(employee);
-                    const fullName = `${employee.firstName || ""} ${employee.lastName || ""}`.trim();
-                    const initials = `${employee.firstName?.[0] || ""}${employee.lastName?.[0] || ""}`.toUpperCase();
+                    const fullName = `${employee.firstName || ""} ${
+                      employee.lastName || ""
+                    }`.trim();
+                    const initials = `${employee.firstName?.[0] || ""}${
+                      employee.lastName?.[0] || ""
+                    }`.toUpperCase();
 
                     return (
                       <tr
-                        key={employee.id || employee.employeeId || `${fullName}-${Math.random()}`}
+                        key={
+                          employee.id ||
+                          employee.employeeId ||
+                          `${fullName}-${Math.random()}`
+                        }
                         className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
                         onClick={() => handleViewEmployee(employee)}
                       >
@@ -811,7 +1112,9 @@ export default function Employees() {
                                 />
                               ) : (
                                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border-2 border-gray-200">
-                                  <span className="text-sm font-semibold text-primary">{initials}</span>
+                                  <span className="text-sm font-semibold text-primary">
+                                    {initials}
+                                  </span>
                                 </div>
                               )}
                               {status === "present" && (
@@ -832,33 +1135,54 @@ export default function Employees() {
                             <div>
                               <p className="font-medium">{fullName}</p>
                               {employee.user?.role && (
-                                <p className="text-xs text-muted-foreground capitalize">{employee.user.role}</p>
+                                <p className="text-xs text-muted-foreground capitalize">
+                                  {employee.user.role}
+                                </p>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">{employee.employeeId || "-"}</td>
-                        <td className="px-4 py-3 text-sm">{employee.department || "-"}</td>
-                        <td className="px-4 py-3 text-sm">{employee.position || "-"}</td>
-                        <td className="px-4 py-3 text-sm">{employee.email || "-"}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {employee.employeeId || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {employee.department || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {employee.position || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {employee.email || "-"}
+                        </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            employee.status === "active" ? "bg-green-100 text-green-800" :
-                            employee.status === "inactive" ? "bg-yellow-100 text-yellow-800" :
-                            employee.status === "terminated" ? "bg-red-100 text-red-800" :
-                            "bg-gray-100 text-gray-800"
-                          }`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${
+                              employee.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : employee.status === "inactive"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : employee.status === "terminated"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
                             {employee.status || "active"}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            status === "present" ? "bg-green-100 text-green-800" :
-                            status === "on-leave" ? "bg-blue-100 text-blue-800" :
-                            status === "absent" ? "bg-yellow-100 text-yellow-800" :
-                            status === "checked-out" ? "bg-gray-100 text-gray-800" :
-                            "bg-gray-100 text-gray-800"
-                          }`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${
+                              status === "present"
+                                ? "bg-green-100 text-green-800"
+                                : status === "on-leave"
+                                ? "bg-blue-100 text-blue-800"
+                                : status === "absent"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : status === "checked-out"
+                                ? "bg-gray-100 text-gray-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
                             {status || "unknown"}
                           </span>
                         </td>
@@ -876,53 +1200,79 @@ export default function Employees() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Employee Details</DialogTitle>
-            <DialogDescription>View and manage employee information</DialogDescription>
+            <DialogDescription>
+              View and manage employee information
+            </DialogDescription>
           </DialogHeader>
 
           {selectedEmployee && (
-            <Tabs value={employeeViewTab} onValueChange={setEmployeeViewTab} className="space-y-4">
+            <Tabs
+              value={employeeViewTab}
+              onValueChange={setEmployeeViewTab}
+              className="space-y-4"
+            >
               <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
-                {["admin", "hr"].includes(user?.role) && <TabsTrigger value="salary">Salary Info</TabsTrigger>}
+                {["admin", "hr"].includes(user?.role) && (
+                  <TabsTrigger value="salary">Salary Info</TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="details" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Employee ID</Label>
-                    <p className="text-sm font-medium">{selectedEmployee.employeeId}</p>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.employeeId}
+                    </p>
                   </div>
                   <div>
                     <Label>Status</Label>
-                    <p className="text-sm font-medium">{selectedEmployee.status}</p>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.status}
+                    </p>
                   </div>
                   <div>
                     <Label>First Name</Label>
-                    <p className="text-sm font-medium">{selectedEmployee.firstName}</p>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.firstName}
+                    </p>
                   </div>
                   <div>
                     <Label>Last Name</Label>
-                    <p className="text-sm font-medium">{selectedEmployee.lastName}</p>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.lastName}
+                    </p>
                   </div>
                   <div>
                     <Label>Email</Label>
-                    <p className="text-sm font-medium">{selectedEmployee.email}</p>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.email}
+                    </p>
                   </div>
                   <div>
                     <Label>Phone</Label>
-                    <p className="text-sm font-medium">{formatPhone(selectedEmployee.phone)}</p>
+                    <p className="text-sm font-medium">
+                      {formatPhone(selectedEmployee.phone)}
+                    </p>
                   </div>
                   <div>
                     <Label>Department</Label>
-                    <p className="text-sm font-medium">{selectedEmployee.department}</p>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.department}
+                    </p>
                   </div>
                   <div>
                     <Label>Position</Label>
-                    <p className="text-sm font-medium">{selectedEmployee.position}</p>
+                    <p className="text-sm font-medium">
+                      {selectedEmployee.position}
+                    </p>
                   </div>
                   <div>
                     <Label>Hire Date</Label>
-                    <p className="text-sm font-medium">{formatDate(selectedEmployee.hireDate)}</p>
+                    <p className="text-sm font-medium">
+                      {formatDate(selectedEmployee.hireDate)}
+                    </p>
                   </div>
                 </div>
               </TabsContent>
@@ -932,7 +1282,8 @@ export default function Employees() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold">
-                        Salary Information - {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+                        Salary Information - {selectedEmployee?.firstName}{" "}
+                        {selectedEmployee?.lastName}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         View and update employee salary details
@@ -940,7 +1291,9 @@ export default function Employees() {
                     </div>
                     {employeeSalaryInfo && (
                       <Button
-                        variant={isEditingEmployeeSalary ? "outline" : "default"}
+                        variant={
+                          isEditingEmployeeSalary ? "outline" : "default"
+                        }
                         onClick={() => {
                           if (isEditingEmployeeSalary) {
                             handleSaveEmployeeSalary();
@@ -950,10 +1303,14 @@ export default function Employees() {
                         }}
                       >
                         {isEditingEmployeeSalary ? (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Changes
-                          </>
+                          isSavingEmployeeSalary ? (
+                            "Saving..."
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              Save Changes
+                            </>
+                          )
                         ) : (
                           <>
                             <Pencil className="mr-2 h-4 w-4" />
@@ -984,10 +1341,12 @@ export default function Employees() {
                                   // Auto-calculate all components based on new wage
                                   const basicSalary =
                                     (value *
-                                      (employeeSalaryInfo.basicSalaryPercent || 50)) /
+                                      (employeeSalaryInfo.basicSalaryPercent ||
+                                        50)) /
                                     100;
                                   const hra =
-                                    (basicSalary * (employeeSalaryInfo.hraPercent || 50)) /
+                                    (basicSalary *
+                                      (employeeSalaryInfo.hraPercent || 50)) /
                                     100;
                                   const standardAllowance =
                                     (value *
@@ -1016,10 +1375,15 @@ export default function Employees() {
                                     value - otherComponents
                                   );
                                   const fixedAllowancePercent =
-                                    value > 0 ? (fixedAllowance / value) * 100 : 0;
+                                    value > 0
+                                      ? (fixedAllowance / value) * 100
+                                      : 0;
 
                                   // Recalculate PF based on new basic salary
-                                  const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                  const pfPercent =
+                                    employeeSalaryInfo.pfPercent ||
+                                    employeeSalaryInfo.pfEmployeePercent ||
+                                    12;
                                   const pf = (basicSalary * pfPercent) / 100;
 
                                   setEmployeeSalaryInfo({
@@ -1033,7 +1397,8 @@ export default function Employees() {
                                     performanceBonus: performanceBonus,
                                     travelAllowance: travelAllowance,
                                     fixedAllowance: fixedAllowance,
-                                    fixedAllowancePercent: fixedAllowancePercent,
+                                    fixedAllowancePercent:
+                                      fixedAllowancePercent,
                                     pf: pf,
                                     pfEmployee: pf,
                                   });
@@ -1042,7 +1407,12 @@ export default function Employees() {
                               />
                             ) : (
                               <p className="text-lg font-semibold">
-                                {formatCurrency(employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0)} / Month
+                                {formatCurrency(
+                                  employeeSalaryInfo.monthWage ||
+                                    employeeSalaryInfo.grossSalary ||
+                                    0
+                                )}{" "}
+                                / Month
                               </p>
                             )}
                           </div>
@@ -1060,10 +1430,12 @@ export default function Employees() {
                                   // Auto-calculate all components based on new wage
                                   const basicSalary =
                                     (value *
-                                      (employeeSalaryInfo.basicSalaryPercent || 50)) /
+                                      (employeeSalaryInfo.basicSalaryPercent ||
+                                        50)) /
                                     100;
                                   const hra =
-                                    (basicSalary * (employeeSalaryInfo.hraPercent || 50)) /
+                                    (basicSalary *
+                                      (employeeSalaryInfo.hraPercent || 50)) /
                                     100;
                                   const standardAllowance =
                                     (value *
@@ -1092,10 +1464,15 @@ export default function Employees() {
                                     value - otherComponents
                                   );
                                   const fixedAllowancePercent =
-                                    value > 0 ? (fixedAllowance / value) * 100 : 0;
+                                    value > 0
+                                      ? (fixedAllowance / value) * 100
+                                      : 0;
 
                                   // Recalculate PF based on new basic salary
-                                  const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                  const pfPercent =
+                                    employeeSalaryInfo.pfPercent ||
+                                    employeeSalaryInfo.pfEmployeePercent ||
+                                    12;
                                   const pf = (basicSalary * pfPercent) / 100;
 
                                   setEmployeeSalaryInfo({
@@ -1109,7 +1486,8 @@ export default function Employees() {
                                     performanceBonus: performanceBonus,
                                     travelAllowance: travelAllowance,
                                     fixedAllowance: fixedAllowance,
-                                    fixedAllowancePercent: fixedAllowancePercent,
+                                    fixedAllowancePercent:
+                                      fixedAllowancePercent,
                                     pf: pf,
                                     pfEmployee: pf,
                                   });
@@ -1118,8 +1496,13 @@ export default function Employees() {
                               />
                             ) : (
                               <p className="text-lg font-semibold">
-                                {formatCurrency(employeeSalaryInfo.yearlyWage || (employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0) * 12)} /
-                                Yearly
+                                {formatCurrency(
+                                  employeeSalaryInfo.yearlyWage ||
+                                    (employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0) * 12
+                                )}{" "}
+                                / Yearly
                               </p>
                             )}
                           </div>
@@ -1128,7 +1511,9 @@ export default function Employees() {
                             {isEditingEmployeeSalary ? (
                               <Input
                                 type="number"
-                                value={employeeSalaryInfo.workingDaysPerWeek || ""}
+                                value={
+                                  employeeSalaryInfo.workingDaysPerWeek || ""
+                                }
                                 onChange={(e) => {
                                   setEmployeeSalaryInfo({
                                     ...employeeSalaryInfo,
@@ -1155,7 +1540,8 @@ export default function Employees() {
                                 onChange={(e) => {
                                   setEmployeeSalaryInfo({
                                     ...employeeSalaryInfo,
-                                    breakTime: parseFloat(e.target.value) || null,
+                                    breakTime:
+                                      parseFloat(e.target.value) || null,
                                   });
                                 }}
                                 placeholder="Break time in hours"
@@ -1174,7 +1560,9 @@ export default function Employees() {
 
                       {/* Salary Components */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Salary Components</h3>
+                        <h3 className="text-lg font-semibold">
+                          Salary Components
+                        </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Basic Salary */}
@@ -1188,31 +1576,46 @@ export default function Employees() {
                                   type="number"
                                   value={employeeSalaryInfo.basicSalary || ""}
                                   onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
-                                    const percent = monthWage > 0 ? (value / monthWage) * 100 : 0;
+                                    const value =
+                                      parseFloat(e.target.value) || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
+                                    const percent =
+                                      monthWage > 0
+                                        ? (value / monthWage) * 100
+                                        : 0;
 
                                     // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
                                     const hra =
-                                      (value * (employeeSalaryInfo.hraPercent || 50)) / 100;
+                                      (value *
+                                        (employeeSalaryInfo.hraPercent || 50)) /
+                                      100;
                                     const performanceBonus =
                                       (value *
                                         (employeeSalaryInfo.performanceBonusPercent ||
                                           8.33)) /
                                       100;
                                     const travelAllowance =
-                                      (value * (employeeSalaryInfo.ltaPercent || 8.33)) /
+                                      (value *
+                                        (employeeSalaryInfo.ltaPercent ||
+                                          8.33)) /
                                       100;
 
                                     // Recalculate PF based on new basic salary
-                                    const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                    const pfPercent =
+                                      employeeSalaryInfo.pfPercent ||
+                                      employeeSalaryInfo.pfEmployeePercent ||
+                                      12;
                                     const pf = (value * pfPercent) / 100;
 
                                     // Recalculate fixed allowance
                                     const otherComponents =
                                       value +
                                       hra +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
                                       performanceBonus +
                                       travelAllowance;
                                     const fixedAllowance = Math.max(
@@ -1233,7 +1636,8 @@ export default function Employees() {
                                       performanceBonus: performanceBonus,
                                       travelAllowance: travelAllowance,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                       pf: pf,
                                       pfEmployee: pf,
                                     });
@@ -1246,15 +1650,24 @@ export default function Employees() {
                                 </span>
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.basicSalaryPercent?.toFixed(2) || ""}
+                                  value={
+                                    employeeSalaryInfo.basicSalaryPercent?.toFixed(
+                                      2
+                                    ) || ""
+                                  }
                                   onChange={(e) => {
-                                    const percent = parseFloat(e.target.value) || 0;
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const percent =
+                                      parseFloat(e.target.value) || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const amount = (monthWage * percent) / 100;
 
                                     // Recalculate HRA, Performance Bonus, and LTA based on new basic salary
                                     const hra =
-                                      (amount * (employeeSalaryInfo.hraPercent || 50)) /
+                                      (amount *
+                                        (employeeSalaryInfo.hraPercent || 50)) /
                                       100;
                                     const performanceBonus =
                                       (amount *
@@ -1262,18 +1675,24 @@ export default function Employees() {
                                           8.33)) /
                                       100;
                                     const travelAllowance =
-                                      (amount * (employeeSalaryInfo.ltaPercent || 8.33)) /
+                                      (amount *
+                                        (employeeSalaryInfo.ltaPercent ||
+                                          8.33)) /
                                       100;
 
                                     // Recalculate PF based on new basic salary
-                                    const pfPercent = employeeSalaryInfo.pfPercent || employeeSalaryInfo.pfEmployeePercent || 12;
+                                    const pfPercent =
+                                      employeeSalaryInfo.pfPercent ||
+                                      employeeSalaryInfo.pfEmployeePercent ||
+                                      12;
                                     const pf = (amount * pfPercent) / 100;
 
                                     // Recalculate fixed allowance
                                     const otherComponents =
                                       amount +
                                       hra +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
                                       performanceBonus +
                                       travelAllowance;
                                     const fixedAllowance = Math.max(
@@ -1294,7 +1713,8 @@ export default function Employees() {
                                       performanceBonus: performanceBonus,
                                       travelAllowance: travelAllowance,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                       pf: pf,
                                       pfEmployee: pf,
                                     });
@@ -1311,11 +1731,16 @@ export default function Employees() {
                             {!isEditingEmployeeSalary && (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-semibold">
-                                  {formatCurrency(employeeSalaryInfo.basicSalary || 0)}{" "}
+                                  {formatCurrency(
+                                    employeeSalaryInfo.basicSalary || 0
+                                  )}{" "}
                                   ₹/month
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  {employeeSalaryInfo.basicSalaryPercent?.toFixed(2) || "0.00"} %
+                                  {employeeSalaryInfo.basicSalaryPercent?.toFixed(
+                                    2
+                                  ) || "0.00"}{" "}
+                                  %
                                 </span>
                               </div>
                             )}
@@ -1330,19 +1755,33 @@ export default function Employees() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || ""}
+                                  value={
+                                    employeeSalaryInfo.hra ||
+                                    employeeSalaryInfo.houseRentAllowance ||
+                                    ""
+                                  }
                                   onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
-                                    const percent = basicSalary > 0 ? (value / basicSalary) * 100 : 0;
-                                    
+                                    const value =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
+                                    const percent =
+                                      basicSalary > 0
+                                        ? (value / basicSalary) * 100
+                                        : 0;
+
                                     // Recalculate fixed allowance
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
                                       value +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
-                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.performanceBonus ||
+                                        0) +
                                       (employeeSalaryInfo.travelAllowance || 0);
                                     const fixedAllowance = Math.max(
                                       0,
@@ -1352,14 +1791,15 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       hra: value,
                                       houseRentAllowance: value,
                                       hraPercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-32"
@@ -1370,19 +1810,30 @@ export default function Employees() {
                                 </span>
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.hraPercent?.toFixed(2) || ""}
+                                  value={
+                                    employeeSalaryInfo.hraPercent?.toFixed(2) ||
+                                    ""
+                                  }
                                   onChange={(e) => {
-                                    const percent = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
-                                    const amount = (basicSalary * percent) / 100;
-                                    
+                                    const percent =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
+                                    const amount =
+                                      (basicSalary * percent) / 100;
+
                                     // Recalculate fixed allowance
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
                                       amount +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
-                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.performanceBonus ||
+                                        0) +
                                       (employeeSalaryInfo.travelAllowance || 0);
                                     const fixedAllowance = Math.max(
                                       0,
@@ -1392,14 +1843,15 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       hra: amount,
                                       houseRentAllowance: amount,
                                       hraPercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-24"
@@ -1414,11 +1866,17 @@ export default function Employees() {
                             {!isEditingEmployeeSalary && (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-semibold">
-                                  {formatCurrency(employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0)}{" "}
+                                  {formatCurrency(
+                                    employeeSalaryInfo.hra ||
+                                      employeeSalaryInfo.houseRentAllowance ||
+                                      0
+                                  )}{" "}
                                   ₹/month
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  {employeeSalaryInfo.hraPercent?.toFixed(2) || "0.00"} %
+                                  {employeeSalaryInfo.hraPercent?.toFixed(2) ||
+                                    "0.00"}{" "}
+                                  %
                                 </span>
                               </div>
                             )}
@@ -1433,19 +1891,30 @@ export default function Employees() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.standardAllowance || ""}
+                                  value={
+                                    employeeSalaryInfo.standardAllowance || ""
+                                  }
                                   onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const value =
+                                      parseFloat(e.target.value) || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const percent =
-                                      monthWage > 0 ? (value / monthWage) * 100 : 0;
-                                    
+                                      monthWage > 0
+                                        ? (value / monthWage) * 100
+                                        : 0;
+
                                     // Recalculate fixed allowance
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
-                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      (employeeSalaryInfo.hra ||
+                                        employeeSalaryInfo.houseRentAllowance ||
+                                        0) +
                                       value +
-                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.performanceBonus ||
+                                        0) +
                                       (employeeSalaryInfo.travelAllowance || 0);
                                     const fixedAllowance = Math.max(
                                       0,
@@ -1455,13 +1924,14 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       standardAllowance: value,
                                       standardAllowancePercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-32"
@@ -1478,16 +1948,23 @@ export default function Employees() {
                                     ) || ""
                                   }
                                   onChange={(e) => {
-                                    const percent = parseFloat(e.target.value) || 0;
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const percent =
+                                      parseFloat(e.target.value) || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const amount = (monthWage * percent) / 100;
-                                    
+
                                     // Recalculate fixed allowance
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
-                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
+                                      (employeeSalaryInfo.hra ||
+                                        employeeSalaryInfo.houseRentAllowance ||
+                                        0) +
                                       amount +
-                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.performanceBonus ||
+                                        0) +
                                       (employeeSalaryInfo.travelAllowance || 0);
                                     const fixedAllowance = Math.max(
                                       0,
@@ -1497,13 +1974,14 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       standardAllowance: amount,
                                       standardAllowancePercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-24"
@@ -1542,21 +2020,31 @@ export default function Employees() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.performanceBonus || ""}
+                                  value={
+                                    employeeSalaryInfo.performanceBonus || ""
+                                  }
                                   onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const value =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
                                     const percent =
                                       basicSalary > 0
                                         ? (value / basicSalary) * 100
                                         : 0;
-                                    
+
                                     // Recalculate fixed allowance
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
-                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.hra ||
+                                        employeeSalaryInfo.houseRentAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
                                       value +
                                       (employeeSalaryInfo.travelAllowance || 0);
                                     const fixedAllowance = Math.max(
@@ -1567,13 +2055,14 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       performanceBonus: value,
                                       performanceBonusPercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-32"
@@ -1590,16 +2079,25 @@ export default function Employees() {
                                     ) || ""
                                   }
                                   onChange={(e) => {
-                                    const percent = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
-                                    const amount = (basicSalary * percent) / 100;
-                                    
+                                    const percent =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
+                                    const amount =
+                                      (basicSalary * percent) / 100;
+
                                     // Recalculate fixed allowance
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
-                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
+                                      (employeeSalaryInfo.hra ||
+                                        employeeSalaryInfo.houseRentAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
                                       amount +
                                       (employeeSalaryInfo.travelAllowance || 0);
                                     const fixedAllowance = Math.max(
@@ -1610,13 +2108,14 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       performanceBonus: amount,
                                       performanceBonusPercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-24"
@@ -1631,12 +2130,15 @@ export default function Employees() {
                             {!isEditingEmployeeSalary && (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-semibold">
-                                  {formatCurrency(employeeSalaryInfo.performanceBonus || 0)}{" "}
+                                  {formatCurrency(
+                                    employeeSalaryInfo.performanceBonus || 0
+                                  )}{" "}
                                   ₹/month
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  {employeeSalaryInfo.performanceBonusPercent?.toFixed(2) ||
-                                    "0.00"}{" "}
+                                  {employeeSalaryInfo.performanceBonusPercent?.toFixed(
+                                    2
+                                  ) || "0.00"}{" "}
                                   %
                                 </span>
                               </div>
@@ -1652,22 +2154,33 @@ export default function Employees() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.travelAllowance || ""}
+                                  value={
+                                    employeeSalaryInfo.travelAllowance || ""
+                                  }
                                   onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
+                                    const value =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
                                     const percent =
                                       basicSalary > 0
                                         ? (value / basicSalary) * 100
                                         : 0;
-                                    
+
                                     // Recalculate fixed allowance
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
-                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
-                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.hra ||
+                                        employeeSalaryInfo.houseRentAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.performanceBonus ||
+                                        0) +
                                       value;
                                     const fixedAllowance = Math.max(
                                       0,
@@ -1677,13 +2190,14 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       travelAllowance: value,
                                       ltaPercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-32"
@@ -1694,19 +2208,32 @@ export default function Employees() {
                                 </span>
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.ltaPercent?.toFixed(2) || ""}
+                                  value={
+                                    employeeSalaryInfo.ltaPercent?.toFixed(2) ||
+                                    ""
+                                  }
                                   onChange={(e) => {
-                                    const percent = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
-                                    const amount = (basicSalary * percent) / 100;
-                                    
+                                    const percent =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
+                                    const amount =
+                                      (basicSalary * percent) / 100;
+
                                     // Recalculate fixed allowance
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const otherComponents =
                                       (employeeSalaryInfo.basicSalary || 0) +
-                                      (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
-                                      (employeeSalaryInfo.standardAllowance || 0) +
-                                      (employeeSalaryInfo.performanceBonus || 0) +
+                                      (employeeSalaryInfo.hra ||
+                                        employeeSalaryInfo.houseRentAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.standardAllowance ||
+                                        0) +
+                                      (employeeSalaryInfo.performanceBonus ||
+                                        0) +
                                       amount;
                                     const fixedAllowance = Math.max(
                                       0,
@@ -1716,13 +2243,14 @@ export default function Employees() {
                                       monthWage > 0
                                         ? (fixedAllowance / monthWage) * 100
                                         : 0;
-                                    
+
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       travelAllowance: amount,
                                       ltaPercent: percent,
                                       fixedAllowance: fixedAllowance,
-                                      fixedAllowancePercent: fixedAllowancePercent,
+                                      fixedAllowancePercent:
+                                        fixedAllowancePercent,
                                     });
                                   }}
                                   className="w-24"
@@ -1737,11 +2265,15 @@ export default function Employees() {
                             {!isEditingEmployeeSalary && (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-semibold">
-                                  {formatCurrency(employeeSalaryInfo.travelAllowance || 0)}{" "}
+                                  {formatCurrency(
+                                    employeeSalaryInfo.travelAllowance || 0
+                                  )}{" "}
                                   ₹/month
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  {employeeSalaryInfo.ltaPercent?.toFixed(2) || "0.00"} %
+                                  {employeeSalaryInfo.ltaPercent?.toFixed(2) ||
+                                    "0.00"}{" "}
+                                  %
                                 </span>
                               </div>
                             )}
@@ -1756,12 +2288,20 @@ export default function Employees() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.fixedAllowance || ""}
+                                  value={
+                                    employeeSalaryInfo.fixedAllowance || ""
+                                  }
                                   onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const value =
+                                      parseFloat(e.target.value) || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const percent =
-                                      monthWage > 0 ? (value / monthWage) * 100 : 0;
+                                      monthWage > 0
+                                        ? (value / monthWage) * 100
+                                        : 0;
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       fixedAllowance: value,
@@ -1777,12 +2317,17 @@ export default function Employees() {
                                 <Input
                                   type="number"
                                   value={
-                                    employeeSalaryInfo.fixedAllowancePercent?.toFixed(2) ||
-                                    ""
+                                    employeeSalaryInfo.fixedAllowancePercent?.toFixed(
+                                      2
+                                    ) || ""
                                   }
                                   onChange={(e) => {
-                                    const percent = parseFloat(e.target.value) || 0;
-                                    const monthWage = employeeSalaryInfo.monthWage || employeeSalaryInfo.grossSalary || 0;
+                                    const percent =
+                                      parseFloat(e.target.value) || 0;
+                                    const monthWage =
+                                      employeeSalaryInfo.monthWage ||
+                                      employeeSalaryInfo.grossSalary ||
+                                      0;
                                     const amount = (monthWage * percent) / 100;
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
@@ -1802,12 +2347,15 @@ export default function Employees() {
                             {!isEditingEmployeeSalary && (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-semibold">
-                                  {formatCurrency(employeeSalaryInfo.fixedAllowance || 0)}{" "}
+                                  {formatCurrency(
+                                    employeeSalaryInfo.fixedAllowance || 0
+                                  )}{" "}
                                   ₹/month
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  {employeeSalaryInfo.fixedAllowancePercent?.toFixed(2) ||
-                                    "0.00"}{" "}
+                                  {employeeSalaryInfo.fixedAllowancePercent?.toFixed(
+                                    2
+                                  ) || "0.00"}{" "}
                                   %
                                 </span>
                               </div>
@@ -1822,11 +2370,13 @@ export default function Employees() {
                             <p className="text-2xl font-bold text-primary">
                               {formatCurrency(
                                 (employeeSalaryInfo.basicSalary || 0) +
-                                (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
-                                (employeeSalaryInfo.standardAllowance || 0) +
-                                (employeeSalaryInfo.performanceBonus || 0) +
-                                (employeeSalaryInfo.travelAllowance || 0) +
-                                (employeeSalaryInfo.fixedAllowance || 0)
+                                  (employeeSalaryInfo.hra ||
+                                    employeeSalaryInfo.houseRentAllowance ||
+                                    0) +
+                                  (employeeSalaryInfo.standardAllowance || 0) +
+                                  (employeeSalaryInfo.performanceBonus || 0) +
+                                  (employeeSalaryInfo.travelAllowance || 0) +
+                                  (employeeSalaryInfo.fixedAllowance || 0)
                               )}
                             </p>
                           </div>
@@ -1849,11 +2399,20 @@ export default function Employees() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || ""}
+                                  value={
+                                    employeeSalaryInfo.pf ||
+                                    employeeSalaryInfo.pfEmployee ||
+                                    ""
+                                  }
                                   onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
-                                    const percent = basicSalary > 0 ? (value / basicSalary) * 100 : 0;
+                                    const value =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
+                                    const percent =
+                                      basicSalary > 0
+                                        ? (value / basicSalary) * 100
+                                        : 0;
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       pf: value,
@@ -1870,11 +2429,20 @@ export default function Employees() {
                                 </span>
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.pfPercent?.toFixed(2) || employeeSalaryInfo.pfEmployeePercent?.toFixed(2) || ""}
+                                  value={
+                                    employeeSalaryInfo.pfPercent?.toFixed(2) ||
+                                    employeeSalaryInfo.pfEmployeePercent?.toFixed(
+                                      2
+                                    ) ||
+                                    ""
+                                  }
                                   onChange={(e) => {
-                                    const percent = parseFloat(e.target.value) || 0;
-                                    const basicSalary = employeeSalaryInfo.basicSalary || 0;
-                                    const amount = (basicSalary * percent) / 100;
+                                    const percent =
+                                      parseFloat(e.target.value) || 0;
+                                    const basicSalary =
+                                      employeeSalaryInfo.basicSalary || 0;
+                                    const amount =
+                                      (basicSalary * percent) / 100;
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
                                       pf: amount,
@@ -1895,11 +2463,20 @@ export default function Employees() {
                             {!isEditingEmployeeSalary && (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-semibold">
-                                  {formatCurrency(employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || 0)}{" "}
+                                  {formatCurrency(
+                                    employeeSalaryInfo.pf ||
+                                      employeeSalaryInfo.pfEmployee ||
+                                      0
+                                  )}{" "}
                                   ₹/month
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  {employeeSalaryInfo.pfPercent?.toFixed(2) || employeeSalaryInfo.pfEmployeePercent?.toFixed(2) || "0.00"} %
+                                  {employeeSalaryInfo.pfPercent?.toFixed(2) ||
+                                    employeeSalaryInfo.pfEmployeePercent?.toFixed(
+                                      2
+                                    ) ||
+                                    "0.00"}{" "}
+                                  %
                                 </span>
                               </div>
                             )}
@@ -1909,7 +2486,9 @@ export default function Employees() {
 
                       {/* Tax Deductions */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Tax Deductions</h3>
+                        <h3 className="text-lg font-semibold">
+                          Tax Deductions
+                        </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Professional Tax */}
@@ -1921,11 +2500,14 @@ export default function Employees() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  value={employeeSalaryInfo.professionalTax || ""}
+                                  value={
+                                    employeeSalaryInfo.professionalTax || ""
+                                  }
                                   onChange={(e) =>
                                     setEmployeeSalaryInfo({
                                       ...employeeSalaryInfo,
-                                      professionalTax: parseFloat(e.target.value) || 0,
+                                      professionalTax:
+                                        parseFloat(e.target.value) || 0,
                                     })
                                   }
                                   className="w-32"
@@ -1938,7 +2520,9 @@ export default function Employees() {
                             )}
                             {!isEditingEmployeeSalary && (
                               <div className="text-lg font-semibold">
-                                {formatCurrency(employeeSalaryInfo.professionalTax || 0)}{" "}
+                                {formatCurrency(
+                                  employeeSalaryInfo.professionalTax || 0
+                                )}{" "}
                                 <span className="text-sm text-muted-foreground font-normal">
                                   ₹/month
                                 </span>
@@ -1954,16 +2538,28 @@ export default function Employees() {
                           Net Salary
                         </Label>
                         <p className="text-2xl font-bold text-primary">
-                          {formatCurrency(
-                            ((employeeSalaryInfo.basicSalary || 0) +
-                            (employeeSalaryInfo.hra || employeeSalaryInfo.houseRentAllowance || 0) +
-                            (employeeSalaryInfo.standardAllowance || 0) +
-                            (employeeSalaryInfo.performanceBonus || 0) +
-                            (employeeSalaryInfo.travelAllowance || 0) +
-                            (employeeSalaryInfo.fixedAllowance || 0)) -
-                            ((employeeSalaryInfo.pf || employeeSalaryInfo.pfEmployee || 0) +
-                            (employeeSalaryInfo.professionalTax || 0))
-                          )}
+                          {(() => {
+                            const grossSalary =
+                              (employeeSalaryInfo.basicSalary || 0) +
+                              (employeeSalaryInfo.hra ||
+                                employeeSalaryInfo.houseRentAllowance ||
+                                0) +
+                              (employeeSalaryInfo.standardAllowance || 0) +
+                              (employeeSalaryInfo.performanceBonus || 0) +
+                              (employeeSalaryInfo.travelAllowance || 0) +
+                              (employeeSalaryInfo.fixedAllowance || 0);
+
+                            const netSalary =
+                              grossSalary <= 0
+                                ? 0
+                                : grossSalary -
+                                  ((employeeSalaryInfo.pf ||
+                                    employeeSalaryInfo.pfEmployee ||
+                                    0) +
+                                    (employeeSalaryInfo.professionalTax || 0));
+
+                            return formatCurrency(Math.max(0, netSalary));
+                          })()}
                         </p>
                       </div>
 
@@ -1981,7 +2577,9 @@ export default function Employees() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground">Loading salary information...</p>
+                    <p className="text-muted-foreground">
+                      Loading salary information...
+                    </p>
                   )}
                 </TabsContent>
               )}
