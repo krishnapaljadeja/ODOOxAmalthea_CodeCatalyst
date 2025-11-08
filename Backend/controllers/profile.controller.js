@@ -245,7 +245,7 @@ export const getSalaryInfo = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get employee data
+    // Get employee data with salary structure
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
       select: {
@@ -255,6 +255,27 @@ export const getSalaryInfo = async (req, res, next) => {
         firstName: true,
         lastName: true,
         email: true,
+        monthWage: true,
+        yearlyWage: true,
+        workingDaysPerWeek: true,
+        breakTime: true,
+        basicSalary: true,
+        basicSalaryPercent: true,
+        houseRentAllowance: true,
+        hraPercent: true,
+        standardAllowance: true,
+        standardAllowancePercent: true,
+        performanceBonus: true,
+        performanceBonusPercent: true,
+        travelAllowance: true,
+        ltaPercent: true,
+        fixedAllowance: true,
+        fixedAllowancePercent: true,
+        pfEmployee: true,
+        pfEmployeePercent: true,
+        pfEmployer: true,
+        pfEmployerPercent: true,
+        professionalTax: true,
       },
     })
 
@@ -266,29 +287,56 @@ export const getSalaryInfo = async (req, res, next) => {
       })
     }
 
-    // Calculate salary components
-    const basicSalary = employee.salary * 0.5
-    const hra = basicSalary * 0.5
-    const conveyance = employee.salary * 0.1
-    const medicalAllowance = employee.salary * 0.1
-    const specialAllowance = employee.salary * 0.05
-    const grossSalary = employee.salary
-    const pf = basicSalary * 0.12
-    const esi = 0
-    const professionalTax = 200
-    const netSalary = grossSalary - pf - esi - professionalTax
+    // Use stored values or calculate defaults
+    const monthWage = employee.monthWage || employee.salary || 0
+    const yearlyWage = employee.yearlyWage || (monthWage * 12)
+    const basicSalary = employee.basicSalary || (monthWage * 0.5)
+    const basicSalaryPercent = employee.basicSalaryPercent || 50.0
+    const hra = employee.houseRentAllowance || (basicSalary * 0.5)
+    const hraPercent = employee.hraPercent || 50.0
+    const standardAllowance = employee.standardAllowance || (monthWage * 0.1667)
+    const standardAllowancePercent = employee.standardAllowancePercent || 16.67
+    const performanceBonus = employee.performanceBonus || (basicSalary * 0.0833)
+    const performanceBonusPercent = employee.performanceBonusPercent || 8.33
+    const travelAllowance = employee.travelAllowance || (basicSalary * 0.0833)
+    const ltaPercent = employee.ltaPercent || 8.33
+    const fixedAllowance = employee.fixedAllowance || (monthWage * 0.1167)
+    const fixedAllowancePercent = employee.fixedAllowancePercent || 11.67
+    
+    const grossSalary = basicSalary + hra + standardAllowance + performanceBonus + travelAllowance + fixedAllowance
+    
+    const pfEmployee = employee.pfEmployee || (basicSalary * 0.12)
+    const pfEmployeePercent = employee.pfEmployeePercent || 12.0
+    const pfEmployer = employee.pfEmployer || (basicSalary * 0.12)
+    const pfEmployerPercent = employee.pfEmployerPercent || 12.0
+    const professionalTax = employee.professionalTax || 200
+    
+    const netSalary = grossSalary - pfEmployee - professionalTax
 
     res.json({
       status: 'success',
       data: {
+        monthWage,
+        yearlyWage,
+        workingDaysPerWeek: employee.workingDaysPerWeek,
+        breakTime: employee.breakTime,
         basicSalary,
-        hra,
-        conveyance,
-        medicalAllowance,
-        specialAllowance,
+        basicSalaryPercent,
+        houseRentAllowance: hra,
+        hraPercent,
+        standardAllowance,
+        standardAllowancePercent,
+        performanceBonus,
+        performanceBonusPercent,
+        travelAllowance,
+        ltaPercent,
+        fixedAllowance,
+        fixedAllowancePercent,
         grossSalary,
-        pf,
-        esi,
+        pfEmployee,
+        pfEmployeePercent,
+        pfEmployer,
+        pfEmployerPercent,
         professionalTax,
         netSalary,
       },

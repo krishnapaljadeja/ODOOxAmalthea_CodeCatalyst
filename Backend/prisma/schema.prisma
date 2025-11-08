@@ -151,6 +151,35 @@ model Employee {
   panNo          String?
   uanNo          String?
   
+  // Salary structure fields
+  monthWage          Float?  // Monthly wage
+  yearlyWage         Float?  // Yearly wage
+  workingDaysPerWeek Int?    // No of working days in a week
+  breakTime          Float?  // Break time in hours
+  
+  // Salary components
+  basicSalary        Float?
+  basicSalaryPercent Float? // Percentage of monthly wage
+  houseRentAllowance Float?
+  hraPercent         Float? // Percentage of basic salary
+  standardAllowance   Float?
+  standardAllowancePercent Float? // Percentage of monthly wage
+  performanceBonus    Float?
+  performanceBonusPercent Float? // Percentage of basic salary
+  travelAllowance     Float?
+  ltaPercent          Float? // Percentage of basic salary
+  fixedAllowance      Float?
+  fixedAllowancePercent Float? // Percentage of monthly wage
+  
+  // PF contributions
+  pfEmployee      Float?
+  pfEmployeePercent Float? // Percentage of basic salary
+  pfEmployer      Float?
+  pfEmployerPercent Float? // Percentage of basic salary
+  
+  // Tax deductions
+  professionalTax Float?
+  
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   
@@ -251,15 +280,31 @@ model SalaryStructure {
   effectiveFrom DateTime
   effectiveTo   DateTime?
 
+  // General work info
+  monthWage          Float?  // Monthly wage
+  yearlyWage         Float?  // Yearly wage
+  workingDaysPerWeek Int?    // No of working days in a week
+  breakTime          Float?  // Break time in hours
+
   // earnings
   basicSalary        Float @default(0)
+  basicSalaryPercent Float? // Percentage of monthly wage
   houseRentAllowance Float @default(0)
+  hraPercent         Float? // Percentage of basic salary
   standardAllowance  Float @default(0)
-  bonus              Float @default(0)
+  standardAllowancePercent Float? // Percentage of monthly wage
+  performanceBonus   Float @default(0)
+  performanceBonusPercent Float? // Percentage of basic salary
   travelAllowance    Float @default(0)
+  ltaPercent         Float? // Percentage of basic salary
+  fixedAllowance     Float @default(0)
+  fixedAllowancePercent Float? // Percentage of monthly wage
 
   // deductions
   pfEmployee      Float @default(0)
+  pfEmployeePercent Float? // Percentage of basic salary
+  pfEmployer      Float @default(0)
+  pfEmployerPercent Float? // Percentage of basic salary
   professionalTax Float @default(0)
   tds             Float @default(0)
   otherDeductions Float @default(0)

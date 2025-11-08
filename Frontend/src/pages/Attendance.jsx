@@ -40,6 +40,8 @@ export default function Attendance() {
 
   // Employee view state
   const [employeeSelectedMonth, setEmployeeSelectedMonth] = useState(new Date())
+  const [employeeSelectedDate, setEmployeeSelectedDate] = useState(new Date())
+  const [employeeViewMode, setEmployeeViewMode] = useState('month') // 'day' or 'month'
   const [monthSummary, setMonthSummary] = useState(null)
 
   const isAdmin = ['admin', 'hr', 'manager'].includes(user?.role)
@@ -54,10 +56,14 @@ export default function Attendance() {
       }
     } else {
       fetchTodayAttendance()
-      fetchAttendanceForMonth(employeeSelectedMonth)
-      fetchMonthSummary(employeeSelectedMonth)
+      if (employeeViewMode === 'day') {
+        fetchAttendanceForDate(employeeSelectedDate)
+      } else {
+        fetchAttendanceForMonth(employeeSelectedMonth)
+        fetchMonthSummary(employeeSelectedMonth)
+      }
     }
-  }, [isAdmin, selectedDate, selectedMonth, selectedEmployeeId, employeeSelectedMonth])
+  }, [isAdmin, selectedDate, selectedMonth, selectedEmployeeId, employeeSelectedMonth, employeeSelectedDate, employeeViewMode])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -159,8 +165,12 @@ export default function Attendance() {
       const message = response.data?.message || 'Checked in successfully'
       toast.success(message)
       await fetchTodayAttendance()
-      fetchAttendanceForMonth(employeeSelectedMonth)
-      fetchMonthSummary(employeeSelectedMonth)
+      if (employeeViewMode === 'day') {
+        fetchAttendanceForDate(employeeSelectedDate)
+      } else {
+        fetchAttendanceForMonth(employeeSelectedMonth)
+        fetchMonthSummary(employeeSelectedMonth)
+      }
     } catch (error) {
       console.error('Failed to check in:', error)
       const errorMessage =
@@ -177,8 +187,12 @@ export default function Attendance() {
       const message = response.data?.message || 'Checked out successfully'
       toast.success(message)
       await fetchTodayAttendance()
-      fetchAttendanceForMonth(employeeSelectedMonth)
-      fetchMonthSummary(employeeSelectedMonth)
+      if (employeeViewMode === 'day') {
+        fetchAttendanceForDate(employeeSelectedDate)
+      } else {
+        fetchAttendanceForMonth(employeeSelectedMonth)
+        fetchMonthSummary(employeeSelectedMonth)
+      }
     } catch (error) {
       console.error('Failed to check out:', error)
       const errorMessage =
@@ -630,86 +644,161 @@ export default function Attendance() {
             </CardContent>
           </Card>
 
-          {/* Monthly Attendance View */}
+          {/* Employee Attendance View */}
           <Card>
             <CardHeader>
-              <CardTitle>For Employees</CardTitle>
+              <CardTitle>My Attendance</CardTitle>
               <CardDescription>
-                View your attendance for the selected month
+                View your attendance day-wise or month-wise
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Month Navigation */}
-              <div className="flex items-center gap-4">
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleMonthChange('prev')}
+                  variant={employeeViewMode === 'day' ? 'default' : 'outline'}
+                  onClick={() => setEmployeeViewMode('day')}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  Day
                 </Button>
-                <Input
-                  type="month"
-                  value={dayjs(selectedMonth).format('YYYY-MM')}
-                  onChange={(e) => setSelectedMonth(new Date(e.target.value))}
-                  className="w-40"
-                />
                 <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleMonthChange('next')}
+                  variant={employeeViewMode === 'month' ? 'default' : 'outline'}
+                  onClick={() => setEmployeeViewMode('month')}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  Month
                 </Button>
               </div>
 
-              {/* Summary Metrics */}
-              {monthSummary && (
-                <div className="grid grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <p className="text-sm text-muted-foreground">
-                        Count of days present
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {monthSummary.daysPresent || 0}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <p className="text-sm text-muted-foreground">
-                        Leaves count
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {monthSummary.leavesCount || 0}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <p className="text-sm text-muted-foreground">
-                        Total working days
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {monthSummary.totalWorkingDays || 0}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
+              {/* Day View */}
+              {employeeViewMode === 'day' ? (
+                <>
+                  {/* Date Navigation */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const newDate = new Date(employeeSelectedDate)
+                        newDate.setDate(newDate.getDate() - 1)
+                        setEmployeeSelectedDate(newDate)
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      type="date"
+                      value={dayjs(employeeSelectedDate).format('YYYY-MM-DD')}
+                      onChange={(e) => setEmployeeSelectedDate(new Date(e.target.value))}
+                      className="w-40"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const newDate = new Date(employeeSelectedDate)
+                        newDate.setDate(newDate.getDate() + 1)
+                        setEmployeeSelectedDate(newDate)
+                      }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <p className="text-sm text-muted-foreground ml-4">
+                      {dayjs(employeeSelectedDate).format('DD, MMMM YYYY')}
+                    </p>
+                  </div>
+
+                  {/* Day Attendance Table */}
+                  <DataTable
+                    data={attendance}
+                    columns={employeeColumns}
+                    searchable={false}
+                    paginated={false}
+                  />
+                </>
+              ) : (
+                <>
+                  {/* Month Navigation */}
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const newMonth = new Date(employeeSelectedMonth)
+                        newMonth.setMonth(newMonth.getMonth() - 1)
+                        setEmployeeSelectedMonth(newMonth)
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      type="month"
+                      value={dayjs(employeeSelectedMonth).format('YYYY-MM')}
+                      onChange={(e) => setEmployeeSelectedMonth(new Date(e.target.value + '-01'))}
+                      className="w-40"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const newMonth = new Date(employeeSelectedMonth)
+                        newMonth.setMonth(newMonth.getMonth() + 1)
+                        setEmployeeSelectedMonth(newMonth)
+                      }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Summary Metrics */}
+                  {monthSummary && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <p className="text-sm text-muted-foreground">
+                            Count of days present
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {monthSummary.daysPresent || 0}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <p className="text-sm text-muted-foreground">
+                            Leaves count
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {monthSummary.leavesCount || 0}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <p className="text-sm text-muted-foreground">
+                            Total working days
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {monthSummary.totalWorkingDays || 0}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  <p className="text-sm text-muted-foreground">
+                    {dayjs(employeeSelectedMonth).format('MMMM YYYY')}
+                  </p>
+
+                  {/* Month Attendance Calendar */}
+                  <AttendanceCalendar
+                    month={employeeSelectedMonth}
+                    attendance={attendance}
+                    selectedEmployeeId={null}
+                    employees={[]}
+                    searchTerm=""
+                  />
+                </>
               )}
-
-              <p className="text-sm text-muted-foreground">
-                {dayjs(employeeSelectedMonth).format('MMMM YYYY')}
-              </p>
-
-              {/* Attendance Table */}
-              <DataTable
-                data={filteredAttendance}
-                columns={employeeColumns}
-                searchable={false}
-                paginated={false}
-              />
             </CardContent>
           </Card>
         </>

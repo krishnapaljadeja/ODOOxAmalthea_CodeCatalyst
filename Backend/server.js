@@ -50,6 +50,7 @@ app.use('/api/salary-structures', salaryStructureRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/password-reset', passwordResetRoutes)
+app.use('/api/admin', adminRoutes)
 
 // Error handling
 app.use(errorHandler)

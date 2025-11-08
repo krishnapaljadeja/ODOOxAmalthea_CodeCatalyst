@@ -448,29 +448,108 @@ export const getEmployeeSalary = async (req, res, next) => {
       });
     }
 
-    // Calculate salary components (mock calculation for now)
-    const basicSalary = employee.salary * 0.5;
-    const hra = basicSalary * 0.5;
-    const conveyance = employee.salary * 0.1;
-    const medicalAllowance = employee.salary * 0.1;
-    const specialAllowance = employee.salary * 0.05;
-    const grossSalary = employee.salary;
-    const pf = basicSalary * 0.12;
-    const esi = 0;
-    const professionalTax = 200;
-    const netSalary = grossSalary - pf - esi - professionalTax;
+    // Get employee with all salary fields
+    const employeeWithSalary = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: {
+        id: true,
+        employeeId: true,
+        salary: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        companyId: true,
+        monthWage: true,
+        yearlyWage: true,
+        workingDaysPerWeek: true,
+        breakTime: true,
+        basicSalary: true,
+        basicSalaryPercent: true,
+        houseRentAllowance: true,
+        hraPercent: true,
+        standardAllowance: true,
+        standardAllowancePercent: true,
+        performanceBonus: true,
+        performanceBonusPercent: true,
+        travelAllowance: true,
+        ltaPercent: true,
+        fixedAllowance: true,
+        fixedAllowancePercent: true,
+        pfEmployee: true,
+        pfEmployeePercent: true,
+        pfEmployer: true,
+        pfEmployerPercent: true,
+        professionalTax: true,
+      },
+    });
+
+    if (!employeeWithSalary) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Employee not found',
+        error: 'Not Found',
+      });
+    }
+
+    // Verify employee belongs to the same company as the requesting user
+    if (user.companyId && employeeWithSalary.companyId !== user.companyId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You can only view salary information for employees in your company',
+        error: 'Forbidden',
+      });
+    }
+
+    // Use stored values or calculate defaults
+    const monthWage = employeeWithSalary.monthWage || employeeWithSalary.salary || 0;
+    const yearlyWage = employeeWithSalary.yearlyWage || (monthWage * 12);
+    const basicSalary = employeeWithSalary.basicSalary || (monthWage * 0.5);
+    const basicSalaryPercent = employeeWithSalary.basicSalaryPercent || 50.0;
+    const hra = employeeWithSalary.houseRentAllowance || (basicSalary * 0.5);
+    const hraPercent = employeeWithSalary.hraPercent || 50.0;
+    const standardAllowance = employeeWithSalary.standardAllowance || (monthWage * 0.1667);
+    const standardAllowancePercent = employeeWithSalary.standardAllowancePercent || 16.67;
+    const performanceBonus = employeeWithSalary.performanceBonus || (basicSalary * 0.0833);
+    const performanceBonusPercent = employeeWithSalary.performanceBonusPercent || 8.33;
+    const travelAllowance = employeeWithSalary.travelAllowance || (basicSalary * 0.0833);
+    const ltaPercent = employeeWithSalary.ltaPercent || 8.33;
+    const fixedAllowance = employeeWithSalary.fixedAllowance || (monthWage * 0.1167);
+    const fixedAllowancePercent = employeeWithSalary.fixedAllowancePercent || 11.67;
+    
+    const grossSalary = basicSalary + hra + standardAllowance + performanceBonus + travelAllowance + fixedAllowance;
+    
+    const pfEmployee = employeeWithSalary.pfEmployee || (basicSalary * 0.12);
+    const pfEmployeePercent = employeeWithSalary.pfEmployeePercent || 12.0;
+    const pfEmployer = employeeWithSalary.pfEmployer || (basicSalary * 0.12);
+    const pfEmployerPercent = employeeWithSalary.pfEmployerPercent || 12.0;
+    const professionalTax = employeeWithSalary.professionalTax || 200;
+    
+    const netSalary = grossSalary - pfEmployee - professionalTax;
 
     res.json({
       status: 'success',
       data: {
+        monthWage,
+        yearlyWage,
+        workingDaysPerWeek: employeeWithSalary.workingDaysPerWeek,
+        breakTime: employeeWithSalary.breakTime,
         basicSalary,
-        hra,
-        conveyance,
-        medicalAllowance,
-        specialAllowance,
+        basicSalaryPercent,
+        houseRentAllowance: hra,
+        hraPercent,
+        standardAllowance,
+        standardAllowancePercent,
+        performanceBonus,
+        performanceBonusPercent,
+        travelAllowance,
+        ltaPercent,
+        fixedAllowance,
+        fixedAllowancePercent,
         grossSalary,
-        pf,
-        esi,
+        pfEmployee,
+        pfEmployeePercent,
+        pfEmployer,
+        pfEmployerPercent,
         professionalTax,
         netSalary,
       },
@@ -487,13 +566,26 @@ export const updateEmployeeSalary = async (req, res, next) => {
   try {
     const { employeeId } = req.params;
     const {
+      monthWage,
+      yearlyWage,
+      workingDaysPerWeek,
+      breakTime,
       basicSalary,
-      hra,
-      conveyance,
-      medicalAllowance,
-      specialAllowance,
-      pf,
-      esi,
+      basicSalaryPercent,
+      houseRentAllowance,
+      hraPercent,
+      standardAllowance,
+      standardAllowancePercent,
+      performanceBonus,
+      performanceBonusPercent,
+      travelAllowance,
+      ltaPercent,
+      fixedAllowance,
+      fixedAllowancePercent,
+      pfEmployee,
+      pfEmployeePercent,
+      pfEmployer,
+      pfEmployerPercent,
       professionalTax,
     } = req.body;
     const user = req.user;
@@ -526,33 +618,68 @@ export const updateEmployeeSalary = async (req, res, next) => {
     // Calculate gross salary and net salary
     const grossSalary =
       (basicSalary || 0) +
-      (hra || 0) +
-      (conveyance || 0) +
-      (medicalAllowance || 0) +
-      (specialAllowance || 0);
+      (houseRentAllowance || 0) +
+      (standardAllowance || 0) +
+      (performanceBonus || 0) +
+      (travelAllowance || 0) +
+      (fixedAllowance || 0);
 
     const netSalary =
-      grossSalary - (pf || 0) - (esi || 0) - (professionalTax || 0);
+      grossSalary - (pfEmployee || 0) - (professionalTax || 0);
 
-    // Update employee salary
+    // Update employee salary structure
     await prisma.employee.update({
       where: { id: employeeId },
       data: {
         salary: grossSalary,
+        monthWage: monthWage !== undefined ? monthWage : null,
+        yearlyWage: yearlyWage !== undefined ? yearlyWage : null,
+        workingDaysPerWeek: workingDaysPerWeek !== undefined ? workingDaysPerWeek : null,
+        breakTime: breakTime !== undefined ? breakTime : null,
+        basicSalary: basicSalary !== undefined ? basicSalary : null,
+        basicSalaryPercent: basicSalaryPercent !== undefined ? basicSalaryPercent : null,
+        houseRentAllowance: houseRentAllowance !== undefined ? houseRentAllowance : null,
+        hraPercent: hraPercent !== undefined ? hraPercent : null,
+        standardAllowance: standardAllowance !== undefined ? standardAllowance : null,
+        standardAllowancePercent: standardAllowancePercent !== undefined ? standardAllowancePercent : null,
+        performanceBonus: performanceBonus !== undefined ? performanceBonus : null,
+        performanceBonusPercent: performanceBonusPercent !== undefined ? performanceBonusPercent : null,
+        travelAllowance: travelAllowance !== undefined ? travelAllowance : null,
+        ltaPercent: ltaPercent !== undefined ? ltaPercent : null,
+        fixedAllowance: fixedAllowance !== undefined ? fixedAllowance : null,
+        fixedAllowancePercent: fixedAllowancePercent !== undefined ? fixedAllowancePercent : null,
+        pfEmployee: pfEmployee !== undefined ? pfEmployee : null,
+        pfEmployeePercent: pfEmployeePercent !== undefined ? pfEmployeePercent : null,
+        pfEmployer: pfEmployer !== undefined ? pfEmployer : null,
+        pfEmployerPercent: pfEmployerPercent !== undefined ? pfEmployerPercent : null,
+        professionalTax: professionalTax !== undefined ? professionalTax : null,
       },
     });
 
     res.json({
       status: 'success',
       data: {
+        monthWage,
+        yearlyWage,
+        workingDaysPerWeek,
+        breakTime,
         basicSalary,
-        hra,
-        conveyance,
-        medicalAllowance,
-        specialAllowance,
+        basicSalaryPercent,
+        houseRentAllowance,
+        hraPercent,
+        standardAllowance,
+        standardAllowancePercent,
+        performanceBonus,
+        performanceBonusPercent,
+        travelAllowance,
+        ltaPercent,
+        fixedAllowance,
+        fixedAllowancePercent,
         grossSalary,
-        pf,
-        esi,
+        pfEmployee,
+        pfEmployeePercent,
+        pfEmployer,
+        pfEmployerPercent,
         professionalTax,
         netSalary,
       },
