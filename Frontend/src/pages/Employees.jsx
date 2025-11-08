@@ -40,8 +40,18 @@ import {
 const employeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
+  email: z.string().regex(
+    /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
+    {
+      message: "Invalid email address",
+    }
+  ),
+  phone: z.string().optional().refine(
+    (val) => !val || val.trim() === "" || /^\d{10}$/.test(val.trim()),
+    {
+      message: "Phone number must be exactly 10 digits",
+    }
+  ),
   department: z.string().min(1, "Department is required"),
   position: z.string().min(1, "Position is required"),
   // allow strings from inputs; we'll coerce to number in onSubmit
@@ -80,6 +90,14 @@ export default function Employees() {
   });
 
   const selectedRole = watch("role");
+  
+  const getTodayLocalDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Stable fetch functions
   const fetchEmployees = useCallback(async () => {
@@ -542,6 +560,7 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone</Label>
                       <Input id="phone" type="tel" {...register("phone")} aria-invalid={errors.phone ? "true" : "false"} />
+                      {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -567,7 +586,13 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
 
                       <div className="space-y-2">
                         <Label htmlFor="hireDate">Hire Date</Label>
-                        <Input id="hireDate" type="date" {...register("hireDate")} aria-invalid={errors.hireDate ? "true" : "false"} />
+                        <Input 
+                          id="hireDate" 
+                          type="date" 
+                          {...register("hireDate")} 
+                          min={getTodayLocalDate()}
+                          aria-invalid={errors.hireDate ? "true" : "false"} 
+                        />
                         {errors.hireDate && <p className="text-sm text-destructive">{errors.hireDate.message}</p>}
                       </div>
                     </div>

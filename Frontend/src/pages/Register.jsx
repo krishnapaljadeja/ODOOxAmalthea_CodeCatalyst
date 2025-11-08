@@ -16,6 +16,7 @@ import {
 import { Building2, Upload, X } from "lucide-react";
 import apiClient from "../lib/api";
 import { toast } from "sonner";
+import { AuroraBackground } from "../components/ui/aurora-background";
 
 const registerSchema = z
   .object({
@@ -23,7 +24,12 @@ const registerSchema = z
       .string()
       .min(2, "Company name must be at least 2 characters"),
     name: z.string().min(1, "Name is required"),
-    email: z.string().email("Invalid email address"),
+    email: z.string().regex(
+      /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|protonmail\.com|zoho\.com|workzen\.com)$/i,
+      {
+        message: "Invalid email address",
+      }
+    ),
     phone: z.string().optional(),
     password: z
       .string()
@@ -175,8 +181,9 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-      <Card className="w-full max-w-md">
+    <AuroraBackground className="min-h-screen">
+      <div className="flex min-h-screen items-center justify-center p-4 relative z-10">
+        <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -367,6 +374,7 @@ export default function Register() {
           </form>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AuroraBackground>
   );
 }
