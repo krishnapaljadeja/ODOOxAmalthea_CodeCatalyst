@@ -2,24 +2,18 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-/**
- * Get leave requests
- */
 export const getLeaves = async (req, res, next) => {
   try {
     const { status, employeeId } = req.query
     const user = req.user
 
-    // Build where clause
     const where = {}
 
-    // Role-based filtering
     if (user.role === 'employee') {
       where.userId = user.id
     } else if (employeeId) {
       where.employeeId = employeeId
     } else if (user.role === 'admin' || user.role === 'hr' || user.role === 'payroll') {
-      // Admin, HR, and Payroll can see all leaves from their company
       if (user.companyId) {
         const companyEmployees = await prisma.employee.findMany({
           where: { companyId: user.companyId },
@@ -29,7 +23,6 @@ export const getLeaves = async (req, res, next) => {
         if (companyEmployeeIds.length > 0) {
           where.employeeId = { in: companyEmployeeIds }
         } else {
-          // No employees in company, return empty result
           where.employeeId = { in: [] }
         }
       }
@@ -56,7 +49,6 @@ export const getLeaves = async (req, res, next) => {
       },
     })
 
-    // Format response
     const formattedLeaves = leaves.map((leave) => ({
       id: leave.id,
       employeeId: leave.employeeId,
@@ -90,15 +82,11 @@ export const getLeaves = async (req, res, next) => {
   }
 }
 
-/**
- * Create leave request
- */
 export const createLeave = async (req, res, next) => {
   try {
     const { type, startDate, endDate, days, reason } = req.body
     const user = req.user
 
-    // Get employee
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
     })
@@ -111,7 +99,6 @@ export const createLeave = async (req, res, next) => {
       })
     }
 
-    // Create leave
     const leave = await prisma.leave.create({
       data: {
         employeeId: employee.id,
@@ -159,9 +146,6 @@ export const createLeave = async (req, res, next) => {
   }
 }
 
-/**
- * Approve leave
- */
 export const approveLeave = async (req, res, next) => {
   try {
     const { leaveId } = req.params
@@ -187,7 +171,6 @@ export const approveLeave = async (req, res, next) => {
       })
     }
 
-    // Update leave
     const updated = await prisma.leave.update({
       where: { id: leaveId },
       data: {
@@ -231,9 +214,6 @@ export const approveLeave = async (req, res, next) => {
   }
 }
 
-/**
- * Reject leave
- */
 export const rejectLeave = async (req, res, next) => {
   try {
     const { leaveId } = req.params
@@ -260,7 +240,6 @@ export const rejectLeave = async (req, res, next) => {
       })
     }
 
-    // Update leave
     const updated = await prisma.leave.update({
       where: { id: leaveId },
       data: {

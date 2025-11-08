@@ -285,12 +285,9 @@ export const createEmployee = async (req, res, next) => {
         resetToken
       );
     } catch (emailError) {
-      // Log email error but don't fail the request
       console.error("Failed to send account creation email:", emailError);
-      // Employee is already created, so we continue
     }
 
-    // Format response
     const formattedEmployee = {
       id: employee.id,
       employeeId: employee.employeeId,
@@ -979,7 +976,6 @@ export const exportEmployees = async (req, res, next) => {
       },
     });
 
-    // Convert to CSV
     const headers = [
       "Employee ID",
       "First Name",
@@ -1022,9 +1018,6 @@ export const exportEmployees = async (req, res, next) => {
   }
 };
 
-/**
- * Get employee salary information
- */
 export const getEmployeeSalary = async (req, res, next) => {
   try {
     const { employeeId } = req.params;
@@ -1051,7 +1044,6 @@ export const getEmployeeSalary = async (req, res, next) => {
       });
     }
 
-    // Verify employee belongs to the same company as the requesting user
     if (user.companyId && employee.companyId !== user.companyId) {
       return res.status(403).json({
         status: "error",
@@ -1074,10 +1066,6 @@ export const getEmployeeSalary = async (req, res, next) => {
   }
 };
 
-/**
- * Update employee salary information
- * Creates or updates a salary structure instead of updating employee fields
- */
 export const updateEmployeeSalary = async (req, res, next) => {
   try {
     const { employeeId } = req.params;
@@ -1124,7 +1112,6 @@ export const updateEmployeeSalary = async (req, res, next) => {
       });
     }
 
-    // Verify employee belongs to the same company as the requesting user
     if (user.companyId && employee.companyId !== user.companyId) {
       return res.status(403).json({
         status: "error",
@@ -1134,7 +1121,6 @@ export const updateEmployeeSalary = async (req, res, next) => {
       });
     }
 
-    // Calculate gross salary and net salary
     const grossSalary =
       (basicSalary || 0) +
       (houseRentAllowance || 0) +
@@ -1146,7 +1132,6 @@ export const updateEmployeeSalary = async (req, res, next) => {
     const totalDeductions = (pfEmployee || 0) + (professionalTax || 0);
     const netSalary = grossSalary - totalDeductions;
 
-    // Find and close current active structure
     const activeStructure = await prisma.salaryStructure.findFirst({
       where: {
         employeeId,
@@ -1159,7 +1144,6 @@ export const updateEmployeeSalary = async (req, res, next) => {
       ? new Date(effectiveFrom)
       : currentDate;
 
-    // Close active structure if exists
     if (activeStructure) {
       await prisma.salaryStructure.update({
         where: { id: activeStructure.id },
@@ -1167,7 +1151,6 @@ export const updateEmployeeSalary = async (req, res, next) => {
       });
     }
 
-    // Create new salary structure
     const salaryStructure = await prisma.salaryStructure.create({
       data: {
         employeeId,
@@ -1215,7 +1198,6 @@ export const updateEmployeeSalary = async (req, res, next) => {
       },
     });
 
-    // Update employee base salary for quick reference
     await prisma.employee.update({
       where: { id: employeeId },
       data: {

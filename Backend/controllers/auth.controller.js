@@ -237,11 +237,8 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
-    // Use current date as hire date for registration
     const hireDate = new Date();
 
-    // Generate employee ID using company code
-    // Use company.code (which exists whether company was just created or already existed)
     const employeeId = await generateEmployeeId(
       company.code,
       firstName,
@@ -252,8 +249,6 @@ export const registerUser = async (req, res, next) => {
 
     const hashedPassword = await hashPassword(password);
 
-    // Create User first (Employee requires userId)
-    // User registering is the admin/owner of the company
     const user = await prisma.user.create({
       data: {
         email,
@@ -283,8 +278,6 @@ export const registerUser = async (req, res, next) => {
       },
     });
 
-    // Create Employee with userId from the created user
-    // Admin/owner is also an employee record
     await prisma.employee.create({
       data: {
         employeeId,
@@ -317,7 +310,6 @@ export const registerUser = async (req, res, next) => {
       },
     });
 
-    // Get user with company data
     const userWithCompany = await prisma.user.findUnique({
       where: { id: user.id },
       include: {
