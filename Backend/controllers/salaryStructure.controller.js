@@ -13,15 +13,29 @@ export const upsertSalaryStructure = async (req, res, next) => {
       name,
       description,
       effectiveFrom,
+      // General work info
+      monthWage,
+      yearlyWage,
+      workingDaysPerWeek,
+      breakTime,
       // Earnings
       basicSalary,
+      basicSalaryPercent,
       houseRentAllowance,
+      hraPercent,
       standardAllowance,
-      bonus,
+      standardAllowancePercent,
+      performanceBonus,
+      performanceBonusPercent,
       travelAllowance,
+      ltaPercent,
+      fixedAllowance,
+      fixedAllowancePercent,
       // Deductions
       pfEmployee,
+      pfEmployeePercent,
       pfEmployer,
+      pfEmployerPercent,
       professionalTax,
       tds,
       otherDeductions,
@@ -60,35 +74,24 @@ export const upsertSalaryStructure = async (req, res, next) => {
     }
 
     // Calculate totals
-    const earnings = {
-      basic: basicSalary || 0,
-      hra: houseRentAllowance || 0,
-      allowances: standardAllowance || 0,
-      bonus: bonus || 0,
-      travel: travelAllowance || 0,
-    }
+    const basic = basicSalary || 0
+    const hra = houseRentAllowance || 0
+    const standard = standardAllowance || 0
+    const performance = performanceBonus || 0
+    const travel = travelAllowance || 0
+    const fixed = fixedAllowance || 0
 
-    const deductions = {
-      pfEmployee: pfEmployee || 0,
-      pfEmployer: pfEmployer || 0,
-      professionalTax: professionalTax || 0,
-      tds: tds || 0,
-      other: otherDeductions || 0,
-    }
+    const grossSalary = basic + hra + standard + performance + travel + fixed
 
-    const grossSalary =
-      earnings.basic +
-      earnings.hra +
-      earnings.allowances +
-      earnings.bonus +
-      earnings.travel
+    const pfEmp = pfEmployee || 0
+    const pfEmpPercent = pfEmployeePercent
+    const pfEmpr = pfEmployer || 0
+    const pfEmprPercent = pfEmployerPercent
+    const profTax = professionalTax || 0
+    const tdsAmount = tds || 0
+    const other = otherDeductions || 0
 
-    const totalDeductions =
-      deductions.pfEmployee +
-      deductions.professionalTax +
-      deductions.tds +
-      deductions.other
-
+    const totalDeductions = pfEmp + profTax + tdsAmount + other
     const netSalary = grossSalary - totalDeductions
 
     // Create new salary structure
@@ -99,18 +102,32 @@ export const upsertSalaryStructure = async (req, res, next) => {
         description: description || null,
         effectiveFrom: effectiveFromDate,
         effectiveTo: null, // Active structure
+        // General work info
+        monthWage: monthWage !== undefined ? monthWage : null,
+        yearlyWage: yearlyWage !== undefined ? yearlyWage : null,
+        workingDaysPerWeek: workingDaysPerWeek !== undefined ? workingDaysPerWeek : null,
+        breakTime: breakTime !== undefined ? breakTime : null,
         // Earnings
-        basicSalary: earnings.basic,
-        houseRentAllowance: earnings.hra,
-        standardAllowance: earnings.allowances,
-        bonus: earnings.bonus,
-        travelAllowance: earnings.travel,
+        basicSalary: basic,
+        basicSalaryPercent: basicSalaryPercent !== undefined ? basicSalaryPercent : null,
+        houseRentAllowance: hra,
+        hraPercent: hraPercent !== undefined ? hraPercent : null,
+        standardAllowance: standard,
+        standardAllowancePercent: standardAllowancePercent !== undefined ? standardAllowancePercent : null,
+        performanceBonus: performance,
+        performanceBonusPercent: performanceBonusPercent !== undefined ? performanceBonusPercent : null,
+        travelAllowance: travel,
+        ltaPercent: ltaPercent !== undefined ? ltaPercent : null,
+        fixedAllowance: fixed,
+        fixedAllowancePercent: fixedAllowancePercent !== undefined ? fixedAllowancePercent : null,
         // Deductions
-        pfEmployee: deductions.pfEmployee,
-        pfEmployer: deductions.pfEmployer,
-        professionalTax: deductions.professionalTax,
-        tds: deductions.tds,
-        otherDeductions: deductions.other,
+        pfEmployee: pfEmp,
+        pfEmployeePercent: pfEmpPercent !== undefined ? pfEmpPercent : null,
+        pfEmployer: pfEmpr,
+        pfEmployerPercent: pfEmprPercent !== undefined ? pfEmprPercent : null,
+        professionalTax: profTax,
+        tds: tdsAmount,
+        otherDeductions: other,
         // Calculated totals
         grossSalary,
         totalDeductions,
@@ -125,6 +142,14 @@ export const upsertSalaryStructure = async (req, res, next) => {
             lastName: true,
           },
         },
+      },
+    })
+
+    // Update employee base salary for quick reference
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        salary: grossSalary,
       },
     })
 

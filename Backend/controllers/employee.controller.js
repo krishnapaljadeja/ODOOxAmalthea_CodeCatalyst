@@ -436,111 +436,13 @@ export const getEmployeeSalary = async (req, res, next) => {
       });
     }
 
-    // Get employee with all salary fields
-    const employeeWithSalary = await prisma.employee.findUnique({
-      where: { id: employeeId },
-      select: {
-        id: true,
-        employeeId: true,
-        salary: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        companyId: true,
-        monthWage: true,
-        yearlyWage: true,
-        workingDaysPerWeek: true,
-        breakTime: true,
-        basicSalary: true,
-        basicSalaryPercent: true,
-        houseRentAllowance: true,
-        hraPercent: true,
-        standardAllowance: true,
-        standardAllowancePercent: true,
-        performanceBonus: true,
-        performanceBonusPercent: true,
-        travelAllowance: true,
-        ltaPercent: true,
-        fixedAllowance: true,
-        fixedAllowancePercent: true,
-        pfEmployee: true,
-        pfEmployeePercent: true,
-        pfEmployer: true,
-        pfEmployerPercent: true,
-        professionalTax: true,
-      },
-    });
-
-    if (!employeeWithSalary) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Employee not found',
-        error: 'Not Found',
-      });
-    }
-
-    // Verify employee belongs to the same company as the requesting user
-    if (user.companyId && employeeWithSalary.companyId !== user.companyId) {
-      return res.status(403).json({
-        status: 'error',
-        message: 'You can only view salary information for employees in your company',
-        error: 'Forbidden',
-      });
-    }
-
-    // Use stored values or calculate defaults
-    const monthWage = employeeWithSalary.monthWage || employeeWithSalary.salary || 0;
-    const yearlyWage = employeeWithSalary.yearlyWage || (monthWage * 12);
-    const basicSalary = employeeWithSalary.basicSalary || (monthWage * 0.5);
-    const basicSalaryPercent = employeeWithSalary.basicSalaryPercent || 50.0;
-    const hra = employeeWithSalary.houseRentAllowance || (basicSalary * 0.5);
-    const hraPercent = employeeWithSalary.hraPercent || 50.0;
-    const standardAllowance = employeeWithSalary.standardAllowance || (monthWage * 0.1667);
-    const standardAllowancePercent = employeeWithSalary.standardAllowancePercent || 16.67;
-    const performanceBonus = employeeWithSalary.performanceBonus || (basicSalary * 0.0833);
-    const performanceBonusPercent = employeeWithSalary.performanceBonusPercent || 8.33;
-    const travelAllowance = employeeWithSalary.travelAllowance || (basicSalary * 0.0833);
-    const ltaPercent = employeeWithSalary.ltaPercent || 8.33;
-    const fixedAllowance = employeeWithSalary.fixedAllowance || (monthWage * 0.1167);
-    const fixedAllowancePercent = employeeWithSalary.fixedAllowancePercent || 11.67;
-    
-    const grossSalary = basicSalary + hra + standardAllowance + performanceBonus + travelAllowance + fixedAllowance;
-    
-    const pfEmployee = employeeWithSalary.pfEmployee || (basicSalary * 0.12);
-    const pfEmployeePercent = employeeWithSalary.pfEmployeePercent || 12.0;
-    const pfEmployer = employeeWithSalary.pfEmployer || (basicSalary * 0.12);
-    const pfEmployerPercent = employeeWithSalary.pfEmployerPercent || 12.0;
-    const professionalTax = employeeWithSalary.professionalTax || 200;
-    
-    const netSalary = grossSalary - pfEmployee - professionalTax;
+    // Get salary data from active salary structure
+    const { getSalaryData } = await import('../utils/salary.utils.js');
+    const salaryData = await getSalaryData(employee.id, employee.salary);
 
     res.json({
       status: 'success',
-      data: {
-        monthWage,
-        yearlyWage,
-        workingDaysPerWeek: employeeWithSalary.workingDaysPerWeek,
-        breakTime: employeeWithSalary.breakTime,
-        basicSalary,
-        basicSalaryPercent,
-        houseRentAllowance: hra,
-        hraPercent,
-        standardAllowance,
-        standardAllowancePercent,
-        performanceBonus,
-        performanceBonusPercent,
-        travelAllowance,
-        ltaPercent,
-        fixedAllowance,
-        fixedAllowancePercent,
-        grossSalary,
-        pfEmployee,
-        pfEmployeePercent,
-        pfEmployer,
-        pfEmployerPercent,
-        professionalTax,
-        netSalary,
-      },
+      data: salaryData,
     });
   } catch (error) {
     next(error);
@@ -549,6 +451,7 @@ export const getEmployeeSalary = async (req, res, next) => {
 
 /**
  * Update employee salary information
+ * Creates or updates a salary structure instead of updating employee fields
  */
 export const updateEmployeeSalary = async (req, res, next) => {
   try {
@@ -575,6 +478,7 @@ export const updateEmployeeSalary = async (req, res, next) => {
       pfEmployer,
       pfEmployerPercent,
       professionalTax,
+      effectiveFrom,
     } = req.body;
     const user = req.user;
 
@@ -583,6 +487,7 @@ export const updateEmployeeSalary = async (req, res, next) => {
       select: {
         id: true,
         companyId: true,
+        salary: true,
       },
     });
 
@@ -612,64 +517,102 @@ export const updateEmployeeSalary = async (req, res, next) => {
       (travelAllowance || 0) +
       (fixedAllowance || 0);
 
-    const netSalary =
-      grossSalary - (pfEmployee || 0) - (professionalTax || 0);
+    const totalDeductions = (pfEmployee || 0) + (professionalTax || 0);
+    const netSalary = grossSalary - totalDeductions;
 
-    // Update employee salary structure
-    await prisma.employee.update({
-      where: { id: employeeId },
+    // Find and close current active structure
+    const activeStructure = await prisma.salaryStructure.findFirst({
+      where: {
+        employeeId,
+        effectiveTo: null,
+      },
+    });
+
+    const currentDate = new Date();
+    const effectiveFromDate = effectiveFrom ? new Date(effectiveFrom) : currentDate;
+
+    // Close active structure if exists
+    if (activeStructure) {
+      await prisma.salaryStructure.update({
+        where: { id: activeStructure.id },
+        data: { effectiveTo: effectiveFromDate },
+      });
+    }
+
+    // Create new salary structure
+    const salaryStructure = await prisma.salaryStructure.create({
       data: {
-        salary: grossSalary,
+        employeeId,
+        name: activeStructure ? 'Revised Structure' : 'Default Structure',
+        description: null,
+        effectiveFrom: effectiveFromDate,
+        effectiveTo: null,
         monthWage: monthWage !== undefined ? monthWage : null,
         yearlyWage: yearlyWage !== undefined ? yearlyWage : null,
         workingDaysPerWeek: workingDaysPerWeek !== undefined ? workingDaysPerWeek : null,
         breakTime: breakTime !== undefined ? breakTime : null,
-        basicSalary: basicSalary !== undefined ? basicSalary : null,
+        basicSalary: basicSalary || 0,
         basicSalaryPercent: basicSalaryPercent !== undefined ? basicSalaryPercent : null,
-        houseRentAllowance: houseRentAllowance !== undefined ? houseRentAllowance : null,
+        houseRentAllowance: houseRentAllowance || 0,
         hraPercent: hraPercent !== undefined ? hraPercent : null,
-        standardAllowance: standardAllowance !== undefined ? standardAllowance : null,
+        standardAllowance: standardAllowance || 0,
         standardAllowancePercent: standardAllowancePercent !== undefined ? standardAllowancePercent : null,
-        performanceBonus: performanceBonus !== undefined ? performanceBonus : null,
+        performanceBonus: performanceBonus || 0,
         performanceBonusPercent: performanceBonusPercent !== undefined ? performanceBonusPercent : null,
-        travelAllowance: travelAllowance !== undefined ? travelAllowance : null,
+        travelAllowance: travelAllowance || 0,
         ltaPercent: ltaPercent !== undefined ? ltaPercent : null,
-        fixedAllowance: fixedAllowance !== undefined ? fixedAllowance : null,
+        fixedAllowance: fixedAllowance || 0,
         fixedAllowancePercent: fixedAllowancePercent !== undefined ? fixedAllowancePercent : null,
-        pfEmployee: pfEmployee !== undefined ? pfEmployee : null,
+        pfEmployee: pfEmployee || 0,
         pfEmployeePercent: pfEmployeePercent !== undefined ? pfEmployeePercent : null,
-        pfEmployer: pfEmployer !== undefined ? pfEmployer : null,
+        pfEmployer: pfEmployer || 0,
         pfEmployerPercent: pfEmployerPercent !== undefined ? pfEmployerPercent : null,
-        professionalTax: professionalTax !== undefined ? professionalTax : null,
+        professionalTax: professionalTax || 0,
+        tds: 0,
+        otherDeductions: 0,
+        grossSalary,
+        totalDeductions,
+        netSalary,
+      },
+    });
+
+    // Update employee base salary for quick reference
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        salary: grossSalary,
       },
     });
 
     res.json({
       status: 'success',
+      message: activeStructure
+        ? 'Salary structure updated successfully'
+        : 'Salary structure created successfully',
       data: {
-        monthWage,
-        yearlyWage,
-        workingDaysPerWeek,
-        breakTime,
-        basicSalary,
-        basicSalaryPercent,
-        houseRentAllowance,
-        hraPercent,
-        standardAllowance,
-        standardAllowancePercent,
-        performanceBonus,
-        performanceBonusPercent,
-        travelAllowance,
-        ltaPercent,
-        fixedAllowance,
-        fixedAllowancePercent,
-        grossSalary,
-        pfEmployee,
-        pfEmployeePercent,
-        pfEmployer,
-        pfEmployerPercent,
-        professionalTax,
-        netSalary,
+        monthWage: salaryStructure.monthWage,
+        yearlyWage: salaryStructure.yearlyWage,
+        workingDaysPerWeek: salaryStructure.workingDaysPerWeek,
+        breakTime: salaryStructure.breakTime,
+        basicSalary: salaryStructure.basicSalary,
+        basicSalaryPercent: salaryStructure.basicSalaryPercent,
+        houseRentAllowance: salaryStructure.houseRentAllowance,
+        hraPercent: salaryStructure.hraPercent,
+        standardAllowance: salaryStructure.standardAllowance,
+        standardAllowancePercent: salaryStructure.standardAllowancePercent,
+        performanceBonus: salaryStructure.performanceBonus,
+        performanceBonusPercent: salaryStructure.performanceBonusPercent,
+        travelAllowance: salaryStructure.travelAllowance,
+        ltaPercent: salaryStructure.ltaPercent,
+        fixedAllowance: salaryStructure.fixedAllowance,
+        fixedAllowancePercent: salaryStructure.fixedAllowancePercent,
+        grossSalary: salaryStructure.grossSalary,
+        pfEmployee: salaryStructure.pfEmployee,
+        pfEmployeePercent: salaryStructure.pfEmployeePercent,
+        pfEmployer: salaryStructure.pfEmployer,
+        pfEmployerPercent: salaryStructure.pfEmployerPercent,
+        professionalTax: salaryStructure.professionalTax,
+        netSalary: salaryStructure.netSalary,
       },
     });
   } catch (error) {
