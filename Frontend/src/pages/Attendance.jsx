@@ -47,9 +47,12 @@ export default function Attendance() {
     try {
       const dateStr = dayjs(date).format('YYYY-MM-DD')
       const response = await apiClient.get(`/attendance?date=${dateStr}`)
-      setAttendance(response.data)
+      // Backend returns { status: 'success', data: [...] }
+      const attendanceData = response.data?.data || response.data || []
+      setAttendance(Array.isArray(attendanceData) ? attendanceData : [])
     } catch (error) {
       console.error('Failed to fetch attendance:', error)
+      setAttendance([])
     } finally {
       setLoading(false)
     }
@@ -62,9 +65,12 @@ export default function Attendance() {
       const response = await apiClient.get(
         `/attendance?startDate=${startDate}&endDate=${endDate}`
       )
-      setAttendance(response.data)
+      // Backend returns { status: 'success', data: [...] }
+      const attendanceData = response.data?.data || response.data || []
+      setAttendance(Array.isArray(attendanceData) ? attendanceData : [])
     } catch (error) {
       console.error('Failed to fetch attendance:', error)
+      setAttendance([])
     } finally {
       setLoading(false)
     }
@@ -73,9 +79,15 @@ export default function Attendance() {
   const fetchTodayAttendance = async () => {
     try {
       const response = await apiClient.get('/attendance/today')
-      setTodayAttendance(response.data)
+      // Backend returns { status: 'success', data: {...} }
+      const attendanceData = response.data?.data || response.data
+      setTodayAttendance(attendanceData)
     } catch (error) {
       console.error('Failed to fetch today attendance:', error)
+      // If 404, it means no attendance record for today (not an error)
+      if (error.response?.status === 404) {
+        setTodayAttendance(null)
+      }
     }
   }
 
@@ -91,25 +103,37 @@ export default function Attendance() {
 
   const handleCheckIn = async () => {
     try {
-      await apiClient.post('/attendance/check-in')
-      toast.success('Checked in successfully')
-      fetchTodayAttendance()
+      const response = await apiClient.post('/attendance/check-in')
+      const message = response.data?.message || 'Checked in successfully'
+      toast.success(message)
+      await fetchTodayAttendance()
       fetchAttendanceForMonth(selectedMonth)
       fetchMonthSummary(selectedMonth)
     } catch (error) {
       console.error('Failed to check in:', error)
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        'Failed to check in. Please try again.'
+      toast.error(errorMessage)
     }
   }
 
   const handleCheckOut = async () => {
     try {
-      await apiClient.post('/attendance/check-out')
-      toast.success('Checked out successfully')
-      fetchTodayAttendance()
+      const response = await apiClient.post('/attendance/check-out')
+      const message = response.data?.message || 'Checked out successfully'
+      toast.success(message)
+      await fetchTodayAttendance()
       fetchAttendanceForMonth(selectedMonth)
       fetchMonthSummary(selectedMonth)
     } catch (error) {
       console.error('Failed to check out:', error)
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        'Failed to check out. Please try again.'
+      toast.error(errorMessage)
     }
   }
 
