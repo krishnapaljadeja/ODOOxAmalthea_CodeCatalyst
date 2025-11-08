@@ -18,8 +18,22 @@ export const getLeaves = async (req, res, next) => {
       where.userId = user.id
     } else if (employeeId) {
       where.employeeId = employeeId
+    } else if (user.role === 'admin' || user.role === 'hr' || user.role === 'payroll') {
+      // Admin, HR, and Payroll can see all leaves from their company
+      if (user.companyId) {
+        const companyEmployees = await prisma.employee.findMany({
+          where: { companyId: user.companyId },
+          select: { id: true },
+        })
+        const companyEmployeeIds = companyEmployees.map(e => e.id)
+        if (companyEmployeeIds.length > 0) {
+          where.employeeId = { in: companyEmployeeIds }
+        } else {
+          // No employees in company, return empty result
+          where.employeeId = { in: [] }
+        }
+      }
     }
-    // Admin and HR can see all
 
     if (status) {
       where.status = status
