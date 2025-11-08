@@ -17,13 +17,20 @@ async function createDefaultSalaryStructure(
   const hra = totalSalary * 0.25;
   const standardAllowance = totalSalary * 0.1;
   const pfEmployee = basic * 0.12;
+  const pfEmployer = basic * 0.12;
   const professionalTax = 200;
   const performanceBonus = totalSalary * 0.05;
   const travelAllowance = totalSalary * 0.02;
+  const fixedAllowance = totalSalary * 0.03;
   const tds = totalSalary * 0.01;
 
   const grossSalary =
-    basic + hra + standardAllowance + performanceBonus + travelAllowance;
+    basic +
+    hra +
+    standardAllowance +
+    performanceBonus +
+    travelAllowance +
+    fixedAllowance;
   const totalDeductions = pfEmployee + professionalTax + tds;
   const netSalary = grossSalary - totalDeductions;
 
@@ -32,15 +39,33 @@ async function createDefaultSalaryStructure(
       employeeId,
       name: "Default Salary Structure",
       effectiveFrom,
+      // General work info
+      monthWage: totalSalary,
+      yearlyWage: totalSalary * 12,
+      workingDaysPerWeek: 5,
+      breakTime: 1.0,
+      // Earnings
       basicSalary: basic,
+      basicSalaryPercent: 50.0,
       houseRentAllowance: hra,
+      hraPercent: 50.0, // 50% of basic salary
       standardAllowance,
+      standardAllowancePercent: 10.0,
       performanceBonus,
+      performanceBonusPercent: 10.0, // 10% of basic salary
       travelAllowance,
+      ltaPercent: 5.0, // 5% of basic salary
+      fixedAllowance,
+      fixedAllowancePercent: 3.0,
+      // Deductions
       pfEmployee,
+      pfEmployeePercent: 12.0,
+      pfEmployer,
+      pfEmployerPercent: 12.0,
       professionalTax,
       tds,
       otherDeductions: 0,
+      // Final amounts
       grossSalary,
       totalDeductions,
       netSalary,
@@ -102,6 +127,21 @@ async function main() {
         position,
         employeeId,
         companyId: company.id,
+        // Resume fields
+        about:
+          additionalData.about ||
+          `Experienced ${position} with a passion for excellence.`,
+        whatILoveAboutMyJob:
+          additionalData.whatILoveAboutMyJob ||
+          `I love the collaborative environment and opportunities for growth.`,
+        interestsAndHobbies:
+          additionalData.interestsAndHobbies || "Reading, Technology, Sports",
+        skills: additionalData.skills || [
+          "Communication",
+          "Problem Solving",
+          "Team Leadership",
+        ],
+        certifications: additionalData.certifications || [],
       },
     });
 
@@ -153,6 +193,7 @@ async function main() {
           dateOfBirth: additionalData.dateOfBirth || new Date(1990, 0, 1),
           address: additionalData.address || "123 Main Street, City, State",
           nationality: additionalData.nationality || "Indian",
+          personalEmail: additionalData.personalEmail || `personal.${email}`,
           gender: additionalData.gender || "Male",
           maritalStatus: additionalData.maritalStatus || "Single",
         },
@@ -191,6 +232,7 @@ async function main() {
           dateOfBirth: additionalData.dateOfBirth || new Date(1990, 0, 1),
           address: additionalData.address || "123 Main Street, City, State",
           nationality: additionalData.nationality || "Indian",
+          personalEmail: additionalData.personalEmail || `personal.${email}`,
           gender: additionalData.gender || "Male",
           maritalStatus: additionalData.maritalStatus || "Single",
         },
@@ -230,14 +272,21 @@ async function main() {
     const hra = totalSalary * 0.25;
     const standardAllowance = totalSalary * 0.1;
     const pfEmployee = basic * 0.12;
+    const pfEmployer = basic * 0.12;
     const professionalTax = 200;
     const performanceBonus = totalSalary * 0.05;
     const travelAllowance = totalSalary * 0.02;
+    const fixedAllowance = totalSalary * 0.03;
     const tds = totalSalary * 0.01;
     const otherDeductions = 0;
 
     const grossSalary =
-      basic + hra + standardAllowance + performanceBonus + travelAllowance;
+      basic +
+      hra +
+      standardAllowance +
+      performanceBonus +
+      travelAllowance +
+      fixedAllowance;
     const totalDeductions =
       pfEmployee + professionalTax + tds + otherDeductions;
     const netSalary = grossSalary - totalDeductions;
@@ -249,15 +298,33 @@ async function main() {
         description: `Active salary structure for testing payroll`,
         effectiveFrom,
         effectiveTo: null, // Active structure
+        // General work info
+        monthWage: totalSalary,
+        yearlyWage: totalSalary * 12,
+        workingDaysPerWeek: 5,
+        breakTime: 1.0,
+        // Earnings
         basicSalary: basic,
+        basicSalaryPercent: 50.0,
         houseRentAllowance: hra,
+        hraPercent: 50.0, // 50% of basic salary
         standardAllowance,
+        standardAllowancePercent: 10.0,
         performanceBonus,
+        performanceBonusPercent: 10.0, // 10% of basic salary
         travelAllowance,
+        ltaPercent: 5.0, // 5% of basic salary
+        fixedAllowance,
+        fixedAllowancePercent: 3.0,
+        // Deductions
         pfEmployee,
+        pfEmployeePercent: 12.0,
+        pfEmployer,
+        pfEmployerPercent: 12.0,
         professionalTax,
         tds,
         otherDeductions,
+        // Final amounts
         grossSalary,
         totalDeductions,
         netSalary,
