@@ -44,7 +44,7 @@ export default function Topbar() {
   const fetchTodayAttendance = async () => {
     try {
       const response = await apiClient.get('/attendance/today')
-      // Backend returns { status: 'success', data: {...} }
+      // Backend returns { status: 'success', data: {...} } 
       const attendanceData = response.data?.data || response.data
       setTodayAttendance(attendanceData)
     } catch (error) {
