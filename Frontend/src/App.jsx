@@ -7,6 +7,7 @@ import Layout from './components/Layout'
 // Pages
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Employees from './pages/Employees'
 import Attendance from './pages/Attendance'
@@ -18,6 +19,7 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import UserSettings from './pages/UserSettings'
 import Profile from './pages/Profile'
+import ChangePassword from './pages/ChangePassword'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -40,6 +42,10 @@ function App() {
           }
         />
         <Route
+          path="/reset-password"
+          element={<ResetPassword />}
+        />
+        <Route
           path="/"
           element={
             <ProtectedRoute>
@@ -59,6 +65,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="user-settings" element={<UserSettings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="change-password" element={<ChangePassword />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
