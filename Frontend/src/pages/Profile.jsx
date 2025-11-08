@@ -63,10 +63,7 @@ const emergencyContactSchema = z.object({
   phone: z.string().min(1, "Phone is required"),
 });
 
-/**
- * Profile page component with tabs
- * Tabs: Resume, Private Info, Salary Info (admin/payroll only), Security
- */
+
 export default function Profile() {
   const { user, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -83,6 +80,7 @@ export default function Profile() {
     reset,
   } = useForm({
     resolver: zodResolver(profileSchema),
+    mode: 'onChange',
   });
 
   const {
@@ -100,7 +98,7 @@ export default function Profile() {
     if (user) {
       fetchProfileData();
     }
-  }, [user]);
+  }, [user?.id]); 
 
   useEffect(() => {
     if (user && activeTab === "salary-info") {
@@ -138,7 +136,6 @@ export default function Profile() {
       if (profileData.documents) {
         setDocuments(profileData.documents);
       }
-      // Update user in store with resume fields
       updateUser({
         about: profileData.about,
         whatILoveAboutMyJob: profileData.whatILoveAboutMyJob,
@@ -148,7 +145,6 @@ export default function Profile() {
       });
     } catch (error) {
       console.error("Failed to fetch profile:", error);
-      // Use user data from store
       reset({
         firstName: user?.firstName || "",
         lastName: user?.lastName || "",
@@ -227,7 +223,7 @@ export default function Profile() {
       setSalaryInfo(salaryData);
     } catch (error) {
       console.error("Failed to fetch salary info:", error);
-      // Use employee salary if available
+
       if (employeeData?.salary) {
         const basicSalary = employeeData.salary * 0.5;
         const hra = basicSalary * 0.5;
@@ -252,7 +248,6 @@ export default function Profile() {
           netSalary,
         });
       } else {
-        // Use mock data as fallback
         setSalaryInfo({
           basicSalary: 125000,
           hra: 25000,
@@ -271,7 +266,6 @@ export default function Profile() {
 
   const onSubmit = async (data) => {
     try {
-      // Prepare employee data - convert empty strings to null
       const employeeData = {
         dateOfBirth:
           data.dateOfBirth && data.dateOfBirth.trim() ? data.dateOfBirth : null,
@@ -346,7 +340,6 @@ export default function Profile() {
         <p className="text-muted-foreground">Manage your profile information</p>
       </div>
 
-      {/* Basic Details Section - Above Tabs */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
