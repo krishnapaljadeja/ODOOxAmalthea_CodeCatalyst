@@ -198,7 +198,7 @@ export default function Leaves() {
           personal: 'Personal Leave',
           unpaid: 'Unpaid Leave',
         }
-        return typeLabels[row.type] || row.type]
+        return typeLabels[row.type] || row.type
       },
     },
     {

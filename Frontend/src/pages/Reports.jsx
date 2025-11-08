@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Print, Download } from 'lucide-react'
+import { Printer, Download } from 'lucide-react'
 import apiClient from '../lib/api'
 import { formatCurrency, formatDate } from '../lib/format'
 import { useForm } from 'react-hook-form'
@@ -212,7 +212,7 @@ export default function Reports() {
                   )}
                 </div>
                 <Button type="submit" disabled={loading}>
-                  <Print className="mr-2 h-4 w-4" />
+                  <Printer className="mr-2 h-4 w-4" />
                   {loading ? 'Generating...' : 'Print'}
                 </Button>
               </div>
@@ -237,7 +237,7 @@ export default function Reports() {
                     Download PDF
                   </Button>
                   <Button onClick={handlePrint}>
-                    <Print className="mr-2 h-4 w-4" />
+                    <Printer className="mr-2 h-4 w-4" />
                     Print
                   </Button>
                 </div>
