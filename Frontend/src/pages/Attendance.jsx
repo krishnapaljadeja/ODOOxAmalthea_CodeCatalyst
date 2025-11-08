@@ -44,7 +44,7 @@ export default function Attendance() {
   const [employeeViewMode, setEmployeeViewMode] = useState('month') // 'day' or 'month'
   const [monthSummary, setMonthSummary] = useState(null)
 
-  const isAdmin = ['admin', 'hr'].includes(user?.role)
+  const isAdmin = ['admin', 'hr', 'payroll'].includes(user?.role)
 
   useEffect(() => {
     if (isAdmin) {
