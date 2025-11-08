@@ -78,17 +78,6 @@ const calculateSalaryComputation = (salaryStructure, daysPresent, totalPaidLeave
     ? Math.round((proratedBasic * roundedPfEmployeePercent / 100) * 100) / 100
     : Math.round(((salaryStructure.pfEmployee || 0) * attendanceRatio) * 100) / 100
 
-  // PF Employer: Use percentage if available, otherwise use fixed amount with attendance ratio
-  let pfEmployerPercent = salaryStructure.pfEmployerPercent || 0
-  if (!pfEmployerPercent && baseBasicSalary > 0 && salaryStructure.pfEmployer > 0) {
-    pfEmployerPercent = (salaryStructure.pfEmployer / baseBasicSalary) * 100
-  }
-  pfEmployerPercent = pfEmployerPercent || 0
-  const roundedPfEmployerPercent = Math.round(pfEmployerPercent * 100) / 100
-  const pfEmployer = roundedPfEmployerPercent > 0
-    ? Math.round((proratedBasic * roundedPfEmployerPercent / 100) * 100) / 100
-    : Math.round(((salaryStructure.pfEmployer || 0) * attendanceRatio) * 100) / 100
-
   // Professional Tax: Fixed amount (not affected by attendance)
   const professionalTax = 200
 
@@ -99,7 +88,7 @@ const calculateSalaryComputation = (salaryStructure, daysPresent, totalPaidLeave
     ? Math.round((proratedBasic * roundedOtherDeductionsPercent / 100) * 100) / 100
     : Math.round(((salaryStructure.otherDeductions || 0) * attendanceRatio) * 100) / 100
 
-  const deductionsTotal = Math.round((pfEmployee + pfEmployer + professionalTax + otherDeductions) * 100) / 100
+  const deductionsTotal = Math.round((pfEmployee + professionalTax + otherDeductions) * 100) / 100
   const netAmount = Math.round((grossTotal - deductionsTotal) * 100) / 100
 
   // Calculate rates for display (percentage of prorated basic, rounded to 2 decimal places)
@@ -108,7 +97,6 @@ const calculateSalaryComputation = (salaryStructure, daysPresent, totalPaidLeave
     ? roundedStandardPercent 
     : (proratedBasic > 0 ? Math.round((standardAllowance / proratedBasic * 100) * 100) / 100 : 0)
   const pfEmployeeRate = roundedPfEmployeePercent
-  const pfEmployerRate = roundedPfEmployerPercent
   const performanceBonusRate = roundedBonusPercent
   const travelAllowanceRate = roundedLtaPercent
   const fixedAllowanceRate = roundedFixedAllowancePercent > 0
@@ -162,11 +150,6 @@ const calculateSalaryComputation = (salaryStructure, daysPresent, totalPaidLeave
       ruleName: 'PF Employee',
       rate: pfEmployeeRate,
       amount: -pfEmployee,
-    },
-    {
-      ruleName: 'PF Employer',
-      rate: pfEmployerRate,
-      amount: -pfEmployer,
     },
     {
       ruleName: 'Professional Tax',

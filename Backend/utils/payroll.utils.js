@@ -151,17 +151,6 @@ export const calculatePayroll = async (employee, payrun) => {
     ? Math.round((proratedBasic * roundedPfEmployeePercent / 100) * 100) / 100
     : Math.round(((salaryStructure.pfEmployee || 0) * attendanceRatio) * 100) / 100
 
-  // PF Employer: Use percentage if available, otherwise use fixed amount with attendance ratio
-  let pfEmployerPercent = salaryStructure.pfEmployerPercent || 0
-  if (!pfEmployerPercent && baseBasicSalary > 0 && salaryStructure.pfEmployer > 0) {
-    pfEmployerPercent = (salaryStructure.pfEmployer / baseBasicSalary) * 100
-  }
-  pfEmployerPercent = pfEmployerPercent || 0
-  const roundedPfEmployerPercent = Math.round(pfEmployerPercent * 100) / 100
-  const pfEmployer = roundedPfEmployerPercent > 0
-    ? Math.round((proratedBasic * roundedPfEmployerPercent / 100) * 100) / 100
-    : Math.round(((salaryStructure.pfEmployer || 0) * attendanceRatio) * 100) / 100
-
   // Professional Tax: Fixed amount (not affected by attendance)
   const professionalTax = 200
 
@@ -172,7 +161,7 @@ export const calculatePayroll = async (employee, payrun) => {
     ? Math.round((proratedBasic * roundedOtherDeductionsPercent / 100) * 100) / 100
     : Math.round(((salaryStructure.otherDeductions || 0) * attendanceRatio) * 100) / 100
 
-  const totalDeductions = Math.round((pfEmployee + pfEmployer + professionalTax + otherDeductions) * 100) / 100
+  const totalDeductions = Math.round((pfEmployee + professionalTax + otherDeductions) * 100) / 100
 
   const netSalary = Math.round((grossSalary - totalDeductions) * 100) / 100
 
@@ -196,7 +185,6 @@ export const calculatePayroll = async (employee, payrun) => {
       travelAllowance: lta,
       fixedAllowance,
       pfEmployee,
-      pfEmployer,
       professionalTax,
       otherDeductions,
     },

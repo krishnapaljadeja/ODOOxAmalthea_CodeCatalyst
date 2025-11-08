@@ -107,7 +107,6 @@ export default function Payroll() {
       if (payrunData) {
         setCurrentMonthPayrun(payrunData)
         setPayrolls(payrunData.payrolls || [])
-        console.log('Current Month Payrun:', payrunData)
       } else {
         setCurrentMonthPayrun(null)
         setPayrolls([])
@@ -352,9 +351,6 @@ export default function Payroll() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Payroll</h1>
-          <p className="text-muted-foreground">
-            The Payroll menu is accessible only to users with Admin/Payroll Officer access rights
-          </p>
         </div>
         <div className="flex items-center gap-4">
           {/* Year and Month Filters */}

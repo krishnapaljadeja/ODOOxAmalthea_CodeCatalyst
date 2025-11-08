@@ -293,8 +293,6 @@ export const getPayruns = async (req, res, next) => {
       ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
     };
 
-    console.log("WHERE FILTER:", where);
-
     const payruns = await prisma.payrun.findMany({
       where,
       orderBy: {
@@ -314,8 +312,6 @@ export const getPayruns = async (req, res, next) => {
       createdAt: payrun.createdAt.toISOString(),
       updatedAt: payrun.updatedAt.toISOString(),
     }));
-
-    console.log("FORMATTED PAYRUNS:", formattedPayruns);
 
     res.json({
       status: "success",
@@ -850,9 +846,51 @@ export const getPayrollsByPayrun = async (req, res, next) => {
       }
     })
 
-    const formattedPayrolls = payrolls.map((payroll) => {
+    // Calculate prorated basic salary for each payroll based on attendance
+    const formattedPayrolls = await Promise.all(payrolls.map(async (payroll) => {
       const structure = structureMap.get(payroll.employeeId)
-      const basicWage = structure?.basicSalary || 0
+      const baseBasicSalary = structure?.basicSalary || 0
+
+      // Get attendance data for the pay period
+      const attendances = await prisma.attendance.findMany({
+        where: {
+          employeeId: payroll.employeeId,
+          date: {
+            gte: payrun.payPeriodStart,
+            lte: payrun.payPeriodEnd,
+          },
+        },
+      })
+
+      // Get paid leaves for the pay period
+      const paidLeaves = await prisma.leave.findMany({
+        where: {
+          employeeId: payroll.employeeId,
+          type: { in: ['sick', 'vacation', 'personal'] },
+          status: 'approved',
+          startDate: { lte: payrun.payPeriodEnd },
+          endDate: { gte: payrun.payPeriodStart },
+        },
+      })
+
+      // Calculate present days and paid leaves
+      const daysPresent = attendances.filter((a) => a.status === 'present').length
+      const totalPaidLeaves = paidLeaves.reduce((sum, leave) => {
+        const overlapStart = new Date(Math.max(leave.startDate.getTime(), payrun.payPeriodStart.getTime()))
+        const overlapEnd = new Date(Math.min(leave.endDate.getTime(), payrun.payPeriodEnd.getTime()))
+        const overlapDays = Math.ceil((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1
+        return sum + Math.max(0, overlapDays)
+      }, 0)
+
+      // Calculate attendance ratio
+      const totalWorkingDays = 22
+      const workingDays = daysPresent + totalPaidLeaves
+      const attendanceRatio = workingDays > 0 && totalWorkingDays > 0
+        ? workingDays / totalWorkingDays
+        : 1.0
+
+      // Calculate prorated basic salary
+      const basicWage = Math.round((baseBasicSalary * attendanceRatio) * 100) / 100
 
       return {
         id: payroll.id,
@@ -873,7 +911,7 @@ export const getPayrollsByPayrun = async (req, res, next) => {
         payslipId: payroll.payslip?.id,
         payslipStatus: payroll.payslip?.status,
       }
-    })
+    }))
 
     res.json({
       status: 'success',
