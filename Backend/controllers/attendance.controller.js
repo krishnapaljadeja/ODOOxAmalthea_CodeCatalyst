@@ -2,9 +2,6 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-/**
- * Get attendance records
- */
 export const getAttendance = async (req, res, next) => {
   try {
     const { date, startDate, endDate, employeeId } = req.query
@@ -12,11 +9,9 @@ export const getAttendance = async (req, res, next) => {
 
     const where = {};
 
-    // Role-based filtering
     if (user.role === 'employee') {
       where.userId = user.id
     } else if (employeeId) {
-      // Filter by specific employee if provided
       const employee = await prisma.employee.findUnique({
         where: { id: employeeId },
         select: { id: true },
@@ -35,7 +30,6 @@ export const getAttendance = async (req, res, next) => {
       }
     }
 
-    // Date filtering logic:
     if (date) {
       // To get "today's attendance", filter where date >= start of given day AND < start of next day (UTC)
       const dateStart = new Date(date + 'T00:00:00.000Z');
@@ -75,7 +69,6 @@ export const getAttendance = async (req, res, next) => {
       },
     })
 
-    // Format response
     const formattedAttendances = attendances.map((att) => ({
       id: att.id,
       employeeId: att.employeeId,
@@ -104,9 +97,6 @@ export const getAttendance = async (req, res, next) => {
   }
 }
 
-/**
- * Get today's attendance
- */
 export const getTodayAttendance = async (req, res, next) => {
   try {
     const user = req.user
@@ -114,7 +104,6 @@ export const getTodayAttendance = async (req, res, next) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Get employee
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
     })
@@ -174,14 +163,10 @@ export const getTodayAttendance = async (req, res, next) => {
   }
 }
 
-/**
- * Check in
- */
 export const checkIn = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get employee
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
     })
@@ -197,7 +182,6 @@ export const checkIn = async (req, res, next) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Check if already checked in
     const existing = await prisma.attendance.findUnique({
       where: {
         employeeId_date: {
@@ -217,14 +201,12 @@ export const checkIn = async (req, res, next) => {
 
     const now = new Date()
     const checkInTime = new Date(now)
-    checkInTime.setHours(9, 0, 0, 0) // Default check-in time is 9 AM
+    checkInTime.setHours(9, 0, 0, 0) 
 
-    // Determine status (late if after 9:30 AM)
     const lateThreshold = new Date(checkInTime)
     lateThreshold.setMinutes(30)
     const status = now > lateThreshold ? 'late' : 'present'
 
-    // Create or update attendance
     const attendance = await prisma.attendance.upsert({
       where: {
         employeeId_date: {
@@ -276,14 +258,10 @@ export const checkIn = async (req, res, next) => {
   }
 }
 
-/**
- * Check out
- */
 export const checkOut = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get employee
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
     })
@@ -299,7 +277,6 @@ export const checkOut = async (req, res, next) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Get today's attendance
     const attendance = await prisma.attendance.findUnique({
       where: {
         employeeId_date: {
@@ -327,7 +304,7 @@ export const checkOut = async (req, res, next) => {
 
     const now = new Date()
     const checkInTime = attendance.checkIn
-    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60) // Convert to hours
+    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60) 
 
     // Update attendance
     const updated = await prisma.attendance.update({
@@ -370,15 +347,11 @@ export const checkOut = async (req, res, next) => {
   }
 }
 
-/**
- * Admin: Check in employee by employeeId
- */
 export const adminCheckIn = async (req, res, next) => {
   try {
     const user = req.user
     const { employeeId } = req.body
 
-    // Only admin or hr can check in employees
     if (!['admin', 'hr'].includes(user.role)) {
       return res.status(403).json({
         status: 'error',
@@ -395,7 +368,6 @@ export const adminCheckIn = async (req, res, next) => {
       })
     }
 
-    // Get employee
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
     })
@@ -411,7 +383,6 @@ export const adminCheckIn = async (req, res, next) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Check if already checked in
     const existing = await prisma.attendance.findUnique({
       where: {
         employeeId_date: {
@@ -431,14 +402,12 @@ export const adminCheckIn = async (req, res, next) => {
 
     const now = new Date()
     const checkInTime = new Date(now)
-    checkInTime.setHours(9, 0, 0, 0) // Default check-in time is 9 AM
+    checkInTime.setHours(9, 0, 0, 0) 
 
-    // Determine status (late if after 9:30 AM)
     const lateThreshold = new Date(checkInTime)
     lateThreshold.setMinutes(30)
     const status = now > lateThreshold ? 'late' : 'present'
 
-    // Create or update attendance
     const attendance = await prisma.attendance.upsert({
       where: {
         employeeId_date: {
@@ -490,15 +459,11 @@ export const adminCheckIn = async (req, res, next) => {
   }
 }
 
-/**
- * Admin: Check out employee by employeeId
- */
 export const adminCheckOut = async (req, res, next) => {
   try {
     const user = req.user
     const { employeeId } = req.body
 
-    // Only admin or hr can check out employees
     if (!['admin', 'hr'].includes(user.role)) {
       return res.status(403).json({
         status: 'error',
@@ -515,7 +480,6 @@ export const adminCheckOut = async (req, res, next) => {
       })
     }
 
-    // Get employee
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
     })
@@ -531,7 +495,6 @@ export const adminCheckOut = async (req, res, next) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Get today's attendance
     const attendance = await prisma.attendance.findUnique({
       where: {
         employeeId_date: {
@@ -559,9 +522,8 @@ export const adminCheckOut = async (req, res, next) => {
 
     const now = new Date()
     const checkInTime = attendance.checkIn
-    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60) // Convert to hours
+    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60) 
 
-    // Update attendance
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
       data: {

@@ -2,14 +2,10 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-/**
- * Get dashboard statistics
- */
 export const getStats = async (req, res, next) => {
   try {
     const user = req.user
 
-    // Get company employees if user has companyId (for admin/hr/payroll)
     let companyEmployeeIds = []
     let companyUserIds = []
     if (user.companyId && (user.role === 'admin' || user.role === 'hr' || user.role === 'payroll')) {
@@ -21,7 +17,6 @@ export const getStats = async (req, res, next) => {
       companyUserIds = companyEmployees.map(e => e.userId).filter(Boolean)
     }
 
-    // Get total employees (admin/hr/payroll can see all in their company, others see only their own)
     const totalEmployees =
       user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
         ? await prisma.employee.count({ 
@@ -32,7 +27,6 @@ export const getStats = async (req, res, next) => {
           })
         : 1
 
-    // Get present today
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
@@ -61,7 +55,6 @@ export const getStats = async (req, res, next) => {
             },
           })
 
-    // Get pending leaves
     const pendingLeaves =
       user.role === 'admin' || user.role === 'hr' || user.role === 'payroll'
         ? await prisma.leave.count({
@@ -77,7 +70,6 @@ export const getStats = async (req, res, next) => {
             },
           })
 
-    // Get last payrun (filter by company if user has companyId)
     const lastPayrun = await prisma.payrun.findFirst({
       where: {
         status: 'completed',
@@ -116,7 +108,6 @@ export const getStats = async (req, res, next) => {
       },
     })
 
-    // Group attendance by date
     const attendanceByDate = {}
     attendanceLast7Days.forEach((att) => {
       const dateStr = att.date.toISOString().split('T')[0]
@@ -128,7 +119,6 @@ export const getStats = async (req, res, next) => {
       else if (att.status === 'late') attendanceByDate[dateStr].late++
     })
 
-    // Get department distribution
     const departmentStats = await prisma.employee.groupBy({
       by: ['department'],
       where: {
@@ -160,7 +150,6 @@ export const getStats = async (req, res, next) => {
       },
     })
 
-    // Process monthly data
     const monthlyData = {}
     monthlyAttendance.forEach((item) => {
       const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, '0')}`
@@ -169,8 +158,7 @@ export const getStats = async (req, res, next) => {
       }
       monthlyData[monthKey] += item._count.id
     })
-
-    // Get leave statistics
+    
     const leaveStats = await prisma.leave.groupBy({
       by: ['status'],
       where: {

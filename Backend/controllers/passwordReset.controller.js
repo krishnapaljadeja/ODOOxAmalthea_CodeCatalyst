@@ -7,9 +7,6 @@ import {
 
 const prisma = new PrismaClient();
 
-/**
- * Request password reset
- */
 export const requestPasswordReset = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -22,12 +19,10 @@ export const requestPasswordReset = async (req, res, next) => {
       });
     }
 
-    // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
-    // Don't reveal if user exists or not (security best practice)
     if (!user) {
       return res.json({
         status: "success",
@@ -35,12 +30,10 @@ export const requestPasswordReset = async (req, res, next) => {
       });
     }
 
-    // Generate reset token
     const resetToken = generatePasswordResetToken();
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1); // Token expires in 1 hour
+    expiresAt.setHours(expiresAt.getHours() + 1); 
 
-    // Invalidate existing tokens for this user
     await prisma.passwordResetToken.updateMany({
       where: {
         userId: user.id,
@@ -51,7 +44,6 @@ export const requestPasswordReset = async (req, res, next) => {
       },
     });
 
-    // Create new reset token
     await prisma.passwordResetToken.create({
       data: {
         token: resetToken,
@@ -61,12 +53,10 @@ export const requestPasswordReset = async (req, res, next) => {
       },
     });
 
-    // Send password reset email
     try {
       await sendPasswordResetEmail(user.email, user.firstName, resetToken);
     } catch (emailError) {
       console.error("Failed to send password reset email:", emailError);
-      // Don't fail the request, just log the error
     }
 
     res.json({
@@ -78,9 +68,6 @@ export const requestPasswordReset = async (req, res, next) => {
   }
 };
 
-/**
- * Reset password using token
- */
 export const resetPassword = async (req, res, next) => {
   try {
     const { token, email, newPassword } = req.body;
@@ -101,7 +88,6 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // Find reset token
     const resetToken = await prisma.passwordResetToken.findUnique({
       where: { token },
       include: {
@@ -117,7 +103,6 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // Check if token is used
     if (resetToken.used) {
       return res.status(400).json({
         status: "error",
@@ -126,7 +111,6 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // Check if token is expired
     if (new Date() > resetToken.expiresAt) {
       return res.status(400).json({
         status: "error",
@@ -135,7 +119,6 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // Check if email matches
     if (resetToken.email !== email) {
       return res.status(400).json({
         status: "error",
@@ -143,11 +126,9 @@ export const resetPassword = async (req, res, next) => {
         error: "Validation Error",
       });
     }
-
-    // Hash new password
+    
     const hashedPassword = await hashPassword(newPassword);
 
-    // Update user password
     await prisma.user.update({
       where: { id: resetToken.userId },
       data: {
@@ -155,7 +136,6 @@ export const resetPassword = async (req, res, next) => {
       },
     });
 
-    // Mark token as used
     await prisma.passwordResetToken.update({
       where: { id: resetToken.id },
       data: {
@@ -172,9 +152,6 @@ export const resetPassword = async (req, res, next) => {
   }
 };
 
-/**
- * Verify reset token
- */
 export const verifyResetToken = async (req, res, next) => {
   try {
     const { token, email } = req.query;
@@ -187,7 +164,6 @@ export const verifyResetToken = async (req, res, next) => {
       });
     }
 
-    // Find reset token
     const resetToken = await prisma.passwordResetToken.findUnique({
       where: { token },
     });
@@ -201,7 +177,6 @@ export const verifyResetToken = async (req, res, next) => {
       });
     }
 
-    // Check if token is used
     if (resetToken.used) {
       return res.status(400).json({
         status: "error",
@@ -211,7 +186,6 @@ export const verifyResetToken = async (req, res, next) => {
       });
     }
 
-    // Check if token is expired
     if (new Date() > resetToken.expiresAt) {
       return res.status(400).json({
         status: "error",
@@ -221,7 +195,6 @@ export const verifyResetToken = async (req, res, next) => {
       });
     }
 
-    // Check if email matches
     if (resetToken.email !== email) {
       return res.status(400).json({
         status: "error",
