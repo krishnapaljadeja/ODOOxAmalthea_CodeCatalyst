@@ -299,18 +299,18 @@ export default function Attendance() {
       className: 'text-center',
       cellClassName: 'text-center',
     },
-    {
-      header: 'Extra hours',
-      accessor: 'extraHours',
-      cell: (row) => {
-        if (!row.extraHours) return '-'
-        const hours = Math.floor(row.extraHours)
-        const minutes = Math.floor((row.extraHours - hours) * 60)
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-      },
-      className: 'text-center',
-      cellClassName: 'text-center',
-    },
+    // {
+    //   header: 'Extra hours',
+    //   accessor: 'extraHours',
+    //   cell: (row) => {
+    //     if (!row.extraHours) return '-'
+    //     const hours = Math.floor(row.extraHours)
+    //     const minutes = Math.floor((row.extraHours - hours) * 60)
+    //     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+    //   },
+    //   className: 'text-center',
+    //   cellClassName: 'text-center',
+    // },
     {
       header: 'Status',
       accessor: 'status',

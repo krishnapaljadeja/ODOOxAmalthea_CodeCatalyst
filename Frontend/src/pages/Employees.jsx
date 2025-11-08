@@ -118,6 +118,10 @@ export default function Employees() {
   const [isEditingEmployeeSalary, setIsEditingEmployeeSalary] = useState(false);
   const [isCreatingEmployee, setIsCreatingEmployee] = useState(false);
   const [isSavingEmployeeSalary, setIsSavingEmployeeSalary] = useState(false);
+  const [isEditingEmployeeDetails, setIsEditingEmployeeDetails] =
+    useState(false);
+  const [isSavingEmployeeDetails, setIsSavingEmployeeDetails] = useState(false);
+  const [editableEmployeeDetails, setEditableEmployeeDetails] = useState(null);
 
   const {
     register,
@@ -417,11 +421,86 @@ export default function Employees() {
     }
   };
 
+  const handleSaveEmployeeDetails = async () => {
+    if (!selectedEmployee || !editableEmployeeDetails) return;
+
+    try {
+      setIsSavingEmployeeDetails(true);
+
+      // Format hire date if it's a Date object
+      const hireDateValue = editableEmployeeDetails.hireDate;
+      const formattedHireDate =
+        hireDateValue instanceof Date
+          ? hireDateValue.toISOString().split("T")[0]
+          : hireDateValue;
+
+      const payload = {
+        firstName: editableEmployeeDetails.firstName,
+        lastName: editableEmployeeDetails.lastName,
+        email: editableEmployeeDetails.email,
+        phone:
+          editableEmployeeDetails.phone &&
+          editableEmployeeDetails.phone.trim() !== ""
+            ? editableEmployeeDetails.phone.trim()
+            : undefined,
+        department: editableEmployeeDetails.department,
+        position: editableEmployeeDetails.position,
+        status: editableEmployeeDetails.status,
+        hireDate: formattedHireDate,
+      };
+
+      const response = await apiClient.put(
+        `/employees/${selectedEmployee.id}`,
+        payload
+      );
+      const updatedEmployee = response.data?.data || response.data;
+
+      setSelectedEmployee(updatedEmployee);
+      setIsEditingEmployeeDetails(false);
+      setEditableEmployeeDetails(null);
+      toast.success("Employee details updated successfully");
+      await fetchEmployees();
+    } catch (error) {
+      console.error("Failed to update employee details:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        "Failed to update employee details";
+      toast.error(errorMessage);
+    } finally {
+      setIsSavingEmployeeDetails(false);
+    }
+  };
+
+  const handleEditEmployeeDetails = () => {
+    if (!selectedEmployee) return;
+    setEditableEmployeeDetails({
+      firstName: selectedEmployee.firstName || "",
+      lastName: selectedEmployee.lastName || "",
+      email: selectedEmployee.email || "",
+      phone: selectedEmployee.phone || "",
+      department: selectedEmployee.department || "",
+      position: selectedEmployee.position || "",
+      status: selectedEmployee.status || "active",
+      hireDate: selectedEmployee.hireDate
+        ? new Date(selectedEmployee.hireDate).toISOString().split("T")[0]
+        : "",
+    });
+    setIsEditingEmployeeDetails(true);
+  };
+
+  const handleCancelEditEmployeeDetails = () => {
+    setIsEditingEmployeeDetails(false);
+    setEditableEmployeeDetails(null);
+  };
+
   const handleViewEmployee = async (employee) => {
     setSelectedEmployee(employee);
     setIsViewOpen(true);
     setEmployeeViewTab("details");
     setIsEditingEmployeeSalary(false);
+    setIsEditingEmployeeDetails(false);
+    setEditableEmployeeDetails(null);
     if (["admin", "hr"].includes(user?.role) && employee?.id) {
       try {
         const response = await apiClient.get(
@@ -672,6 +751,27 @@ export default function Employees() {
                         <Input
                           id="firstName"
                           {...register("firstName")}
+                          onKeyDown={(e) => {
+                            // Allow only alphabets, spaces, hyphens, apostrophes, and special keys (backspace, delete, tab, etc.)
+                            const key = e.key;
+                            // Allow special keys (backspace, delete, tab, arrow keys, etc.)
+                            if (
+                              key.length === 1 &&
+                              !/^[a-zA-Z\s'-]$/.test(key)
+                            ) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            // Remove any numeric characters that might have been pasted
+                            const filteredValue = e.target.value.replace(
+                              /[0-9]/g,
+                              ""
+                            );
+                            e.target.value = filteredValue;
+                            // Update the form value
+                            setValue("firstName", filteredValue);
+                          }}
                           aria-invalid={errors.firstName ? "true" : "false"}
                         />
                         {errors.firstName && (
@@ -686,6 +786,27 @@ export default function Employees() {
                         <Input
                           id="lastName"
                           {...register("lastName")}
+                          onKeyDown={(e) => {
+                            // Allow only alphabets, spaces, hyphens, apostrophes, and special keys (backspace, delete, tab, etc.)
+                            const key = e.key;
+                            // Allow special keys (backspace, delete, tab, arrow keys, etc.)
+                            if (
+                              key.length === 1 &&
+                              !/^[a-zA-Z\s'-]$/.test(key)
+                            ) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onInput={(e) => {
+                            // Remove any numeric characters that might have been pasted
+                            const filteredValue = e.target.value.replace(
+                              /[0-9]/g,
+                              ""
+                            );
+                            e.target.value = filteredValue;
+                            // Update the form value
+                            setValue("lastName", filteredValue);
+                          }}
                           aria-invalid={errors.lastName ? "true" : "false"}
                         />
                         {errors.lastName && (
@@ -1219,6 +1340,38 @@ export default function Employees() {
               </TabsList>
 
               <TabsContent value="details" className="space-y-4">
+                {["admin", "hr"].includes(user?.role) && (
+                  <div className="flex justify-end mb-4">
+                    {!isEditingEmployeeDetails ? (
+                      <Button
+                        variant="outline"
+                        onClick={handleEditEmployeeDetails}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Details
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelEditEmployeeDetails}
+                          disabled={isSavingEmployeeDetails}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSaveEmployeeDetails}
+                          disabled={isSavingEmployeeDetails}
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          {isSavingEmployeeDetails
+                            ? "Saving..."
+                            : "Save Changes"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Employee ID</Label>
@@ -1228,51 +1381,201 @@ export default function Employees() {
                   </div>
                   <div>
                     <Label>Status</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.status}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Select
+                        value={editableEmployeeDetails?.status || "active"}
+                        onValueChange={(value) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            status: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="terminated">Terminated</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.status}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>First Name</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.firstName}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Input
+                        value={editableEmployeeDetails?.firstName || ""}
+                        onChange={(e) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            firstName: e.target.value,
+                          })
+                        }
+                        onKeyDown={(e) => {
+                          const key = e.key;
+                          if (key.length === 1 && !/^[a-zA-Z\s'-]$/.test(key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        onInput={(e) => {
+                          const filteredValue = e.target.value.replace(
+                            /[0-9]/g,
+                            ""
+                          );
+                          e.target.value = filteredValue;
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            firstName: filteredValue,
+                          });
+                        }}
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.firstName}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Last Name</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.lastName}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Input
+                        value={editableEmployeeDetails?.lastName || ""}
+                        onChange={(e) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            lastName: e.target.value,
+                          })
+                        }
+                        onKeyDown={(e) => {
+                          const key = e.key;
+                          if (key.length === 1 && !/^[a-zA-Z\s'-]$/.test(key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        onInput={(e) => {
+                          const filteredValue = e.target.value.replace(
+                            /[0-9]/g,
+                            ""
+                          );
+                          e.target.value = filteredValue;
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            lastName: filteredValue,
+                          });
+                        }}
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.lastName}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Email</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.email}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Input
+                        type="email"
+                        value={editableEmployeeDetails?.email || ""}
+                        onChange={(e) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            email: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.email}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Phone</Label>
-                    <p className="text-sm font-medium">
-                      {formatPhone(selectedEmployee.phone)}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Input
+                        type="tel"
+                        value={editableEmployeeDetails?.phone || ""}
+                        onChange={(e) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            phone: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {formatPhone(selectedEmployee.phone)}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Department</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.department}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Input
+                        value={editableEmployeeDetails?.department || ""}
+                        onChange={(e) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            department: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.department}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Position</Label>
-                    <p className="text-sm font-medium">
-                      {selectedEmployee.position}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Input
+                        value={editableEmployeeDetails?.position || ""}
+                        onChange={(e) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            position: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {selectedEmployee.position}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Hire Date</Label>
-                    <p className="text-sm font-medium">
-                      {formatDate(selectedEmployee.hireDate)}
-                    </p>
+                    {isEditingEmployeeDetails &&
+                    ["admin", "hr"].includes(user?.role) ? (
+                      <Input
+                        type="date"
+                        value={editableEmployeeDetails?.hireDate || ""}
+                        onChange={(e) =>
+                          setEditableEmployeeDetails({
+                            ...editableEmployeeDetails,
+                            hireDate: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">
+                        {formatDate(selectedEmployee.hireDate)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </TabsContent>

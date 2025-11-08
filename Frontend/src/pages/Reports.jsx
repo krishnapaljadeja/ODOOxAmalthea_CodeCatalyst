@@ -38,6 +38,9 @@ export default function Reports() {
     watch,
   } = useForm({
     resolver: zodResolver(reportSchema),
+    defaultValues: {
+      year: new Date().getFullYear().toString(),
+    },
   })
 
   const employeeId = watch('employeeId')
@@ -45,7 +48,9 @@ export default function Reports() {
 
   useEffect(() => {
     fetchEmployees()
-  }, [])
+    // Set the default year in the form
+    setValue('year', new Date().getFullYear().toString())
+  }, [setValue])
 
   const fetchEmployees = async () => {
     try {
@@ -185,7 +190,7 @@ export default function Reports() {
                 <div className="flex-1 space-y-2">
                   <Label htmlFor="year">Year</Label>
                   <Select
-                    value={year || selectedYear}
+                    value={year || ''}
                     onValueChange={(value) => {
                       setValue('year', value)
                       setSelectedYear(value)
@@ -230,10 +235,10 @@ export default function Reports() {
             {reportData && selectedEmployee && (
               <div className="space-y-4 print:p-8">
                 <div className="flex justify-end gap-2 print:hidden">
-                  <Button variant="outline" onClick={handleDownload}>
+                  {/* <Button variant="outline" onClick={handleDownload}>
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF
-                  </Button>
+                  </Button> */}
                   <Button onClick={handlePrint}>
                     <Printer className="mr-2 h-4 w-4" />
                     Print

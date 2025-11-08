@@ -1215,3 +1215,174 @@ export const updateEmployeeSalary = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updateEmployee = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params;
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      department,
+      position,
+      status,
+      hireDate,
+    } = req.body;
+    const user = req.user;
+
+    // Find the employee
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        status: "error",
+        message: "Employee not found",
+        error: "Not Found",
+      });
+    }
+
+    // Check if user has permission (admin or hr)
+    if (!["admin", "hr"].includes(user.role)) {
+      return res.status(403).json({
+        status: "error",
+        message: "You do not have permission to update employee details",
+        error: "Forbidden",
+      });
+    }
+
+    // Check company access
+    if (user.companyId && employee.companyId !== user.companyId) {
+      return res.status(403).json({
+        status: "error",
+        message:
+          "You can only update employees in your company",
+        error: "Forbidden",
+      });
+    }
+
+    // Check if email is being changed and if it's already in use
+    if (email && email !== employee.email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser && existingUser.id !== employee.userId) {
+        return res.status(400).json({
+          status: "error",
+          message: "Email already in use",
+          error: "Validation Error",
+        });
+      }
+    }
+
+    // Prepare update data
+    const employeeUpdateData = {};
+    const userUpdateData = {};
+
+    if (firstName !== undefined) {
+      employeeUpdateData.firstName = firstName;
+      userUpdateData.firstName = firstName;
+    }
+    if (lastName !== undefined) {
+      employeeUpdateData.lastName = lastName;
+      userUpdateData.lastName = lastName;
+    }
+    if (email !== undefined) {
+      employeeUpdateData.email = email;
+      userUpdateData.email = email;
+    }
+    if (phone !== undefined) {
+      employeeUpdateData.phone = phone || null;
+      userUpdateData.phone = phone || null;
+    }
+    if (department !== undefined) {
+      employeeUpdateData.department = department;
+      userUpdateData.department = department;
+    }
+    if (position !== undefined) {
+      employeeUpdateData.position = position;
+      userUpdateData.position = position;
+    }
+    if (status !== undefined) {
+      employeeUpdateData.status = status;
+    }
+    if (hireDate !== undefined) {
+      employeeUpdateData.hireDate = new Date(hireDate);
+    }
+
+    // Update employee and user records
+    const [updatedEmployee, updatedUser] = await prisma.$transaction([
+      prisma.employee.update({
+        where: { id: employeeId },
+        data: employeeUpdateData,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              avatar: true,
+              phone: true,
+              department: true,
+              position: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+      Object.keys(userUpdateData).length > 0
+        ? prisma.user.update({
+            where: { id: employee.userId },
+            data: userUpdateData,
+          })
+        : Promise.resolve(employee.user),
+    ]);
+
+    const formattedEmployee = {
+      id: updatedEmployee.id,
+      employeeId: updatedEmployee.employeeId,
+      email: updatedEmployee.email,
+      firstName: updatedEmployee.firstName,
+      lastName: updatedEmployee.lastName,
+      avatar: updatedEmployee.avatar || updatedUser?.avatar,
+      phone: updatedEmployee.phone,
+      department: updatedEmployee.department,
+      position: updatedEmployee.position,
+      status: updatedEmployee.status,
+      hireDate: updatedEmployee.hireDate.toISOString(),
+      salary: updatedEmployee.salary,
+      userId: updatedEmployee.userId,
+      user: updatedUser
+        ? {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            avatar: updatedUser.avatar,
+          }
+        : null,
+      createdAt: updatedEmployee.createdAt.toISOString(),
+      updatedAt: updatedEmployee.updatedAt.toISOString(),
+    };
+
+    res.json({
+      status: "success",
+      data: formattedEmployee,
+      message: "Employee details updated successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

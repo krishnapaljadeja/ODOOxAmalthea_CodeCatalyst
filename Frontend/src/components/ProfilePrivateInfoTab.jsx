@@ -22,44 +22,55 @@ const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().optional().or(z.literal("")).refine(
-    (val) => {
-      if (!val || val === '') return true; // Allow empty
-      // Remove all non-digit characters except +
-      const cleaned = val.replace(/[^\d+]/g, '');
-      // Check if it matches phone number pattern: optional +, then 10-15 digits
-      return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
-    },
-    {
-      message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
-    }
-  ),
-  address: z.string().optional().or(z.literal("")),
-  dateOfBirth: z.string().optional().or(z.literal("")).refine(
-    (val) => {
-      if (!val || val === '') return true; // Allow empty
-      const dob = new Date(val);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Check if DOB is in the future
-      if (dob > today) {
-        return false;
+  phone: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (val) => {
+        if (!val || val === "") return true; // Allow empty
+        // Remove all non-digit characters except +
+        const cleaned = val.replace(/[^\d+]/g, "");
+        // Check if it matches phone number pattern: optional +, then 10-15 digits
+        return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+      },
+      {
+        message:
+          "Phone number must be in valid format (10-15 digits, optional + prefix)",
       }
-      
-      // Check if age is at least 18 years
-      const age = today.getFullYear() - dob.getFullYear();
-      const monthDiff = today.getMonth() - dob.getMonth();
-      const dayDiff = today.getDate() - dob.getDate();
-      
-      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
-      
-      return actualAge >= 18;
-    },
-    {
-      message: 'Date of birth must not be in the future and employee must be at least 18 years old'
-    }
-  ),
+    ),
+  address: z.string().optional().or(z.literal("")),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (val) => {
+        if (!val || val === "") return true; // Allow empty
+        const dob = new Date(val);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Check if DOB is in the future
+        if (dob > today) {
+          return false;
+        }
+
+        // Check if age is at least 18 years
+        const age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        const dayDiff = today.getDate() - dob.getDate();
+
+        const actualAge =
+          monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+        return actualAge >= 18;
+      },
+      {
+        message:
+          "Date of birth must not be in the future and employee must be at least 18 years old",
+      }
+    ),
   gender: z.string().optional().or(z.literal("")),
   nationality: z.string().optional().or(z.literal("")),
   personalEmail: z
@@ -79,17 +90,21 @@ const profileSchema = z.object({
 const emergencyContactSchema = z.object({
   name: z.string().min(1, "Name is required"),
   relationship: z.string().min(1, "Relationship is required"),
-  phone: z.string().min(1, "Phone is required").refine(
-    (val) => {
-      // Remove all non-digit characters except +
-      const cleaned = val.replace(/[^\d+]/g, '');
-      // Check if it matches phone number pattern: optional +, then 10-15 digits
-      return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
-    },
-    {
-      message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
-    }
-  ),
+  phone: z
+    .string()
+    .min(1, "Phone is required")
+    .refine(
+      (val) => {
+        // Remove all non-digit characters except +
+        const cleaned = val.replace(/[^\d+]/g, "");
+        // Check if it matches phone number pattern: optional +, then 10-15 digits
+        return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+      },
+      {
+        message:
+          "Phone number must be in valid format (10-15 digits, optional + prefix)",
+      }
+    ),
 });
 
 export default function ProfilePrivateInfoTab({
@@ -187,7 +202,7 @@ export default function ProfilePrivateInfoTab({
     const errorMessages = Object.entries(errors).map(([field, error]) => {
       return error?.message || `${field}: Validation failed`;
     });
-    
+
     // Show first error or all errors
     if (errorMessages.length > 0) {
       errorMessages.forEach((msg) => {
@@ -219,7 +234,7 @@ export default function ProfilePrivateInfoTab({
     const errorMessages = Object.entries(errors).map(([field, error]) => {
       return error?.message || `${field}: Validation failed`;
     });
-    
+
     // Show first error or all errors
     if (errorMessages.length > 0) {
       errorMessages.forEach((msg) => {
@@ -313,9 +328,7 @@ export default function ProfilePrivateInfoTab({
                           avatar: reader.result,
                         });
                         updateUser(response.data);
-                        toast.success(
-                          "Profile picture updated successfully"
-                        );
+                        toast.success("Profile picture updated successfully");
                       } catch (error) {
                         console.error(
                           "Failed to update profile picture:",
@@ -342,7 +355,10 @@ export default function ProfilePrivateInfoTab({
             </div>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-4">
+          <form
+            onSubmit={handleSubmit(onSubmit, onError)}
+            className="space-y-4"
+          >
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="employeeId">Employee ID</Label>
@@ -407,7 +423,13 @@ export default function ProfilePrivateInfoTab({
                 <Input
                   id="dateOfBirth"
                   type="date"
-                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                  max={
+                    new Date(
+                      new Date().setFullYear(new Date().getFullYear() - 18)
+                    )
+                      .toISOString()
+                      .split("T")[0]
+                  }
                   {...register("dateOfBirth")}
                 />
                 {errors.dateOfBirth && (
@@ -557,7 +579,7 @@ export default function ProfilePrivateInfoTab({
       </Card>
 
       {/* Documents Section */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Documents</CardTitle>
           <CardDescription>
@@ -611,10 +633,10 @@ export default function ProfilePrivateInfoTab({
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Emergency Contact Section */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Emergency Contact</CardTitle>
           <CardDescription>
@@ -677,8 +699,7 @@ export default function ProfilePrivateInfoTab({
             </Button>
           </form>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
-
