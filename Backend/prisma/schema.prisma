@@ -59,7 +59,6 @@ model Company {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relations
   users     User[]
   employees Employee[]
 
@@ -84,7 +83,7 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relations
+  
   employee        Employee?
   attendances    Attendance[]
   leaves         Leave[]
@@ -117,7 +116,6 @@ model Employee {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  // Relations
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   attendances Attendance[]
   leaves      Leave[]
@@ -215,7 +213,6 @@ model Payrun {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  // Relations
   payslips Payslip[]
 
   @@index([status])
@@ -234,20 +231,17 @@ model Payslip {
   payPeriodEnd    DateTime  @db.Date
   payDate         DateTime  @db.Date
 
-  // Earnings
   baseSalary      Float    @default(0)
   overtime        Float    @default(0)
   bonus           Float    @default(0)
   allowances      Float    @default(0)
   grossPay        Float    @default(0)
 
-  // Deductions
   tax             Float    @default(0)
   insurance       Float    @default(0)
   other           Float    @default(0)
   totalDeductions Float    @default(0)
 
-  // Net Pay
   netPay          Float    @default(0)
 
   createdAt       DateTime @default(now())
