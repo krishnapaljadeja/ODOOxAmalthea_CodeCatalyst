@@ -12,11 +12,10 @@ import {
 
 const prisma = new PrismaClient();
 
-
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const loginId = email; 
+    const loginId = email;
 
     let user = await prisma.user.findUnique({
       where: { email: loginId },
@@ -106,7 +105,9 @@ export const logout = async (req, res, next) => {
       });
     }
 
-    res.status(200).json({ status: "success", message: "Logged out successfully" });
+    res
+      .status(200)
+      .json({ status: "success", message: "Logged out successfully" });
   } catch (error) {
     next(error);
   }
@@ -206,7 +207,6 @@ export const registerUser = async (req, res, next) => {
         });
       } catch (error) {
         if (error.code === "P2002" && error.meta?.target?.includes("code")) {
-       
           const fallbackCode = `${companyName
             .substring(0, 2)
             .toUpperCase()}${Date.now().toString().slice(-4)}`;
@@ -251,32 +251,19 @@ export const registerUser = async (req, res, next) => {
     );
 
     const hashedPassword = await hashPassword(password);
-    const employee = await prisma.employee.create({
-      data: {
-        employeeId,
-        email,
-        firstName,
-        lastName,
-        phone: phone || null,
-        department: "General", 
-        position: "Employee", 
-        status: "active",
-        hireDate,
-        salary: 0, 
-        companyId: company.id,
-      },
-    });
 
+    // Create User first (Employee requires userId)
+    // User registering is the admin/owner of the company
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         firstName,
         lastName,
-        role: "employee",
+        role: "admin",
         phone: phone || null,
-        department: employee.department,
-        position: employee.position,
+        department: "General",
+        position: "Owner",
         employeeId,
         companyId: company.id,
       },
@@ -296,9 +283,23 @@ export const registerUser = async (req, res, next) => {
       },
     });
 
-    await prisma.employee.update({
-      where: { id: employee.id },
-      data: { userId: user.id },
+    // Create Employee with userId from the created user
+    // Admin/owner is also an employee record
+    await prisma.employee.create({
+      data: {
+        employeeId,
+        userId: user.id,
+        email,
+        firstName,
+        lastName,
+        phone: phone || null,
+        department: "General",
+        position: "Owner",
+        status: "active",
+        hireDate,
+        salary: 0,
+        companyId: company.id,
+      },
     });
 
     const accessToken = generateAccessToken(user.id);
@@ -323,7 +324,7 @@ export const registerUser = async (req, res, next) => {
         refreshToken,
         user: {
           ...user,
-          employeeId, 
+          employeeId,
         },
       },
     });

@@ -340,7 +340,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="space-y-6 relative" style={{ zIndex: 0 }}>
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">My Profile</h1>
         <p className="text-muted-foreground">Manage your profile information</p>

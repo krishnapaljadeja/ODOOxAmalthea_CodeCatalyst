@@ -32,8 +32,16 @@ export const getEmployees = async (req, res, next) => {
       if (user.department) {
         where.department = user.department;
       }
+      // Also filter by company
+      if (user.companyId) {
+        where.companyId = user.companyId;
+      }
+    } else if (user.role === "admin" || user.role === "hr") {
+      // Admin and HR can only see employees from their company
+      if (user.companyId) {
+        where.companyId = user.companyId;
+      }
     }
-    // Admin and HR can see all
 
     if (status) {
       where.status = status;
@@ -339,7 +347,16 @@ export const importEmployees = async (req, res, next) => {
  */
 export const exportEmployees = async (req, res, next) => {
   try {
+    const user = req.user;
+    
+    // Build where clause to filter by company
+    const where = {};
+    if (user.companyId) {
+      where.companyId = user.companyId;
+    }
+    
     const employees = await prisma.employee.findMany({
+      where,
       include: {
         user: {
           select: {
@@ -399,6 +416,7 @@ export const exportEmployees = async (req, res, next) => {
 export const getEmployeeSalary = async (req, res, next) => {
   try {
     const { employeeId } = req.params;
+    const user = req.user;
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
@@ -409,6 +427,7 @@ export const getEmployeeSalary = async (req, res, next) => {
         firstName: true,
         lastName: true,
         email: true,
+        companyId: true,
       },
     });
 
@@ -417,6 +436,15 @@ export const getEmployeeSalary = async (req, res, next) => {
         status: 'error',
         message: 'Employee not found',
         error: 'Not Found',
+      });
+    }
+
+    // Verify employee belongs to the same company as the requesting user
+    if (user.companyId && employee.companyId !== user.companyId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You can only view salary information for employees in your company',
+        error: 'Forbidden',
       });
     }
 
@@ -468,9 +496,14 @@ export const updateEmployeeSalary = async (req, res, next) => {
       esi,
       professionalTax,
     } = req.body;
+    const user = req.user;
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
+      select: {
+        id: true,
+        companyId: true,
+      },
     });
 
     if (!employee) {
@@ -478,6 +511,15 @@ export const updateEmployeeSalary = async (req, res, next) => {
         status: 'error',
         message: 'Employee not found',
         error: 'Not Found',
+      });
+    }
+
+    // Verify employee belongs to the same company as the requesting user
+    if (user.companyId && employee.companyId !== user.companyId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You can only update salary information for employees in your company',
+        error: 'Forbidden',
       });
     }
 

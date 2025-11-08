@@ -7,10 +7,20 @@ const prisma = new PrismaClient()
 
 /**
  * Get all users (admin only)
+ * Only returns users from the admin's company
  */
 export const getUsers = async (req, res, next) => {
   try {
+    const user = req.user
+    
+    // Build where clause to filter by company
+    const where = {}
+    if (user.companyId) {
+      where.companyId = user.companyId
+    }
+    
     const users = await prisma.user.findMany({
+      where,
       select: {
         id: true,
         email: true,
@@ -19,6 +29,7 @@ export const getUsers = async (req, res, next) => {
         employeeId: true,
         role: true,
         companyId: true,
+        avatar: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -59,6 +70,15 @@ export const sendCredentials = async (req, res, next) => {
         status: 'error',
         message: 'User not found',
         error: 'Not Found',
+      })
+    }
+
+    // Verify user belongs to the same company as the admin
+    if (admin.companyId && user.companyId !== admin.companyId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You can only send credentials to users in your company',
+        error: 'Forbidden',
       })
     }
 
@@ -133,6 +153,16 @@ export const updateUserPassword = async (req, res, next) => {
         status: 'error',
         message: 'User not found',
         error: 'Not Found',
+      })
+    }
+
+    // Verify user belongs to the same company as the admin
+    const admin = req.user
+    if (admin.companyId && user.companyId !== admin.companyId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You can only update passwords for users in your company',
+        error: 'Forbidden',
       })
     }
 
