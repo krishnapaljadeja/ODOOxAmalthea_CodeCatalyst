@@ -7,6 +7,7 @@ import {
   LogOut,
   Settings,
   Menu,
+  Lock,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -87,6 +88,12 @@ export default function Topbar() {
                 <Link to="/profile" className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
                   Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/change-password" className="flex items-center">
+                  <Lock className="mr-2 h-4 w-4" />
+                  Change Password
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
