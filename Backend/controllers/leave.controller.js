@@ -1,0 +1,291 @@
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+/**
+ * Get leave requests
+ */
+export const getLeaves = async (req, res, next) => {
+  try {
+    const { status, employeeId } = req.query
+    const user = req.user
+
+    // Build where clause
+    const where = {}
+
+    // Role-based filtering
+    if (user.role === 'employee') {
+      where.userId = user.id
+    } else if (employeeId) {
+      where.employeeId = employeeId
+    } else if (user.role === 'manager' && user.department) {
+      // Managers can see employees in their department
+      const employees = await prisma.employee.findMany({
+        where: { department: user.department },
+        select: { id: true },
+      })
+      where.employeeId = { in: employees.map((e) => e.id) }
+    }
+    // Admin and HR can see all
+
+    if (status) {
+      where.status = status
+    }
+
+    const leaves = await prisma.leave.findMany({
+      where,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    // Format response
+    const formattedLeaves = leaves.map((leave) => ({
+      id: leave.id,
+      employeeId: leave.employeeId,
+      employeeName: `${leave.employee.firstName} ${leave.employee.lastName}`,
+      type: leave.type,
+      startDate: leave.startDate.toISOString().split('T')[0],
+      endDate: leave.endDate.toISOString().split('T')[0],
+      days: leave.days,
+      reason: leave.reason,
+      status: leave.status,
+      approvedBy: leave.approvedById,
+      approvedAt: leave.approvedAt?.toISOString() || null,
+      rejectionReason: leave.rejectionReason,
+      createdAt: leave.createdAt.toISOString(),
+      updatedAt: leave.updatedAt.toISOString(),
+    }))
+
+    res.json({
+      status: 'success',
+      data: formattedLeaves,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Create leave request
+ */
+export const createLeave = async (req, res, next) => {
+  try {
+    const { type, startDate, endDate, days, reason } = req.body
+    const user = req.user
+
+    // Get employee
+    const employee = await prisma.employee.findUnique({
+      where: { userId: user.id },
+    })
+
+    if (!employee) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Employee record not found',
+        error: 'Not Found',
+      })
+    }
+
+    // Create leave
+    const leave = await prisma.leave.create({
+      data: {
+        employeeId: employee.id,
+        userId: user.id,
+        type,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        days: parseInt(days),
+        reason,
+        status: 'pending',
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    })
+
+    res.status(201).json({
+      status: 'success',
+      data: {
+        id: leave.id,
+        employeeId: leave.employeeId,
+        employeeName: `${leave.employee.firstName} ${leave.employee.lastName}`,
+        type: leave.type,
+        startDate: leave.startDate.toISOString().split('T')[0],
+        endDate: leave.endDate.toISOString().split('T')[0],
+        days: leave.days,
+        reason: leave.reason,
+        status: leave.status,
+        approvedBy: leave.approvedById,
+        approvedAt: leave.approvedAt?.toISOString() || null,
+        rejectionReason: leave.rejectionReason,
+        createdAt: leave.createdAt.toISOString(),
+        updatedAt: leave.updatedAt.toISOString(),
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Approve leave
+ */
+export const approveLeave = async (req, res, next) => {
+  try {
+    const { leaveId } = req.params
+    const user = req.user
+
+    const leave = await prisma.leave.findUnique({
+      where: { id: leaveId },
+    })
+
+    if (!leave) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Leave request not found',
+        error: 'Not Found',
+      })
+    }
+
+    if (leave.status !== 'pending') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Leave request is not pending',
+        error: 'Validation Error',
+      })
+    }
+
+    // Update leave
+    const updated = await prisma.leave.update({
+      where: { id: leaveId },
+      data: {
+        status: 'approved',
+        approvedById: user.id,
+        approvedAt: new Date(),
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    })
+
+    res.json({
+      status: 'success',
+      data: {
+        id: updated.id,
+        employeeId: updated.employeeId,
+        employeeName: `${updated.employee.firstName} ${updated.employee.lastName}`,
+        type: updated.type,
+        startDate: updated.startDate.toISOString().split('T')[0],
+        endDate: updated.endDate.toISOString().split('T')[0],
+        days: updated.days,
+        reason: updated.reason,
+        status: updated.status,
+        approvedBy: updated.approvedById,
+        approvedAt: updated.approvedAt?.toISOString() || null,
+        rejectionReason: updated.rejectionReason,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Reject leave
+ */
+export const rejectLeave = async (req, res, next) => {
+  try {
+    const { leaveId } = req.params
+    const { rejectionReason } = req.body
+    const user = req.user
+
+    const leave = await prisma.leave.findUnique({
+      where: { id: leaveId },
+    })
+
+    if (!leave) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Leave request not found',
+        error: 'Not Found',
+      })
+    }
+
+    if (leave.status !== 'pending') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Leave request is not pending',
+        error: 'Validation Error',
+      })
+    }
+
+    // Update leave
+    const updated = await prisma.leave.update({
+      where: { id: leaveId },
+      data: {
+        status: 'rejected',
+        rejectionReason: rejectionReason || null,
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    })
+
+    res.json({
+      status: 'success',
+      data: {
+        id: updated.id,
+        employeeId: updated.employeeId,
+        employeeName: `${updated.employee.firstName} ${updated.employee.lastName}`,
+        type: updated.type,
+        startDate: updated.startDate.toISOString().split('T')[0],
+        endDate: updated.endDate.toISOString().split('T')[0],
+        days: updated.days,
+        reason: updated.reason,
+        status: updated.status,
+        approvedBy: updated.approvedById,
+        approvedAt: updated.approvedAt?.toISOString() || null,
+        rejectionReason: updated.rejectionReason,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+

@@ -1,0 +1,233 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  hr
+  manager
+  employee
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+  terminated
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  half_day
+}
+
+enum LeaveType {
+  sick
+  vacation
+  personal
+  unpaid
+}
+
+enum LeaveStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum PayrunStatus {
+  draft
+  processing
+  completed
+  failed
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  role        UserRole @default(employee)
+  avatar      String?
+  phone       String?
+  department  String?
+  position    String?
+  employeeId  String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  employee        Employee?
+  attendances    Attendance[]
+  leaves         Leave[]
+  approvedLeaves Leave[] @relation("LeaveApprover")
+  payslips       Payslip[]
+  refreshTokens  RefreshToken[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Employee {
+  id         String         @id @default(uuid())
+  employeeId String         @unique
+  userId     String         @unique
+  email      String         @unique
+  firstName  String
+  lastName   String
+  avatar     String?
+  phone      String?
+  department String
+  position   String
+  status     EmployeeStatus @default(active)
+  hireDate   DateTime
+  salary     Float
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+  leaves      Leave[]
+  payslips    Payslip[]
+
+  @@index([employeeId])
+  @@index([department])
+  @@index([status])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Attendance {
+  id          String           @id @default(uuid())
+  employeeId  String
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime         @db.Date
+  checkIn     DateTime?
+  checkOut    DateTime?
+  hoursWorked Float?
+  status      AttendanceStatus @default(absent)
+  notes       String?
+  createdAt   DateTime         @default(now())
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+  @@index([userId])
+}
+
+model Leave {
+  id              String      @id @default(uuid())
+  employeeId      String
+  employee        Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            LeaveType
+  startDate       DateTime     @db.Date
+  endDate         DateTime     @db.Date
+  days            Int
+  reason          String
+  status          LeaveStatus  @default(pending)
+  approvedById    String?
+  approvedBy      User?        @relation("LeaveApprover", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([employeeId])
+  @@index([userId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model Payrun {
+  id              String        @id @default(uuid())
+  name            String
+  payPeriodStart  DateTime       @db.Date
+  payPeriodEnd    DateTime       @db.Date
+  payDate         DateTime       @db.Date
+  status          PayrunStatus   @default(draft)
+  totalEmployees  Int            @default(0)
+  totalAmount      Float         @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  payslips Payslip[]
+
+  @@index([status])
+  @@index([payDate])
+}
+
+model Payslip {
+  id              String   @id @default(uuid())
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payrunId        String
+  payrun          Payrun    @relation(fields: [payrunId], references: [id], onDelete: Cascade)
+  payPeriodStart  DateTime  @db.Date
+  payPeriodEnd    DateTime  @db.Date
+  payDate         DateTime  @db.Date
+
+  // Earnings
+  baseSalary      Float    @default(0)
+  overtime        Float    @default(0)
+  bonus           Float    @default(0)
+  allowances      Float    @default(0)
+  grossPay        Float    @default(0)
+
+  // Deductions
+  tax             Float    @default(0)
+  insurance       Float    @default(0)
+  other           Float    @default(0)
+  totalDeductions Float    @default(0)
+
+  // Net Pay
+  netPay          Float    @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([payrunId, employeeId])
+  @@index([employeeId])
+  @@index([userId])
+  @@index([payrunId])
+  @@index([payDate])
+}
+
+model PayrollSettings {
+  id            String   @id @default("default")
+  taxRate       Float    @default(18.5)
+  insuranceRate Float    @default(3.5)
+  payPeriodDays Int      @default(30)
+  updatedAt     DateTime @updatedAt
+
+  @@map("payroll_settings")
+}
+
