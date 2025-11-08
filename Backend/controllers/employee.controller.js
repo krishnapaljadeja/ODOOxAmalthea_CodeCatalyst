@@ -392,3 +392,130 @@ export const exportEmployees = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Get employee salary information
+ */
+export const getEmployeeSalary = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params;
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: {
+        id: true,
+        employeeId: true,
+        salary: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Employee not found',
+        error: 'Not Found',
+      });
+    }
+
+    // Calculate salary components (mock calculation for now)
+    const basicSalary = employee.salary * 0.5;
+    const hra = basicSalary * 0.5;
+    const conveyance = employee.salary * 0.1;
+    const medicalAllowance = employee.salary * 0.1;
+    const specialAllowance = employee.salary * 0.05;
+    const grossSalary = employee.salary;
+    const pf = basicSalary * 0.12;
+    const esi = 0;
+    const professionalTax = 200;
+    const netSalary = grossSalary - pf - esi - professionalTax;
+
+    res.json({
+      status: 'success',
+      data: {
+        basicSalary,
+        hra,
+        conveyance,
+        medicalAllowance,
+        specialAllowance,
+        grossSalary,
+        pf,
+        esi,
+        professionalTax,
+        netSalary,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update employee salary information
+ */
+export const updateEmployeeSalary = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params;
+    const {
+      basicSalary,
+      hra,
+      conveyance,
+      medicalAllowance,
+      specialAllowance,
+      pf,
+      esi,
+      professionalTax,
+    } = req.body;
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Employee not found',
+        error: 'Not Found',
+      });
+    }
+
+    // Calculate gross salary and net salary
+    const grossSalary =
+      (basicSalary || 0) +
+      (hra || 0) +
+      (conveyance || 0) +
+      (medicalAllowance || 0) +
+      (specialAllowance || 0);
+
+    const netSalary =
+      grossSalary - (pf || 0) - (esi || 0) - (professionalTax || 0);
+
+    // Update employee salary
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        salary: grossSalary,
+      },
+    });
+
+    res.json({
+      status: 'success',
+      data: {
+        basicSalary,
+        hra,
+        conveyance,
+        medicalAllowance,
+        specialAllowance,
+        grossSalary,
+        pf,
+        esi,
+        professionalTax,
+        netSalary,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

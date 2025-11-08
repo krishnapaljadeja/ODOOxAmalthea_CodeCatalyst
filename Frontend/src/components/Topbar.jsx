@@ -201,12 +201,6 @@ export default function Topbar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/change-password" className="flex items-center">
-                  <Lock className="mr-2 h-4 w-4" />
-                  Change Password
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
                 <Link to="/settings" className="flex items-center">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings

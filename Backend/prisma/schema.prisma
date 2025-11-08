@@ -80,6 +80,14 @@ model User {
   employeeId  String?  @unique
   companyId   String?
   company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Resume fields
+  about              String?
+  whatILoveAboutMyJob String?
+  interestsAndHobbies String?
+  skills             String[] @default([])
+  certifications     String[] @default([])
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -113,6 +121,22 @@ model Employee {
   salary     Float
   companyId String?
   company   Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Private info fields
+  dateOfBirth    DateTime?  @db.Date
+  address        String?
+  nationality    String?
+  personalEmail  String?
+  gender         String?
+  maritalStatus  String?
+  
+  // Bank details fields
+  accountNumber  String?
+  bankName       String?
+  ifscCode       String?
+  panNo          String?
+  uanNo          String?
+  
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 

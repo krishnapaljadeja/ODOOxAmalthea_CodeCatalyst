@@ -1,5 +1,5 @@
-import { Link, useLocation } from 'react-router-dom'
-import { cn } from '../lib/utils'
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "../lib/utils";
 import {
   LayoutDashboard,
   Users,
@@ -10,43 +10,60 @@ import {
   Settings,
   Menu,
   X,
-} from 'lucide-react'
-import { useState } from 'react'
-import { Button } from './ui/button'
-import { useAuthStore } from '../store/auth'
+} from "lucide-react";
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { useAuthStore } from "../store/auth";
 
 const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/employees', label: 'Employees', icon: Users },
-  { path: '/attendance', label: 'Attendance', icon: Clock },
-  { path: '/leaves', label: 'Time Off', icon: Calendar },
-  { path: '/payroll', label: 'Payroll', icon: DollarSign },
-  { path: '/reports', label: 'Reports', icon: FileText, roles: ['admin', 'hr'] },
-  { path: '/settings', label: 'Settings', icon: Settings },
-]
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/employees", label: "Employees", icon: Users },
+  { path: "/attendance", label: "Attendance", icon: Clock },
+  { path: "/leaves", label: "Time Off", icon: Calendar },
+  { path: "/payroll", label: "Payroll", icon: DollarSign },
+  {
+    path: "/salary-management",
+    label: "Salary Management",
+    icon: DollarSign,
+    roles: ["admin", "hr"],
+  },
+  {
+    path: "/reports",
+    label: "Reports",
+    icon: FileText,
+    roles: ["admin", "hr"],
+  },
+  // { path: '/settings', label: 'Settings', icon: Settings },
+  {
+    path: "/admin-settings",
+    label: "Admin Settings",
+    icon: Settings,
+    roles: ["admin"],
+  },
+];
 
 /**
  * LeftNav component - Sidebar navigation
  */
 export default function LeftNav() {
-  const location = useLocation()
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const { user } = useAuthStore()
+  const location = useLocation();
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { user } = useAuthStore();
 
   const NavContent = () => {
     // Filter nav items based on user role
     const filteredItems = navItems.filter((item) => {
       if (item.roles && user?.role) {
-        return item.roles.includes(user.role)
+        return item.roles.includes(user.role);
       }
-      return true
-    })
+      return true;
+    });
 
     return (
       <nav className="flex flex-col space-y-1 p-4">
         {filteredItems.map((item) => {
-          const Icon = item.icon
-          const isActive = location.pathname === item.path
+          const Icon = item.icon;
+          const isActive = location.pathname === item.path;
 
           return (
             <Link
@@ -54,20 +71,20 @@ export default function LeftNav() {
               to={item.path}
               onClick={() => setIsMobileOpen(false)}
               className={cn(
-                'flex items-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors',
+                "flex items-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
             >
               <Icon className="h-5 w-5" />
               <span>{item.label}</span>
             </Link>
-          )
+          );
         })}
       </nav>
-    )
-  }
+    );
+  };
 
   return (
     <>
@@ -95,7 +112,33 @@ export default function LeftNav() {
           />
           <div className="fixed left-0 top-0 h-full w-64 bg-card border-r shadow-lg">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold">WorkZen HRMS</h2>
+              {user?.company ? (
+                <div className="flex items-center gap-3">
+                  {user.company.logo ? (
+                    <img
+                      src={user.company.logo}
+                      alt={user.company.name}
+                      className="h-10 w-10 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary font-bold text-sm">
+                        {user.company.name.substring(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-sm font-semibold truncate">
+                      {user.company.name}
+                    </h2>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Company
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <h2 className="text-lg font-semibold">WorkZen HRMS</h2>
+              )}
             </div>
             <NavContent />
           </div>
@@ -103,13 +146,38 @@ export default function LeftNav() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-card">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-card relative z-50">
         <div className="p-6 border-b">
-          <h2 className="text-xl font-bold">WorkZen HRMS</h2>
+          {user?.company ? (
+            <div className="flex items-center gap-3">
+              {user.company.logo ? (
+                <img
+                  src={user.company.logo}
+                  alt={user.company.name}
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <span className="text-primary font-bold text-sm">
+                    {user.company.name.substring(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold truncate">
+                  {user.company.name}
+                </h2>
+                <p className="text-xs text-muted-foreground truncate">
+                  Company
+                </p>
+              </div>
+            </div>
+          ) : (
+            <h2 className="text-xl font-bold">WorkZen HRMS</h2>
+          )}
         </div>
         <NavContent />
       </aside>
     </>
-  )
+  );
 }
-
