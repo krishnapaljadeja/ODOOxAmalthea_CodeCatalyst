@@ -19,6 +19,9 @@ CREATE TYPE "PayrunStatus" AS ENUM ('draft', 'processing', 'completed', 'failed'
 -- CreateEnum
 CREATE TYPE "PayrollStatus" AS ENUM ('draft', 'computed', 'validated', 'cancelled');
 
+-- CreateEnum
+CREATE TYPE "PayslipStatus" AS ENUM ('draft', 'validated', 'printed', 'emailed');
+
 -- CreateTable
 CREATE TABLE "Company" (
     "id" TEXT NOT NULL,
@@ -198,7 +201,7 @@ CREATE TABLE "Payslip" (
     "payrollId" TEXT NOT NULL,
     "employeeId" TEXT NOT NULL,
     "pdfUrl" TEXT,
-    "status" TEXT,
+    "status" "PayslipStatus",
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" TEXT,
