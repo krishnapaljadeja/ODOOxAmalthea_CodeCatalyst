@@ -1,5 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -9,6 +7,7 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 
 enum UserRole {
   admin
@@ -51,13 +50,28 @@ enum PayrunStatus {
   failed
 }
 
+enum PayrollStatus {
+  draft
+  computed
+  validated
+  cancelled
+}
+
+enum PayslipStatus {
+  draft
+  validated
+  printed
+  emailed
+}
+
+
 model Company {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  code        String   @unique // First 2 letters of company name (uppercase)
-  logo        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique // short code like 'WZ'
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   users     User[]
   employees Employee[]
@@ -95,7 +109,7 @@ model User {
   employee        Employee?
   attendances    Attendance[]
   leaves         Leave[]
-  approvedLeaves Leave[] @relation("LeaveApprover")
+  approvedLeaves Leave[]        @relation("LeaveApprover")
   payslips       Payslip[]
   refreshTokens  RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -139,11 +153,14 @@ model Employee {
   
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+  
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  attendances Attendance[]
-  leaves      Leave[]
-  payslips    Payslip[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendances      Attendance[]
+  leaves           Leave[]
+  salaryStructures SalaryStructure[]
+  payrolls         Payroll[]
+  payslips         Payslip[]
 
   @@index([employeeId])
   @@index([department])
@@ -203,21 +220,21 @@ model Attendance {
 model Leave {
   id              String      @id @default(uuid())
   employeeId      String
-  employee        Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   userId          String
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   type            LeaveType
-  startDate       DateTime     @db.Date
-  endDate         DateTime     @db.Date
+  startDate       DateTime    @db.Date
+  endDate         DateTime    @db.Date
   days            Int
   reason          String
-  status          LeaveStatus  @default(pending)
+  status          LeaveStatus @default(pending)
   approvedById    String?
-  approvedBy      User?        @relation("LeaveApprover", fields: [approvedById], references: [id])
+  approvedBy      User?       @relation("LeaveApprover", fields: [approvedById], references: [id])
   approvedAt      DateTime?
   rejectionReason String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   @@index([employeeId])
   @@index([userId])
@@ -225,57 +242,98 @@ model Leave {
   @@index([startDate, endDate])
 }
 
-model Payrun {
-  id              String        @id @default(uuid())
-  name            String
-  payPeriodStart  DateTime       @db.Date
-  payPeriodEnd    DateTime       @db.Date
-  payDate         DateTime       @db.Date
-  status          PayrunStatus   @default(draft)
-  totalEmployees  Int            @default(0)
-  totalAmount      Float         @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+model SalaryStructure {
+  id            String    @id @default(uuid())
+  employeeId    String
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
 
-  payslips Payslip[]
+  // earnings
+  basicSalary        Float @default(0)
+  houseRentAllowance Float @default(0)
+  standardAllowance  Float @default(0)
+  bonus              Float @default(0)
+  travelAllowance    Float @default(0)
+
+  // deductions
+  pfEmployee      Float @default(0)
+  professionalTax Float @default(0)
+  tds             Float @default(0)
+  otherDeductions Float @default(0)
+
+  // final amounts
+  grossSalary     Float @default(0)
+  totalDeductions Float @default(0)
+  netSalary       Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model Payrun {
+  id             String       @id @default(uuid())
+  name           String
+  payPeriodStart DateTime     @db.Date
+  payPeriodEnd   DateTime     @db.Date
+  payDate        DateTime     @db.Date
+  status         PayrunStatus @default(draft)
+  totalEmployees Int          @default(0)
+  totalAmount    Float        @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  payrolls Payroll[]
 
   @@index([status])
   @@index([payDate])
 }
 
+model Payroll {
+  id         String        @id @default(uuid())
+  employeeId String
+  employee   Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrunId   String
+  payrun     Payrun        @relation(fields: [payrunId], references: [id], onDelete: Cascade)
+  status     PayrollStatus @default(draft)
+
+  grossSalary     Float     @default(0)
+  totalDeductions Float     @default(0)
+  netSalary       Float     @default(0)
+  computedAt      DateTime?
+  validatedAt     DateTime?
+
+  // relations
+  payslip Payslip?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, payrunId])
+  @@index([status])
+}
+
 model Payslip {
-  id              String   @id @default(uuid())
-  employeeId      String
-  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payrunId        String
-  payrun          Payrun    @relation(fields: [payrunId], references: [id], onDelete: Cascade)
-  payPeriodStart  DateTime  @db.Date
-  payPeriodEnd    DateTime  @db.Date
-  payDate         DateTime  @db.Date
+  id         String   @id @default(uuid())
+  payrollId  String
+  payroll    Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  pdfUrl     String?
+  status     PayslipStatus?  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?
 
-  baseSalary      Float    @default(0)
-  overtime        Float    @default(0)
-  bonus           Float    @default(0)
-  allowances      Float    @default(0)
-  grossPay        Float    @default(0)
-
-  tax             Float    @default(0)
-  insurance       Float    @default(0)
-  other           Float    @default(0)
-  totalDeductions Float    @default(0)
-
-  netPay          Float    @default(0)
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([payrunId, employeeId])
+  @@unique([payrollId])
   @@index([employeeId])
-  @@index([userId])
-  @@index([payrunId])
-  @@index([payDate])
 }
 
 model PayrollSettings {
@@ -287,4 +345,3 @@ model PayrollSettings {
 
   @@map("payroll_settings")
 }
-

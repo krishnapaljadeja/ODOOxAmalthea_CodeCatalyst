@@ -1,52 +1,40 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import DataTable from '../components/DataTable'
-import { Plus, Eye, Play, AlertTriangle, TrendingUp } from 'lucide-react'
+import { Eye, Play, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react'
 import apiClient from '../lib/api'
 import { formatDate, formatCurrency } from '../lib/format'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-
-const payrunSchema = z.object({
-  name: z.string().min(1, 'Payrun name is required'),
-  payPeriodStart: z.string().min(1, 'Start date is required'),
-  payPeriodEnd: z.string().min(1, 'End date is required'),
-  payDate: z.string().min(1, 'Pay date is required'),
-})
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog'
+import { Label } from '../components/ui/label'
+import { useLocation } from 'react-router-dom'
 
 /**
  * Payroll page component with Dashboard and Payrun tabs
  */
 export default function Payroll() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [payruns, setPayruns] = useState([])
+  const [currentMonthPayrun, setCurrentMonthPayrun] = useState(null)
+  const [payrolls, setPayrolls] = useState([])
   const [loading, setLoading] = useState(true)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [selectedPayrun, setSelectedPayrun] = useState(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [dashboardData, setDashboardData] = useState(null)
-  const [activeTab, setActiveTab] = useState('dashboard')
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm({
-    resolver: zodResolver(payrunSchema),
-  })
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard')
 
   useEffect(() => {
     fetchPayruns()
     fetchDashboardData()
-  }, [])
+    if (activeTab === 'payrun') {
+      fetchCurrentMonthPayrun()
+    }
+  }, [activeTab])
 
   const fetchPayruns = async () => {
     try {
@@ -54,6 +42,28 @@ export default function Payroll() {
       setPayruns(response.data)
     } catch (error) {
       console.error('Failed to fetch payruns:', error)
+      toast.error('Failed to fetch payruns')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCurrentMonthPayrun = async () => {
+    try {
+      setLoading(true)
+      const response = await apiClient.get('/payroll/payruns/current-month')
+      if (response.data) {
+        setCurrentMonthPayrun(response.data)
+        setPayrolls(response.data.payrolls || [])
+      } else {
+        setCurrentMonthPayrun(null)
+        setPayrolls([])
+      }
+    } catch (error) {
+      console.error('Failed to fetch current month payrun:', error)
+      toast.error('Failed to fetch current month payrun')
+      setCurrentMonthPayrun(null)
+      setPayrolls([])
     } finally {
       setLoading(false)
     }
@@ -112,18 +122,6 @@ export default function Payroll() {
     }
   }
 
-  const onSubmit = async (data) => {
-    try {
-      const response = await apiClient.post('/payroll/payruns', data)
-      toast.success('Payrun created successfully')
-      setIsCreateOpen(false)
-      reset()
-      fetchPayruns()
-      fetchDashboardData()
-    } catch (error) {
-      console.error('Failed to create payrun:', error)
-    }
-  }
 
   const handlePreview = async (payrunId) => {
     try {
@@ -146,18 +144,59 @@ export default function Payroll() {
     }
   }
 
-  const handleValidate = async (payrunId) => {
+  const handleValidate = async (payrollId) => {
     try {
-      await apiClient.post(`/payroll/payruns/${payrunId}/validate`)
-      toast.success('Payrun validated successfully')
+      await apiClient.put(`/payroll/${payrollId}/validate`)
+      toast.success('Payroll validated successfully')
+      fetchCurrentMonthPayrun()
       fetchPayruns()
       fetchDashboardData()
     } catch (error) {
-      console.error('Failed to validate payrun:', error)
+      console.error('Failed to validate payroll:', error)
+      toast.error(error.response?.data?.message || 'Failed to validate payroll')
     }
   }
 
-  const columns = [
+  const handleProcessPayrun = async () => {
+    if (!currentMonthPayrun) return
+    try {
+      await apiClient.post(`/payroll/payruns/${currentMonthPayrun.id}/process`)
+      toast.success('Payrun processed successfully')
+      fetchCurrentMonthPayrun()
+      fetchPayruns()
+      fetchDashboardData()
+    } catch (error) {
+      console.error('Failed to process payrun:', error)
+      toast.error(error.response?.data?.message || 'Failed to process payrun')
+    }
+  }
+
+  const handlePayrollClick = (payroll) => {
+    // Navigate to payslip detail using payrollId, passing payrunId for back navigation
+    if (payroll.payslipId) {
+      navigate(`/payslips/${payroll.payslipId}?payrunId=${currentMonthPayrun?.id}`)
+    } else {
+      // If no payslip exists yet, navigate using payrollId
+      navigate(`/payslips/payroll/${payroll.id}?payrunId=${currentMonthPayrun?.id}`)
+    }
+  }
+
+  const handleValidateAll = async () => {
+    if (!currentMonthPayrun) return
+    try {
+      await apiClient.put(`/payroll/payruns/${currentMonthPayrun.id}/validate-all`)
+      toast.success('All payrolls validated successfully')
+      fetchCurrentMonthPayrun()
+      fetchPayruns()
+      fetchDashboardData()
+    } catch (error) {
+      console.error('Failed to validate all payrolls:', error)
+      toast.error(error.response?.data?.message || 'Failed to validate all payrolls')
+    }
+  }
+
+  // Columns for payruns list (dashboard tab)
+  const payrunColumns = [
     {
       header: 'Pay Period',
       accessor: (row) =>
@@ -216,6 +255,65 @@ export default function Payroll() {
     },
   ]
 
+  // Columns for employee payroll list (payrun tab)
+  const payrollColumns = [
+    {
+      header: 'Pay Period',
+      accessor: 'payPeriod',
+    },
+    {
+      header: 'Employee',
+      accessor: (row) => row.employee?.name || `${row.employee?.firstName} ${row.employee?.lastName}`,
+    },
+    {
+      header: 'Employer Cost',
+      accessor: 'employerCost',
+      cell: (row) => formatCurrency(row.employerCost || 0),
+    },
+    {
+      header: 'Basic Wage',
+      accessor: 'basicWage',
+      cell: (row) => formatCurrency(row.basicWage || 0),
+    },
+    {
+      header: 'Gross Wage',
+      accessor: 'grossWage',
+      cell: (row) => formatCurrency(row.grossWage || 0),
+    },
+    {
+      header: 'Net Wage',
+      accessor: 'netWage',
+      cell: (row) => formatCurrency(row.netWage || 0),
+    },
+    {
+      header: 'Status',
+      accessor: 'status',
+      cell: (row) => (
+        <div className="flex items-center gap-2">
+          {row.status === 'Done' || row.status === 'validated' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-green-100 text-green-800 border-green-300"
+            >
+              Done
+            </Button>
+          ) : (
+            <span
+              className={`rounded-full px-2 py-1 text-xs ${
+                row.status === 'computed'
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}
+            >
+              {row.status}
+            </span>
+          )}
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -227,94 +325,21 @@ export default function Payroll() {
         </div>
         {activeTab === 'payrun' && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => handleValidate(payruns[0]?.id)}>
-              Validate
-            </Button>
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Payrun
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Payrun</DialogTitle>
-                  <DialogDescription>
-                    The Payroll Payrun allows you to generate payslips for all employees at once. When you click the Payrun button, all employee payslips are created automatically.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Payrun Name</Label>
-                    <Input
-                      id="name"
-                      {...register('name')}
-                      aria-invalid={errors.name ? 'true' : 'false'}
-                    />
-                    {errors.name && (
-                      <p className="text-sm text-destructive">
-                        {errors.name.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="payPeriodStart">Pay Period Start</Label>
-                      <Input
-                        id="payPeriodStart"
-                        type="date"
-                        {...register('payPeriodStart')}
-                        aria-invalid={errors.payPeriodStart ? 'true' : 'false'}
-                      />
-                      {errors.payPeriodStart && (
-                        <p className="text-sm text-destructive">
-                          {errors.payPeriodStart.message}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payPeriodEnd">Pay Period End</Label>
-                      <Input
-                        id="payPeriodEnd"
-                        type="date"
-                        {...register('payPeriodEnd')}
-                        aria-invalid={errors.payPeriodEnd ? 'true' : 'false'}
-                      />
-                      {errors.payPeriodEnd && (
-                        <p className="text-sm text-destructive">
-                          {errors.payPeriodEnd.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="payDate">Pay Date</Label>
-                    <Input
-                      id="payDate"
-                      type="date"
-                      {...register('payDate')}
-                      aria-invalid={errors.payDate ? 'true' : 'false'}
-                    />
-                    {errors.payDate && (
-                      <p className="text-sm text-destructive">
-                        {errors.payDate.message}
-                      </p>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsCreateOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">Create Payrun</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            {currentMonthPayrun && currentMonthPayrun.status === 'draft' && (
+              <Button variant="outline" onClick={handleProcessPayrun}>
+                <Play className="mr-2 h-4 w-4" />
+                Process Payrun
+              </Button>
+            )}
+            {currentMonthPayrun && 
+             currentMonthPayrun.payrolls && 
+             currentMonthPayrun.payrolls.length > 0 &&
+             currentMonthPayrun.payrolls.some(p => p.status === 'computed' || p.status === 'draft') && (
+              <Button variant="outline" onClick={handleValidateAll}>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Validate
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -471,27 +496,96 @@ export default function Payroll() {
         </TabsContent>
 
         <TabsContent value="payrun" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payruns</CardTitle>
-              <CardDescription>
-                The payslip of an individual employee is generated on the basis of attendance of that employee in a particular month.
-              </CardDescription>
-              <CardDescription className="mt-2">
-                Done status show once any payrun/payslip has been validated.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                data={payruns}
-                columns={columns}
-                searchable
-                searchPlaceholder="Search payruns..."
-                paginated
-                pageSize={10}
-              />
-            </CardContent>
-          </Card>
+          {loading ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center">Loading...</div>
+              </CardContent>
+            </Card>
+          ) : currentMonthPayrun ? (
+            <>
+              {/* Payrun Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>{currentMonthPayrun.name}</CardTitle>
+                  <CardDescription>
+                    The payslip of an individual employee is generated on the basis of attendance of that employee in a particular month.
+                  </CardDescription>
+                  <CardDescription className="mt-2">
+                    Done status show once any payrun/payslip has been validated.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Employer Cost</p>
+                      <p className="text-lg font-semibold">{formatCurrency(currentMonthPayrun.totalAmount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Gross</p>
+                      <p className="text-lg font-semibold">{formatCurrency(currentMonthPayrun.totalAmount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Net</p>
+                      <p className="text-lg font-semibold">
+                        {formatCurrency(
+                          currentMonthPayrun.payrolls?.reduce((sum, p) => sum + (p.netSalary || 0), 0) || 0
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status</p>
+                      <div className="mt-1">
+                        {currentMonthPayrun.status === 'completed' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-green-100 text-green-800 border-green-300"
+                          >
+                            Done
+                          </Button>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{currentMonthPayrun.status}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Employee Payroll List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payslip List view</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DataTable
+                    data={payrolls}
+                    columns={payrollColumns}
+                    searchable
+                    searchPlaceholder="Search employees..."
+                    paginated
+                    pageSize={10}
+                    onRowClick={handlePayrollClick}
+                  />
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>No Payrun Found</CardTitle>
+                <CardDescription>
+                  No payrun found for the current month. Create a new payrun to get started.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Payruns are automatically created for each month. Use the Process Payrun button to generate payrolls.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

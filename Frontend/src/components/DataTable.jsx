@@ -30,6 +30,7 @@ export default function DataTable({
   paginated = true,
   pageSize = 10,
   emptyMessage = 'No data available',
+  onRowClick,
 }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -107,7 +108,11 @@ export default function DataTable({
               </TableRow>
             ) : (
               paginatedData.map((row, rowIndex) => (
-                <TableRow key={rowIndex}>
+                <TableRow
+                  key={rowIndex}
+                  onClick={() => onRowClick && onRowClick(row)}
+                  className={onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}
+                >
                   {columns.map((column, colIndex) => (
                     <TableCell key={colIndex} className={column.cellClassName}>
                       {column.cell

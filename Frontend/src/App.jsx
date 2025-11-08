@@ -18,9 +18,7 @@ import PayslipDetail from './pages/PayslipDetail'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import UserSettings from './pages/UserSettings'
-import AdminSettings from './pages/AdminSettings'
 import Profile from './pages/Profile'
-import SalaryManagement from './pages/SalaryManagement'
 import ChangePassword from './pages/ChangePassword'
 import NotFound from './pages/NotFound'
 
@@ -63,11 +61,10 @@ function App() {
           <Route path="payroll" element={<Payroll />} />
           <Route path="payslips" element={<Payslips />} />
           <Route path="payslips/:payslipId" element={<PayslipDetail />} />
+          <Route path="payslips/payroll/:payrollId" element={<PayslipDetail />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="user-settings" element={<UserSettings />} />
-          <Route path="admin-settings" element={<AdminSettings />} />
-          <Route path="salary-management" element={<SalaryManagement />} />
           <Route path="profile" element={<Profile />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="*" element={<NotFound />} />
