@@ -3,9 +3,6 @@ import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Home } from 'lucide-react'
 
-/**
- * 404 Not Found page component
- */
 export default function NotFound() {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">

@@ -18,9 +18,6 @@ const settingsSchema = z.object({
   payPeriodDays: z.number().min(1).max(31),
 })
 
-/**
- * Settings page component
- */
 export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState(null)

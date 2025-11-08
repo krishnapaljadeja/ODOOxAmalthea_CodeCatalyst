@@ -21,9 +21,6 @@ const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-/**
- * Login page component
- */
 export default function Login() {
   const navigate = useNavigate();
   const { login, isLoading } = useAuthStore();

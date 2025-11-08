@@ -18,10 +18,6 @@ import {
   DialogTitle,
 } from '../components/ui/dialog'
 
-/**
- * Salary Management page component
- * Allows admin/payroll manager to view and manage employee salaries
- */
 export default function SalaryManagement() {
   const { user } = useAuthStore()
   const [employees, setEmployees] = useState([])
