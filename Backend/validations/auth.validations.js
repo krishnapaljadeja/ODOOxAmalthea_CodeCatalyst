@@ -20,7 +20,18 @@ export const registerSchema = z.object({
     email: z.string().email('Invalid email address'),
     phone: z.preprocess(
       (val) => (val === '' || val === null || val === undefined ? undefined : val),
-      z.string().optional()
+      z.string().optional().refine(
+        (val) => {
+          if (!val || val === '') return true; // Allow empty
+          // Remove all non-digit characters except +
+          const cleaned = val.replace(/[^\d+]/g, '');
+          // Check if it matches phone number pattern: optional +, then 10-15 digits
+          return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+        },
+        {
+          message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
+        }
+      )
     ),
     password: z
       .string()

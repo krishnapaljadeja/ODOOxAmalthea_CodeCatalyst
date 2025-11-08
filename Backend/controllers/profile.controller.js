@@ -150,7 +150,34 @@ export const updateProfile = async (req, res, next) => {
         
         if (employeeData.dateOfBirth !== undefined) {
           if (employeeData.dateOfBirth && employeeData.dateOfBirth.trim()) {
-            updateData.dateOfBirth = new Date(employeeData.dateOfBirth)
+            const dob = new Date(employeeData.dateOfBirth)
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            
+            // Validate DOB is not in future
+            if (dob > today) {
+              return res.status(400).json({
+                status: 'error',
+                message: 'Date of birth cannot be in the future',
+                error: 'Validation Error',
+              })
+            }
+            
+            // Validate minimum age of 18
+            const age = today.getFullYear() - dob.getFullYear()
+            const monthDiff = today.getMonth() - dob.getMonth()
+            const dayDiff = today.getDate() - dob.getDate()
+            const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
+            
+            if (actualAge < 18) {
+              return res.status(400).json({
+                status: 'error',
+                message: 'Employee must be at least 18 years old',
+                error: 'Validation Error',
+              })
+            }
+            
+            updateData.dateOfBirth = dob
           } else {
             updateData.dateOfBirth = null
           }

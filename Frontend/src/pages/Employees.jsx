@@ -20,7 +20,7 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Plus, Upload, Download, Search, Plane, Save, Pencil } from "lucide-react";
+import { Plus, Download, Search, Plane, Save, Pencil, Grid3x3, List } from "lucide-react";
 import apiClient from "../lib/api";
 import { formatDate, formatPhone, formatCurrency } from "../lib/format";
 import { useForm } from "react-hook-form";
@@ -41,7 +41,18 @@ const employeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
+  phone: z.string().optional().or(z.literal("")).refine(
+    (val) => {
+      if (!val || val === '') return true; // Allow empty
+      // Remove all non-digit characters except +
+      const cleaned = val.replace(/[^\d+]/g, '');
+      // Check if it matches phone number pattern: optional +, then 10-15 digits
+      return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+    },
+    {
+      message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
+    }
+  ),
   department: z.string().min(1, "Department is required"),
   position: z.string().min(1, "Position is required"),
   // allow strings from inputs; we'll coerce to number in onSubmit
@@ -57,8 +68,11 @@ export default function Employees() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState(null);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
   const [todayAttendance, setTodayAttendance] = useState([]);
   const [todayLeaves, setTodayLeaves] = useState([]);
   const [employeeSalaryInfo, setEmployeeSalaryInfo] = useState(null);
@@ -79,13 +93,22 @@ export default function Employees() {
     },
   });
 
-  const selectedRole = watch("role");
+  const formSelectedRole = watch("role");
 
   // Stable fetch functions
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get("/employees");
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (selectedDepartment && selectedDepartment !== 'all') params.append('department', selectedDepartment);
+      if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus);
+      
+      const queryString = params.toString();
+      const url = queryString ? `/employees?${queryString}` : '/employees';
+      
+      const response = await apiClient.get(url);
       const employeesData = response.data?.data || response.data || [];
       setEmployees(Array.isArray(employeesData) ? employeesData : []);
     } catch (error) {
@@ -95,7 +118,7 @@ export default function Employees() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchTerm, selectedDepartment, selectedStatus]);
 
   const fetchTodayData = useCallback(async () => {
     try {
@@ -138,6 +161,18 @@ export default function Employees() {
     fetchTodayData();
   }, [fetchEmployees, fetchTodayData]);
 
+  // Extract unique departments, positions, and roles from employees
+  const departments = useMemo(() => {
+    const depts = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+    return depts.sort();
+  }, [employees]);
+
+
+  const roles = useMemo(() => {
+    const rls = [...new Set(employees.map(emp => emp.user?.role).filter(Boolean))];
+    return rls.sort();
+  }, [employees]);
+
   // debounce search a little
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
   useEffect(() => {
@@ -146,19 +181,30 @@ export default function Employees() {
   }, [searchTerm]);
 
   const filteredEmployees = useMemo(() => {
-    if (!debouncedSearch) return employees;
-    const s = debouncedSearch.toLowerCase();
-    return employees.filter((employee) => {
-      const name = `${employee.firstName || ""} ${employee.lastName || ""}`.toLowerCase();
-      return (
-        name.includes(s) ||
-        (employee.email || "").toLowerCase().includes(s) ||
-        (employee.employeeId || "").toLowerCase().includes(s) ||
-        (employee.department || "").toLowerCase().includes(s) ||
-        (employee.position || "").toLowerCase().includes(s)
-      );
-    });
-  }, [employees, debouncedSearch]);
+    let filtered = employees;
+
+    // Apply role filter (client-side)
+    if (selectedRole && selectedRole !== 'all') {
+      filtered = filtered.filter(emp => emp.user?.role === selectedRole);
+    }
+
+    // Apply search filter (client-side for additional filtering)
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase();
+      filtered = filtered.filter((employee) => {
+        const name = `${employee.firstName || ""} ${employee.lastName || ""}`.toLowerCase();
+        return (
+          name.includes(s) ||
+          (employee.email || "").toLowerCase().includes(s) ||
+          (employee.employeeId || "").toLowerCase().includes(s) ||
+          (employee.department || "").toLowerCase().includes(s) ||
+          (employee.position || "").toLowerCase().includes(s)
+        );
+      });
+    }
+
+    return filtered;
+  }, [employees, debouncedSearch, selectedRole]);
 
   const onSubmit = async (data) => {
     try {
@@ -188,6 +234,22 @@ export default function Employees() {
         error.response?.data?.error ||
         "Failed to create employee. Please check all fields.";
       toast.error(errorMessage);
+    }
+  };
+
+  const onError = (errors) => {
+    // Show toast for each validation error
+    const errorMessages = Object.entries(errors).map(([field, error]) => {
+      return error?.message || `${field}: Validation failed`;
+    });
+    
+    // Show first error or all errors
+    if (errorMessages.length > 0) {
+      errorMessages.forEach((msg) => {
+        toast.error(msg);
+      });
+    } else {
+      toast.error("Please fix the validation errors before submitting");
     }
   };
 
@@ -335,36 +397,6 @@ export default function Employees() {
     }
   };
 
-  const handleImport = async (file) => {
-    if (!file) return;
-    const maxSize = 6 * 1024 * 1024; // 6MB example
-    if (file.size > maxSize) {
-      toast.error("File too large. Max size: 6MB.");
-      return;
-    }
-    setIsImporting(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await apiClient.post("/employees/import", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      const count = response.data?.count || response.data?.data?.count || 0;
-      toast.success(`Successfully imported ${count} employees`);
-      await fetchEmployees();
-    } catch (error) {
-      console.error("Failed to import employees:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        "Failed to import employees. Please check the file format.";
-      toast.error(errorMessage);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   const handleExport = async () => {
     try {
       if (!confirm("Export all employees to CSV?")) return;
@@ -397,22 +429,6 @@ export default function Employees() {
       console.error("Failed to export employees:", error);
       toast.error("Failed to export employees");
     }
-  };
-
-  const handleDownloadSample = () => {
-    const sampleData = `First Name,Last Name,Email,Phone,Department,Position,Salary,Hire Date,Role
-John,Smith,john.smith@example.com,+1234567890,Engineering,Software Engineer,75000,2025-01-15,employee
-Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,85000,2025-01-20,hr`;
-    const blob = new Blob([sampleData], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "employee-import-sample.csv");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    toast.success("Sample template downloaded");
   };
 
   const getEmployeeStatus = (employee) => {
@@ -477,30 +493,10 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
         {user?.role !== "employee" && (
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExport} disabled={isImporting}>
+              <Button variant="outline" onClick={handleExport}>
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => document.getElementById("employee-import")?.click()}
-                disabled={isImporting}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {isImporting ? "Importing..." : "Import"}
-              </Button>
-
-              <input
-                id="employee-import"
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImport(file);
-                }}
-              />
 
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
@@ -518,7 +514,7 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
                     </DialogDescription>
                   </DialogHeader>
 
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
@@ -574,7 +570,7 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
 
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
-                      <Select value={selectedRole || "employee"} onValueChange={(value) => setValue("role", value)}>
+                      <Select value={formSelectedRole || "employee"} onValueChange={(value) => setValue("role", value)}>
                         <SelectTrigger id="role" aria-invalid={errors.role ? "true" : "false"}>
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
@@ -597,12 +593,6 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
                 </DialogContent>
               </Dialog>
             </div>
-
-            <div className="flex gap-3 text-xs text-muted-foreground">
-              <button type="button" onClick={handleDownloadSample} className="hover:text-foreground underline">
-                Download Sample Template
-              </button>
-            </div>
           </div>
         )}
       </div>
@@ -614,15 +604,110 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
         </CardHeader>
 
         <CardContent>
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search employees by name, email, ID, department, or position..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="mb-6 space-y-4">
+            {/* Search Bar and View Toggle */}
+            <div className="flex gap-4 items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search employees by name, email, ID, department, or position..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex items-center gap-2 border rounded-md p-1">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  className="h-8 w-8 p-0"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  className="h-8 w-8 p-0"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Filter Options */}
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex-1 min-w-[200px]">
+                <Label htmlFor="department-filter" className="text-xs text-muted-foreground mb-1 block">
+                  Department
+                </Label>
+                <Select value={selectedDepartment || 'all'} onValueChange={(value) => setSelectedDepartment(value === 'all' ? null : value)}>
+                  <SelectTrigger id="department-filter" className="w-full">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex-1 min-w-[200px]">
+                <Label htmlFor="status-filter" className="text-xs text-muted-foreground mb-1 block">
+                  Status
+                </Label>
+                <Select value={selectedStatus || 'all'} onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)}>
+                  <SelectTrigger id="status-filter" className="w-full">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="terminated">Terminated</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex-1 min-w-[200px]">
+                <Label htmlFor="role-filter" className="text-xs text-muted-foreground mb-1 block">
+                  Role
+                </Label>
+                <Select value={selectedRole || 'all'} onValueChange={(value) => setSelectedRole(value === 'all' ? null : value)}>
+                  <SelectTrigger id="role-filter" className="w-full">
+                    <SelectValue placeholder="All Roles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(selectedDepartment || selectedStatus || selectedRole) && (
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDepartment(null);
+                      setSelectedStatus(null);
+                      setSelectedRole(null);
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -630,9 +715,11 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
             <div className="text-center py-8 text-muted-foreground">Loading employees...</div>
           ) : filteredEmployees.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? "No employees found matching your search." : "No employees found."}
+              {searchTerm || selectedDepartment || selectedStatus || selectedRole
+                ? "No employees found matching your filters."
+                : "No employees found."}
             </div>
-          ) : (
+          ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredEmployees.map((employee) => {
                 const status = getEmployeeStatus(employee);
@@ -667,6 +754,100 @@ Sarah,Johnson,sarah.johnson@example.com,+1234567891,Marketing,Marketing Manager,
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Employee</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Employee ID</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Department</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Position</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Today</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEmployees.map((employee) => {
+                    const status = getEmployeeStatus(employee);
+                    const fullName = `${employee.firstName || ""} ${employee.lastName || ""}`.trim();
+                    const initials = `${employee.firstName?.[0] || ""}${employee.lastName?.[0] || ""}`.toUpperCase();
+
+                    return (
+                      <tr
+                        key={employee.id || employee.employeeId || `${fullName}-${Math.random()}`}
+                        className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => handleViewEmployee(employee)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="relative">
+                              {employee.avatar || employee.user?.avatar ? (
+                                <img
+                                  src={employee.avatar || employee.user?.avatar}
+                                  alt={fullName}
+                                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border-2 border-gray-200">
+                                  <span className="text-sm font-semibold text-primary">{initials}</span>
+                                </div>
+                              )}
+                              {status === "present" && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" />
+                              )}
+                              {status === "on-leave" && (
+                                <div className="absolute -top-1 -right-1">
+                                  <Plane className="w-4 h-4 text-blue-500" />
+                                </div>
+                              )}
+                              {status === "absent" && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full border-2 border-white shadow-sm" />
+                              )}
+                              {status === "checked-out" && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gray-400 rounded-full border-2 border-white shadow-sm" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium">{fullName}</p>
+                              {employee.user?.role && (
+                                <p className="text-xs text-muted-foreground capitalize">{employee.user.role}</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{employee.employeeId || "-"}</td>
+                        <td className="px-4 py-3 text-sm">{employee.department || "-"}</td>
+                        <td className="px-4 py-3 text-sm">{employee.position || "-"}</td>
+                        <td className="px-4 py-3 text-sm">{employee.email || "-"}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            employee.status === "active" ? "bg-green-100 text-green-800" :
+                            employee.status === "inactive" ? "bg-yellow-100 text-yellow-800" :
+                            employee.status === "terminated" ? "bg-red-100 text-red-800" :
+                            "bg-gray-100 text-gray-800"
+                          }`}>
+                            {employee.status || "active"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            status === "present" ? "bg-green-100 text-green-800" :
+                            status === "on-leave" ? "bg-blue-100 text-blue-800" :
+                            status === "absent" ? "bg-yellow-100 text-yellow-800" :
+                            status === "checked-out" ? "bg-gray-100 text-gray-800" :
+                            "bg-gray-100 text-gray-800"
+                          }`}>
+                            {status || "unknown"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

@@ -124,9 +124,11 @@ export default function ProfileSalaryInfoTab({
                   {isEditingSalary && isAdminOrPayroll ? (
                     <Input
                       type="number"
+                      min="0"
+                      step="0.01"
                       value={salaryInfo.monthWage || ""}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
+                        const value = Math.max(0, parseFloat(e.target.value) || 0);
                         const yearlyWage = value * 12;
 
                         // Auto-calculate all components based on new wage
@@ -199,10 +201,12 @@ export default function ProfileSalaryInfoTab({
                   {isEditingSalary && isAdminOrPayroll ? (
                     <Input
                       type="number"
+                      min="0"
+                      step="0.01"
                       value={salaryInfo.yearlyWage || ""}
                       onChange={(e) => {
                         const yearlyValue =
-                          parseFloat(e.target.value) || 0;
+                          Math.max(0, parseFloat(e.target.value) || 0);
                         const value = yearlyValue / 12;
 
                         // Auto-calculate all components based on new wage
@@ -334,9 +338,11 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.basicSalary || ""}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
                           const monthWage = salaryInfo.monthWage || 0;
                           const percent =
                             monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -400,11 +406,14 @@ export default function ProfileSalaryInfoTab({
                       </span>
                       <Input
                         type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
                         value={
                           salaryInfo.basicSalaryPercent?.toFixed(2) || ""
                         }
                         onChange={(e) => {
-                          const percent = parseFloat(e.target.value) || 0;
+                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                           const monthWage = salaryInfo.monthWage || 0;
                           const amount = (monthWage * percent) / 100;
 
@@ -462,7 +471,6 @@ export default function ProfileSalaryInfoTab({
                         }}
                         className="w-24"
                         placeholder="%"
-                        step="0.01"
                       />
                       <span className="text-sm text-muted-foreground">
                         %
@@ -493,9 +501,11 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.houseRentAllowance || ""}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
                             basicSalary > 0
@@ -515,9 +525,12 @@ export default function ProfileSalaryInfoTab({
                       </span>
                       <Input
                         type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
                         value={salaryInfo.hraPercent?.toFixed(2) || ""}
                         onChange={(e) => {
-                          const percent = parseFloat(e.target.value) || 0;
+                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -528,7 +541,6 @@ export default function ProfileSalaryInfoTab({
                         }}
                         className="w-24"
                         placeholder="%"
-                        step="0.01"
                       />
                       <span className="text-sm text-muted-foreground">
                         %
@@ -559,9 +571,11 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.standardAllowance || ""}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
                           const monthWage = salaryInfo.monthWage || 0;
                           const percent =
                             monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -579,13 +593,16 @@ export default function ProfileSalaryInfoTab({
                       </span>
                       <Input
                         type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
                         value={
                           salaryInfo.standardAllowancePercent?.toFixed(
                             2
                           ) || ""
                         }
                         onChange={(e) => {
-                          const percent = parseFloat(e.target.value) || 0;
+                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                           const monthWage = salaryInfo.monthWage || 0;
                           const amount = (monthWage * percent) / 100;
                           setSalaryInfo({
@@ -596,7 +613,6 @@ export default function ProfileSalaryInfoTab({
                         }}
                         className="w-24"
                         placeholder="%"
-                        step="0.01"
                       />
                       <span className="text-sm text-muted-foreground">
                         %
@@ -630,9 +646,11 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.performanceBonus || ""}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
                             basicSalary > 0
@@ -652,13 +670,16 @@ export default function ProfileSalaryInfoTab({
                       </span>
                       <Input
                         type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
                         value={
                           salaryInfo.performanceBonusPercent?.toFixed(
                             2
                           ) || ""
                         }
                         onChange={(e) => {
-                          const percent = parseFloat(e.target.value) || 0;
+                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -669,7 +690,6 @@ export default function ProfileSalaryInfoTab({
                         }}
                         className="w-24"
                         placeholder="%"
-                        step="0.01"
                       />
                       <span className="text-sm text-muted-foreground">
                         %
@@ -700,9 +720,11 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.travelAllowance || ""}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
                             basicSalary > 0
@@ -722,9 +744,12 @@ export default function ProfileSalaryInfoTab({
                       </span>
                       <Input
                         type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
                         value={salaryInfo.ltaPercent?.toFixed(2) || ""}
                         onChange={(e) => {
-                          const percent = parseFloat(e.target.value) || 0;
+                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -735,7 +760,6 @@ export default function ProfileSalaryInfoTab({
                         }}
                         className="w-24"
                         placeholder="%"
-                        step="0.01"
                       />
                       <span className="text-sm text-muted-foreground">
                         %
@@ -764,9 +788,11 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.fixedAllowance || ""}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
                           const monthWage = salaryInfo.monthWage || 0;
                           const percent =
                             monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -784,12 +810,15 @@ export default function ProfileSalaryInfoTab({
                       </span>
                       <Input
                         type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
                         value={
                           salaryInfo.fixedAllowancePercent?.toFixed(2) ||
                           ""
                         }
                         onChange={(e) => {
-                          const percent = parseFloat(e.target.value) || 0;
+                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                           const monthWage = salaryInfo.monthWage || 0;
                           const amount = (monthWage * percent) / 100;
                           setSalaryInfo({
@@ -800,7 +829,6 @@ export default function ProfileSalaryInfoTab({
                         }}
                         className="w-24"
                         placeholder="%"
-                        step="0.01"
                       />
                       <span className="text-sm text-muted-foreground">
                         %
@@ -850,9 +878,11 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.pfEmployee || ""}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const percent =
                             basicSalary > 0
@@ -872,11 +902,14 @@ export default function ProfileSalaryInfoTab({
                       </span>
                       <Input
                         type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
                         value={
                           salaryInfo.pfEmployeePercent?.toFixed(2) || ""
                         }
                         onChange={(e) => {
-                          const percent = parseFloat(e.target.value) || 0;
+                          const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                           const basicSalary = salaryInfo.basicSalary || 0;
                           const amount = (basicSalary * percent) / 100;
                           setSalaryInfo({
@@ -887,7 +920,6 @@ export default function ProfileSalaryInfoTab({
                         }}
                         className="w-24"
                         placeholder="%"
-                        step="0.01"
                       />
                       <span className="text-sm text-muted-foreground">
                         %
@@ -925,12 +957,14 @@ export default function ProfileSalaryInfoTab({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        min="0"
+                        step="0.01"
                         value={salaryInfo.professionalTax || ""}
                         onChange={(e) => {
                           setSalaryInfo({
                             ...salaryInfo,
                             professionalTax:
-                              parseFloat(e.target.value) || 0,
+                              Math.max(0, parseFloat(e.target.value) || 0),
                           });
                         }}
                         className="w-32"

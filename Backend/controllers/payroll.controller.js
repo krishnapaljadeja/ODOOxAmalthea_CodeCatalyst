@@ -258,28 +258,19 @@ export const getPayruns = async (req, res, next) => {
     if (year && month) {
       const selectedYear = parseInt(year)
       const selectedMonth = parseInt(month) - 1
-      const startOfMonth = new Date(selectedYear, selectedMonth, 1)
-      startOfMonth.setHours(0, 0, 0, 0)
-      const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0)
-      endOfMonth.setHours(23, 59, 59, 999)
-      const offsetMinutes = new Date().getTimezoneOffset(); // -330 for IST
-      startOfMonth.setMinutes(startOfMonth.getMinutes() - offsetMinutes);
-      endOfMonth.setMinutes(endOfMonth.getMinutes() - offsetMinutes);
+      // Use UTC to ensure correct date range regardless of server timezone
+      const startOfMonth = new Date(Date.UTC(selectedYear, selectedMonth, 1, 0, 0, 0, 0))
+      const endOfMonth = new Date(Date.UTC(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999))
 
-      
       dateFilter.payPeriodStart = {
         gte: startOfMonth,
         lte: endOfMonth,
       }
     } else if (year) {
       const selectedYear = parseInt(year)
-      const startOfYear = new Date(selectedYear, 0, 1)
-      startOfYear.setHours(0, 0, 0, 0)
-      const endOfYear = new Date(selectedYear, 11, 31)
-      endOfYear.setHours(23, 59, 59, 999)
-      const offsetMinutes = new Date().getTimezoneOffset(); // -330 for IST
-      startOfYear.setMinutes(startOfYear.getMinutes() - offsetMinutes);
-      endOfYear.setMinutes(endOfYear.getMinutes() - offsetMinutes);
+      // Use UTC to ensure correct date range regardless of server timezone
+      const startOfYear = new Date(Date.UTC(selectedYear, 0, 1, 0, 0, 0, 0))
+      const endOfYear = new Date(Date.UTC(selectedYear, 11, 31, 23, 59, 59, 999))
 
       dateFilter.payPeriodStart = {
         gte: startOfYear,
@@ -291,7 +282,7 @@ export const getPayruns = async (req, res, next) => {
       ...companyFilter,
       ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
     }
-    console.log(where);
+    // console.log(where);
     
 
     const payruns = await prisma.payrun.findMany({
@@ -301,7 +292,7 @@ export const getPayruns = async (req, res, next) => {
       },
     })
 
-    console.log(payruns);
+    // console.log(payruns);
 
     const formattedPayruns = payruns.map((payrun) => ({
       id: payrun.id,
@@ -335,10 +326,9 @@ export const getCurrentMonthPayrun = async (req, res, next) => {
     const selectedYear = year ? parseInt(year) : now.getFullYear()
     const selectedMonth = month ? parseInt(month) - 1 : now.getMonth()
     
-    const startOfMonth = new Date(selectedYear, selectedMonth, 1)
-    startOfMonth.setHours(0, 0, 0, 0)
-    const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0)
-    endOfMonth.setHours(23, 59, 59, 999)
+    // Use UTC to ensure correct date range regardless of server timezone
+    const startOfMonth = new Date(Date.UTC(selectedYear, selectedMonth, 1, 0, 0, 0, 0))
+    const endOfMonth = new Date(Date.UTC(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999))
 
     const companyFilter = user.companyId ? {
       payrolls: {

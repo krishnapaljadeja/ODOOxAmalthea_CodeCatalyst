@@ -5,7 +5,21 @@ export const updateProfileSchema = z.object({
     firstName: z.string().min(1, 'First name is required').optional(),
     lastName: z.string().min(1, 'Last name is required').optional(),
     email: z.string().email('Invalid email address').optional(),
-    phone: z.string().optional(),
+    phone: z.preprocess(
+      (val) => (val === '' || val === null || val === undefined ? undefined : val),
+      z.string().optional().refine(
+        (val) => {
+          if (!val || val === '') return true; // Allow empty
+          // Remove all non-digit characters except +
+          const cleaned = val.replace(/[^\d+]/g, '');
+          // Check if it matches phone number pattern: optional +, then 10-15 digits
+          return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+        },
+        {
+          message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
+        }
+      )
+    ),
     avatar: z.string().optional(),
     about: z.string().optional(),
     whatILoveAboutMyJob: z.string().optional(),
@@ -15,7 +29,31 @@ export const updateProfileSchema = z.object({
     employeeData: z.object({
       dateOfBirth: z.preprocess(
         (val) => (val === '' || val === null || val === undefined ? null : val),
-        z.string().nullable().optional()
+        z.string().nullable().optional().refine(
+          (val) => {
+            if (!val || val === null || val === '') return true; // Allow empty/null
+            const dob = new Date(val);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Check if DOB is in the future
+            if (dob > today) {
+              return false;
+            }
+            
+            // Check if age is at least 18 years
+            const age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+            const dayDiff = today.getDate() - dob.getDate();
+            
+            const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+            
+            return actualAge >= 18;
+          },
+          {
+            message: 'Date of birth must not be in the future and employee must be at least 18 years old'
+          }
+        )
       ),
       address: z.preprocess(
         (val) => (val === '' || val === null || val === undefined ? null : val),

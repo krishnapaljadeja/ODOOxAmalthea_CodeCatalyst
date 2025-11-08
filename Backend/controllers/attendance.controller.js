@@ -1,56 +1,65 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 export const getAttendance = async (req, res, next) => {
   try {
-    const { date, startDate, endDate, employeeId } = req.query
+    const { date, startDate, endDate, employeeId } = req.query;
     const user = req.user;
 
     const where = {};
 
-    if (user.role === 'employee') {
-      where.userId = user.id
+    if (user.role === "employee") {
+      where.userId = user.id;
     } else if (employeeId) {
       const employee = await prisma.employee.findUnique({
         where: { id: employeeId },
         select: { id: true },
-      })
+      });
       if (employee) {
-        where.employeeId = employee.id
+        where.employeeId = employee.id;
       }
-    } else if (user.role === 'admin' || user.role === 'hr' || user.role === 'payroll') {
+    } else if (
+      user.role === "admin" ||
+      user.role === "hr" ||
+      user.role === "payroll"
+    ) {
       // Admin, HR, and Payroll can see all employees from their company
       if (user.companyId) {
         const employees = await prisma.employee.findMany({
           where: { companyId: user.companyId },
           select: { id: true },
-        })
-        where.employeeId = { in: employees.map((e) => e.id) }
+        });
+        where.employeeId = { in: employees.map((e) => e.id) };
       }
     }
 
     if (date) {
-      // To get "today's attendance", filter where date >= start of given day AND < start of next day (UTC)
-      const dateStart = new Date(date + 'T00:00:00.000Z');
-      const dateEnd = new Date(date + 'T00:00:00.000Z');
-      dateEnd.setUTCDate(dateEnd.getUTCDate() + 1);
-      where.checkIn = {
+      // Parse the date string (YYYY-MM-DD) and create date range
+      // Use UTC to ensure we get the correct date regardless of server timezone
+      const [year, month, day] = date.split("-").map(Number);
+      // Create start of day in UTC
+      const dateStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      // Create start of next day in UTC
+      const dateEnd = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
+
+      // Filter by date field instead of checkIn to avoid timezone issues
+      where.date = {
         gte: dateStart,
         lt: dateEnd,
       };
     } else {
       if (startDate) {
-        const startDateObj = new Date(startDate + 'T00:00:00.000Z')
-        where.date = { ...where.date, gte: startDateObj }
+        const startDateObj = new Date(startDate + "T00:00:00.000Z");
+        where.date = { ...where.date, gte: startDateObj };
       }
       if (endDate) {
-        const endDateObj = new Date(endDate + 'T23:59:59.999Z')
-        where.date = { ...where.date, lte: endDateObj }
+        const endDateObj = new Date(endDate + "T23:59:59.999Z");
+        where.date = { ...where.date, lte: endDateObj };
       }
     }
 
-    console.log(where)
+    // console.log(where)
 
     const attendances = await prisma.attendance.findMany({
       where,
@@ -65,9 +74,9 @@ export const getAttendance = async (req, res, next) => {
         },
       },
       orderBy: {
-        date: 'desc',
+        date: "desc",
       },
-    })
+    });
 
     const formattedAttendances = attendances.map((att) => ({
       id: att.id,
@@ -86,34 +95,34 @@ export const getAttendance = async (req, res, next) => {
       status: att.status,
       notes: att.notes,
       createdAt: att.createdAt.toISOString(),
-    }))
+    }));
 
     res.json({
-      status: 'success',
+      status: "success",
       data: formattedAttendances,
-    })
+    });
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};
 
 export const getTodayAttendance = async (req, res, next) => {
   try {
-    const user = req.user
+    const user = req.user;
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
-    })
+    });
 
     if (!employee) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Employee record not found',
-        error: 'Not Found',
-      })
+        status: "error",
+        message: "Employee record not found",
+        error: "Not Found",
+      });
     }
 
     const attendance = await prisma.attendance.findUnique({
@@ -133,18 +142,18 @@ export const getTodayAttendance = async (req, res, next) => {
           },
         },
       },
-    })
+    });
 
     if (!attendance) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'No attendance record found for today',
-        error: 'Not Found',
-      })
+      return res.json({
+        status: "success",
+        data: null,
+        message: "No attendance record found for today",
+      });
     }
 
     res.json({
-      status: 'success',
+      status: "success",
       data: {
         id: attendance.id,
         employeeId: attendance.employeeId,
@@ -157,30 +166,30 @@ export const getTodayAttendance = async (req, res, next) => {
         notes: attendance.notes,
         createdAt: attendance.createdAt.toISOString(),
       },
-    })
+    });
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};
 
 export const checkIn = async (req, res, next) => {
   try {
-    const user = req.user
+    const user = req.user;
 
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
-    })
+    });
 
     if (!employee) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Employee record not found',
-        error: 'Not Found',
-      })
+        status: "error",
+        message: "Employee record not found",
+        error: "Not Found",
+      });
     }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const existing = await prisma.attendance.findUnique({
       where: {
@@ -189,23 +198,23 @@ export const checkIn = async (req, res, next) => {
           date: today,
         },
       },
-    })
+    });
 
     if (existing && existing.checkIn) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Already checked in today',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Already checked in today",
+        error: "Validation Error",
+      });
     }
 
-    const now = new Date()
-    const checkInTime = new Date(now)
-    checkInTime.setHours(9, 0, 0, 0) 
+    const now = new Date();
+    const checkInTime = new Date(now);
+    checkInTime.setHours(9, 0, 0, 0);
 
-    const lateThreshold = new Date(checkInTime)
-    lateThreshold.setMinutes(30)
-    const status = now > lateThreshold ? 'late' : 'present'
+    const lateThreshold = new Date(checkInTime);
+    lateThreshold.setMinutes(30);
+    const status = now > lateThreshold ? "late" : "present";
 
     const attendance = await prisma.attendance.upsert({
       where: {
@@ -235,11 +244,11 @@ export const checkIn = async (req, res, next) => {
           },
         },
       },
-    })
+    });
 
     res.status(201).json({
-      status: 'success',
-      message: 'Checked in successfully',
+      status: "success",
+      message: "Checked in successfully",
       data: {
         id: attendance.id,
         employeeId: attendance.employeeId,
@@ -252,30 +261,30 @@ export const checkIn = async (req, res, next) => {
         notes: attendance.notes,
         createdAt: attendance.createdAt.toISOString(),
       },
-    })
+    });
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};
 
 export const checkOut = async (req, res, next) => {
   try {
-    const user = req.user
+    const user = req.user;
 
     const employee = await prisma.employee.findUnique({
       where: { userId: user.id },
-    })
+    });
 
     if (!employee) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Employee record not found',
-        error: 'Not Found',
-      })
+        status: "error",
+        message: "Employee record not found",
+        error: "Not Found",
+      });
     }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const attendance = await prisma.attendance.findUnique({
       where: {
@@ -284,27 +293,27 @@ export const checkOut = async (req, res, next) => {
           date: today,
         },
       },
-    })
+    });
 
     if (!attendance || !attendance.checkIn) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Must check in before checking out',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Must check in before checking out",
+        error: "Validation Error",
+      });
     }
 
     if (attendance.checkOut) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Already checked out today',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Already checked out today",
+        error: "Validation Error",
+      });
     }
 
-    const now = new Date()
-    const checkInTime = attendance.checkIn
-    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60) 
+    const now = new Date();
+    const checkInTime = attendance.checkIn;
+    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60);
 
     // Update attendance
     const updated = await prisma.attendance.update({
@@ -312,7 +321,7 @@ export const checkOut = async (req, res, next) => {
       data: {
         checkOut: now,
         hoursWorked,
-        status: hoursWorked >= 4 ? 'present' : 'half_day',
+        status: hoursWorked >= 4 ? "present" : "half_day",
       },
       include: {
         employee: {
@@ -324,11 +333,11 @@ export const checkOut = async (req, res, next) => {
           },
         },
       },
-    })
+    });
 
     res.json({
-      status: 'success',
-      message: 'Checked out successfully',
+      status: "success",
+      message: "Checked out successfully",
       data: {
         id: updated.id,
         employeeId: updated.employeeId,
@@ -341,47 +350,47 @@ export const checkOut = async (req, res, next) => {
         notes: updated.notes,
         createdAt: updated.createdAt.toISOString(),
       },
-    })
+    });
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};
 
 export const adminCheckIn = async (req, res, next) => {
   try {
-    const user = req.user
-    const { employeeId } = req.body
+    const user = req.user;
+    const { employeeId } = req.body;
 
-    if (!['admin', 'hr'].includes(user.role)) {
+    if (!["admin", "hr"].includes(user.role)) {
       return res.status(403).json({
-        status: 'error',
-        message: 'Insufficient permissions',
-        error: 'Forbidden',
-      })
+        status: "error",
+        message: "Insufficient permissions",
+        error: "Forbidden",
+      });
     }
 
     if (!employeeId) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Employee ID is required',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Employee ID is required",
+        error: "Validation Error",
+      });
     }
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
-    })
+    });
 
     if (!employee) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Employee not found',
-        error: 'Not Found',
-      })
+        status: "error",
+        message: "Employee not found",
+        error: "Not Found",
+      });
     }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const existing = await prisma.attendance.findUnique({
       where: {
@@ -390,23 +399,23 @@ export const adminCheckIn = async (req, res, next) => {
           date: today,
         },
       },
-    })
+    });
 
     if (existing && existing.checkIn) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Employee already checked in today',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Employee already checked in today",
+        error: "Validation Error",
+      });
     }
 
-    const now = new Date()
-    const checkInTime = new Date(now)
-    checkInTime.setHours(9, 0, 0, 0) 
+    const now = new Date();
+    const checkInTime = new Date(now);
+    checkInTime.setHours(9, 0, 0, 0);
 
-    const lateThreshold = new Date(checkInTime)
-    lateThreshold.setMinutes(30)
-    const status = now > lateThreshold ? 'late' : 'present'
+    const lateThreshold = new Date(checkInTime);
+    lateThreshold.setMinutes(30);
+    const status = now > lateThreshold ? "late" : "present";
 
     const attendance = await prisma.attendance.upsert({
       where: {
@@ -436,11 +445,11 @@ export const adminCheckIn = async (req, res, next) => {
           },
         },
       },
-    })
+    });
 
     res.status(201).json({
-      status: 'success',
-      message: 'Employee checked in successfully',
+      status: "success",
+      message: "Employee checked in successfully",
       data: {
         id: attendance.id,
         employeeId: attendance.employeeId,
@@ -453,47 +462,47 @@ export const adminCheckIn = async (req, res, next) => {
         notes: attendance.notes,
         createdAt: attendance.createdAt.toISOString(),
       },
-    })
+    });
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};
 
 export const adminCheckOut = async (req, res, next) => {
   try {
-    const user = req.user
-    const { employeeId } = req.body
+    const user = req.user;
+    const { employeeId } = req.body;
 
-    if (!['admin', 'hr'].includes(user.role)) {
+    if (!["admin", "hr"].includes(user.role)) {
       return res.status(403).json({
-        status: 'error',
-        message: 'Insufficient permissions',
-        error: 'Forbidden',
-      })
+        status: "error",
+        message: "Insufficient permissions",
+        error: "Forbidden",
+      });
     }
 
     if (!employeeId) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Employee ID is required',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Employee ID is required",
+        error: "Validation Error",
+      });
     }
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
-    })
+    });
 
     if (!employee) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Employee not found',
-        error: 'Not Found',
-      })
+        status: "error",
+        message: "Employee not found",
+        error: "Not Found",
+      });
     }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const attendance = await prisma.attendance.findUnique({
       where: {
@@ -502,34 +511,34 @@ export const adminCheckOut = async (req, res, next) => {
           date: today,
         },
       },
-    })
+    });
 
     if (!attendance || !attendance.checkIn) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Employee must check in before checking out',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Employee must check in before checking out",
+        error: "Validation Error",
+      });
     }
 
     if (attendance.checkOut) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Employee already checked out today',
-        error: 'Validation Error',
-      })
+        status: "error",
+        message: "Employee already checked out today",
+        error: "Validation Error",
+      });
     }
 
-    const now = new Date()
-    const checkInTime = attendance.checkIn
-    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60) 
+    const now = new Date();
+    const checkInTime = attendance.checkIn;
+    const hoursWorked = (now - checkInTime) / (1000 * 60 * 60);
 
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
       data: {
         checkOut: now,
         hoursWorked,
-        status: hoursWorked >= 4 ? 'present' : 'half_day',
+        status: hoursWorked >= 4 ? "present" : "half_day",
       },
       include: {
         employee: {
@@ -541,11 +550,11 @@ export const adminCheckOut = async (req, res, next) => {
           },
         },
       },
-    })
+    });
 
     res.json({
-      status: 'success',
-      message: 'Employee checked out successfully',
+      status: "success",
+      message: "Employee checked out successfully",
       data: {
         id: updated.id,
         employeeId: updated.employeeId,
@@ -558,9 +567,8 @@ export const adminCheckOut = async (req, res, next) => {
         notes: updated.notes,
         createdAt: updated.createdAt.toISOString(),
       },
-    })
+    });
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
-
+};
