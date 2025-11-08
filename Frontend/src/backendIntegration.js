@@ -1,24 +1,7 @@
-/**
- * WorkZen HRMS Backend Integration Specification
- * 
- * This file contains the complete API contract between frontend and backend.
- * It includes:
- * - Domain type definitions
- * - API endpoint specifications
- * - API client factory
- * - Environment configuration helpers
- * 
- * Version: 1.0.0
- * Last Updated: 2024-01-15
- */
 
 import axios from 'axios'
 import { toast } from 'sonner'
 import { mockApi } from './mocks'
-
-// ============================================================================
-// Domain Types
-// ============================================================================
 
 /**
  * @typedef {Object} User

@@ -11,11 +11,7 @@ import { toast } from 'sonner'
 import ProtectedRoute from '../components/ProtectedRoute'
 import { useAuthStore } from '../store/auth'
 
-/**
- * User Settings page component
- * Accessible only to Admin
- * Allows assigning user access rights based on modules and roles
- */
+
 export default function UserSettings() {
   const { user } = useAuthStore()
   const [users, setUsers] = useState([])

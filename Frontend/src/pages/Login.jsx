@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Building2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Login ID or Email is required"),
@@ -47,10 +46,15 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Building2 className="h-6 w-6" />
+            <div className="flex pr-0.2 h-20 w-20 items-center justify-center rounded-full bg-primary overflow-hidden shadow-md">
+              <img
+                src="../../logo.png"
+                alt="WorkZen Logo"
+                className="h-full w-full object-cover"
+              />
             </div>
           </div>
+
           <CardTitle className="text-2xl font-bold">
             Welcome to WorkZen
           </CardTitle>
