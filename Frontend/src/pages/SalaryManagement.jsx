@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
-import { Save, Search, Eye, Pencil } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Save, Search, Eye, Pencil, Grid3x3, List } from 'lucide-react'
 import apiClient from '../lib/api'
 import { formatDate, formatCurrency } from '../lib/format'
 import { toast } from 'sonner'
@@ -27,6 +28,8 @@ export default function SalaryManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [salaryInfo, setSalaryInfo] = useState(null)
   const [isEditingSalary, setIsEditingSalary] = useState(false)
+  const [selectedDepartment, setSelectedDepartment] = useState(null)
+  const [viewMode, setViewMode] = useState("table") // "table" or "grid"
 
   useEffect(() => {
     fetchEmployees()
@@ -169,14 +172,18 @@ export default function SalaryManagement() {
     }
   }
 
+  const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))].sort()
+
   const filteredEmployees = employees.filter((emp) => {
     const searchLower = searchTerm.toLowerCase()
-    return (
+    const matchesSearch = (
       emp.firstName?.toLowerCase().includes(searchLower) ||
       emp.lastName?.toLowerCase().includes(searchLower) ||
       emp.email?.toLowerCase().includes(searchLower) ||
       emp.employeeId?.toLowerCase().includes(searchLower)
     )
+    const matchesDepartment = !selectedDepartment || selectedDepartment === 'all' || emp.department === selectedDepartment
+    return matchesSearch && matchesDepartment
   })
 
   if (loading) {
@@ -205,29 +212,69 @@ export default function SalaryManagement() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search employees..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+            <div className="mb-4 space-y-4">
+              {/* Search and Filters */}
+              <div className="flex flex-wrap gap-4 items-center">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search employees..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <Label htmlFor="department-filter" className="text-xs text-muted-foreground mb-1 block">
+                    Department
+                  </Label>
+                  <Select value={selectedDepartment || 'all'} onValueChange={(value) => setSelectedDepartment(value === 'all' ? null : value)}>
+                    <SelectTrigger id="department-filter" className="w-full">
+                      <SelectValue placeholder="All Departments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 border rounded-md p-1">
+                  <Button
+                    variant={viewMode === "table" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <Table>
+            {viewMode === "table" ? (
+              <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employee ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Current Salary</TableHead>
-                    <TableHead className="w-32">Actions</TableHead>
+                    <TableHead className="text-left">Employee ID</TableHead>
+                    <TableHead className="text-left">Name</TableHead>
+                    <TableHead className="text-left">Email</TableHead>
+                    <TableHead className="text-left">Department</TableHead>
+                    <TableHead className="text-left">Position</TableHead>
+                    <TableHead className="text-right">Current Salary</TableHead>
+                    <TableHead className="text-center w-32">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -240,17 +287,17 @@ export default function SalaryManagement() {
                   ) : (
                     filteredEmployees.map((employee) => (
                       <TableRow key={employee.id}>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium text-left">
                           {employee.employeeId}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-left">
                           {employee.firstName} {employee.lastName}
                         </TableCell>
-                        <TableCell>{employee.email}</TableCell>
-                        <TableCell>{employee.department}</TableCell>
-                        <TableCell>{employee.position}</TableCell>
-                        <TableCell>{formatCurrency(employee.salary || 0)}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-left">{employee.email}</TableCell>
+                        <TableCell className="text-left">{employee.department}</TableCell>
+                        <TableCell className="text-left">{employee.position}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(employee.salary || 0)}</TableCell>
+                        <TableCell className="text-center">
                           <Button
                             variant="outline"
                             size="sm"
@@ -266,6 +313,48 @@ export default function SalaryManagement() {
                 </TableBody>
               </Table>
             </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredEmployees.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    No employees found
+                  </div>
+                ) : (
+                  filteredEmployees.map((employee) => (
+                    <div
+                      key={employee.id}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => handleViewSalary(employee)}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold">{employee.firstName} {employee.lastName}</h3>
+                          <p className="text-sm text-muted-foreground">{employee.employeeId}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium">Email:</span> {employee.email}</p>
+                        <p><span className="font-medium">Department:</span> {employee.department || 'N/A'}</p>
+                        <p><span className="font-medium">Position:</span> {employee.position || 'N/A'}</p>
+                        <p className="font-semibold"><span className="font-medium">Salary:</span> {formatCurrency(employee.salary || 0)}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-4"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleViewSalary(employee)
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View/Edit
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -321,9 +410,11 @@ export default function SalaryManagement() {
                       {isEditingSalary ? (
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.monthWage || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const yearlyWage = value * 12;
 
                             // Auto-calculate all components based on new wage
@@ -396,10 +487,12 @@ export default function SalaryManagement() {
                       {isEditingSalary ? (
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.yearlyWage || ""}
                           onChange={(e) => {
                             const yearlyValue =
-                              parseFloat(e.target.value) || 0;
+                              Math.max(0, parseFloat(e.target.value) || 0);
                             const value = yearlyValue / 12;
 
                             // Auto-calculate all components based on new wage
@@ -531,9 +624,11 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.basicSalary || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const monthWage = salaryInfo.monthWage || salaryInfo.grossSalary || 0;
                             const percent = monthWage > 0 ? (value / monthWage) * 100 : 0;
 
@@ -591,9 +686,12 @@ export default function SalaryManagement() {
                         </span>
                         <Input
                           type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
                           value={salaryInfo.basicSalaryPercent?.toFixed(2) || ""}
                           onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
+                            const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                             const monthWage = salaryInfo.monthWage || salaryInfo.grossSalary || 0;
                             const amount = (monthWage * percent) / 100;
 
@@ -646,7 +744,6 @@ export default function SalaryManagement() {
                           }}
                           className="w-24"
                           placeholder="%"
-                          step="0.01"
                         />
                         <span className="text-sm text-muted-foreground">
                           %
@@ -675,9 +772,11 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.hra || salaryInfo.houseRentAllowance || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const percent = basicSalary > 0 ? (value / basicSalary) * 100 : 0;
                             
@@ -715,9 +814,12 @@ export default function SalaryManagement() {
                         </span>
                         <Input
                           type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
                           value={salaryInfo.hraPercent?.toFixed(2) || ""}
                           onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
+                            const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const amount = (basicSalary * percent) / 100;
                             
@@ -749,7 +851,6 @@ export default function SalaryManagement() {
                           }}
                           className="w-24"
                           placeholder="%"
-                          step="0.01"
                         />
                         <span className="text-sm text-muted-foreground">
                           %
@@ -778,9 +879,11 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.standardAllowance || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const monthWage = salaryInfo.monthWage || salaryInfo.grossSalary || 0;
                             const percent =
                               monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -817,13 +920,16 @@ export default function SalaryManagement() {
                         </span>
                         <Input
                           type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
                           value={
                             salaryInfo.standardAllowancePercent?.toFixed(
                               2
                             ) || ""
                           }
                           onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
+                            const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                             const monthWage = salaryInfo.monthWage || salaryInfo.grossSalary || 0;
                             const amount = (monthWage * percent) / 100;
                             
@@ -853,7 +959,6 @@ export default function SalaryManagement() {
                           }}
                           className="w-24"
                           placeholder="%"
-                          step="0.01"
                         />
                         <span className="text-sm text-muted-foreground">
                           %
@@ -887,9 +992,11 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.performanceBonus || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const percent =
                               basicSalary > 0
@@ -929,13 +1036,16 @@ export default function SalaryManagement() {
                         </span>
                         <Input
                           type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
                           value={
                             salaryInfo.performanceBonusPercent?.toFixed(
                               2
                             ) || ""
                           }
                           onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
+                            const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const amount = (basicSalary * percent) / 100;
                             
@@ -966,7 +1076,6 @@ export default function SalaryManagement() {
                           }}
                           className="w-24"
                           placeholder="%"
-                          step="0.01"
                         />
                         <span className="text-sm text-muted-foreground">
                           %
@@ -997,9 +1106,11 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.travelAllowance || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const percent =
                               basicSalary > 0
@@ -1039,9 +1150,12 @@ export default function SalaryManagement() {
                         </span>
                         <Input
                           type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
                           value={salaryInfo.ltaPercent?.toFixed(2) || ""}
                           onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
+                            const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const amount = (basicSalary * percent) / 100;
                             
@@ -1072,7 +1186,6 @@ export default function SalaryManagement() {
                           }}
                           className="w-24"
                           placeholder="%"
-                          step="0.01"
                         />
                         <span className="text-sm text-muted-foreground">
                           %
@@ -1101,9 +1214,11 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.fixedAllowance || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const monthWage = salaryInfo.monthWage || salaryInfo.grossSalary || 0;
                             const percent =
                               monthWage > 0 ? (value / monthWage) * 100 : 0;
@@ -1121,12 +1236,15 @@ export default function SalaryManagement() {
                         </span>
                         <Input
                           type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
                           value={
                             salaryInfo.fixedAllowancePercent?.toFixed(2) ||
                             ""
                           }
                           onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
+                            const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                             const monthWage = salaryInfo.monthWage || salaryInfo.grossSalary || 0;
                             const amount = (monthWage * percent) / 100;
                             setSalaryInfo({
@@ -1137,7 +1255,6 @@ export default function SalaryManagement() {
                           }}
                           className="w-24"
                           placeholder="%"
-                          step="0.01"
                         />
                         <span className="text-sm text-muted-foreground">
                           %
@@ -1194,9 +1311,11 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.pf || salaryInfo.pfEmployee || ""}
                           onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
+                            const value = Math.max(0, parseFloat(e.target.value) || 0);
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const percent = basicSalary > 0 ? (value / basicSalary) * 100 : 0;
                             setSalaryInfo({
@@ -1215,9 +1334,12 @@ export default function SalaryManagement() {
                         </span>
                         <Input
                           type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
                           value={salaryInfo.pfPercent?.toFixed(2) || salaryInfo.pfEmployeePercent?.toFixed(2) || ""}
                           onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
+                            const percent = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
                             const basicSalary = salaryInfo.basicSalary || 0;
                             const amount = (basicSalary * percent) / 100;
                             setSalaryInfo({
@@ -1230,7 +1352,6 @@ export default function SalaryManagement() {
                           }}
                           className="w-24"
                           placeholder="%"
-                          step="0.01"
                         />
                         <span className="text-sm text-muted-foreground">
                           %
@@ -1266,11 +1387,13 @@ export default function SalaryManagement() {
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
+                          min="0"
+                          step="0.01"
                           value={salaryInfo.professionalTax || ""}
                           onChange={(e) =>
                             setSalaryInfo({
                               ...salaryInfo,
-                              professionalTax: parseFloat(e.target.value) || 0,
+                              professionalTax: Math.max(0, parseFloat(e.target.value) || 0),
                             })
                           }
                           className="w-32"

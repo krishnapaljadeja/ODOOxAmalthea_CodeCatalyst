@@ -1,133 +1,176 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
-import DataTable from '../components/DataTable'
-import { Eye, Play, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react'
-import apiClient from '../lib/api'
-import { formatDate, formatCurrency } from '../lib/format'
-import { toast } from 'sonner'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog'
-import { Label } from '../components/ui/label'
-import { useLocation } from 'react-router-dom'
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import DataTable from "../components/DataTable";
+import {
+  Eye,
+  Play,
+  AlertTriangle,
+  TrendingUp,
+  CheckCircle,
+  Grid3x3,
+  List,
+} from "lucide-react";
+import apiClient from "../lib/api";
+import { formatDate, formatCurrency } from "../lib/format";
+import { toast } from "sonner";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../components/ui/dialog";
+import { Label } from "../components/ui/label";
+import { useLocation } from "react-router-dom";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select'
+} from "../components/ui/select";
 
 export default function Payroll() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [payruns, setPayruns] = useState([])
-  const [currentMonthPayrun, setCurrentMonthPayrun] = useState(null)
-  const [payrolls, setPayrolls] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selectedPayrun, setSelectedPayrun] = useState(null)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [dashboardData, setDashboardData] = useState(null)
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard')
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [payruns, setPayruns] = useState([]);
+  const [currentMonthPayrun, setCurrentMonthPayrun] = useState(null);
+  const [payrolls, setPayrolls] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPayrun, setSelectedPayrun] = useState(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [activeTab, setActiveTab] = useState(
+    location.state?.activeTab || "dashboard"
+  );
+
   // Filter states - initialize with current date
   const getCurrentDate = () => {
-    const now = new Date()
+    const now = new Date();
     return {
       year: now.getFullYear().toString(),
       month: (now.getMonth() + 1).toString(),
-    }
-  }
-  
-  const [selectedYear, setSelectedYear] = useState(() => getCurrentDate().year)
-  const [selectedMonth, setSelectedMonth] = useState(() => getCurrentDate().month)
+    };
+  };
+
+  const [selectedYear, setSelectedYear] = useState(() => getCurrentDate().year);
+  const [selectedMonth, setSelectedMonth] = useState(
+    () => getCurrentDate().month
+  );
+  const [viewMode, setViewMode] = useState("table"); // "table" or "grid"
 
   // Generate year options (current year and 5 years back) - memoized
   const yearOptions = (() => {
-    const now = new Date()
-    const options = []
+    const now = new Date();
+    const options = [];
     for (let i = 0; i < 6; i++) {
-      options.push((now.getFullYear() - i).toString())
+      options.push((now.getFullYear() - i).toString());
     }
-    return options
-  })()
+    return options;
+  })();
 
   // Generate month options - constant
   const monthOptions = [
-    { value: '1', label: 'January' },
-    { value: '2', label: 'February' },
-    { value: '3', label: 'March' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'May' },
-    { value: '6', label: 'June' },
-    { value: '7', label: 'July' },
-    { value: '8', label: 'August' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
-  ]
+    { value: "1", label: "January" },
+    { value: "2", label: "February" },
+    { value: "3", label: "March" },
+    { value: "4", label: "April" },
+    { value: "5", label: "May" },
+    { value: "6", label: "June" },
+    { value: "7", label: "July" },
+    { value: "8", label: "August" },
+    { value: "9", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ];
 
   useEffect(() => {
-    fetchPayruns()
-    fetchDashboardData()
-    if (activeTab === 'payrun') {
-      fetchCurrentMonthPayrun()
+    fetchPayruns();
+    fetchDashboardData();
+    if (activeTab === "payrun") {
+      fetchCurrentMonthPayrun();
     }
-  }, [activeTab, selectedYear, selectedMonth])
+  }, [activeTab, selectedYear, selectedMonth]);
 
   const fetchPayruns = async () => {
     try {
-      const params = new URLSearchParams()
-      if (selectedYear) params.append('year', selectedYear)
-      if (selectedMonth) params.append('month', selectedMonth)
-      
-      const response = await apiClient.get(`/payroll/payruns?${params.toString()}`)
-      const payrunsData = response.data?.data || response.data || []
-      setPayruns(payrunsData)
+      const params = new URLSearchParams();
+      if (selectedYear) params.append("year", selectedYear);
+      if (selectedMonth) params.append("month", selectedMonth);
+
+      const response = await apiClient.get(
+        `/payroll/payruns?${params.toString()}`
+      );
+      const payrunsData = response.data?.data || response.data || [];
+      setPayruns(payrunsData);
     } catch (error) {
-      console.error('Failed to fetch payruns:', error)
-      toast.error('Failed to fetch payruns')
+      console.error("Failed to fetch payruns:", error);
+      toast.error("Failed to fetch payruns");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchCurrentMonthPayrun = async () => {
     try {
-      setLoading(true)
-      const params = new URLSearchParams()
-      if (selectedYear) params.append('year', selectedYear)
-      if (selectedMonth) params.append('month', selectedMonth)
-      
-      const response = await apiClient.get(`/payroll/payruns/current-month?${params.toString()}`)
-      const payrunData = response.data?.data || response.data
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedYear) params.append("year", selectedYear);
+      if (selectedMonth) params.append("month", selectedMonth);
+
+      const response = await apiClient.get(
+        `/payroll/payruns/current-month?${params.toString()}`
+      );
+      const payrunData = response.data?.data || response.data;
       if (payrunData) {
         setCurrentMonthPayrun(payrunData)
         setPayrolls(payrunData.payrolls || [])
       } else {
-        setCurrentMonthPayrun(null)
-        setPayrolls([])
+        setCurrentMonthPayrun(null);
+        setPayrolls([]);
       }
     } catch (error) {
-      console.error('Failed to fetch current month payrun:', error)
-      toast.error('Failed to fetch current month payrun')
-      setCurrentMonthPayrun(null)
-      setPayrolls([])
+      console.error("Failed to fetch current month payrun:", error);
+      toast.error("Failed to fetch current month payrun");
+      setCurrentMonthPayrun(null);
+      setPayrolls([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchDashboardData = async () => {
     try {
-      const response = await apiClient.get('/payroll/dashboard')
-      const dashboardDataResponse = response.data?.data || response.data
-      setDashboardData(dashboardDataResponse)
+      const response = await apiClient.get("/payroll/dashboard");
+      const dashboardDataResponse = response.data?.data || response.data;
+      setDashboardData(dashboardDataResponse);
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error)
+      console.error("Failed to fetch dashboard data:", error);
       setDashboardData({
         warnings: [],
         recentPayruns: [],
@@ -139,117 +182,129 @@ export default function Payroll() {
           annually: [],
           monthly: [],
         },
-      })
+      });
     }
-  }
-
+  };
 
   const handlePreview = async (payrunId) => {
     try {
-      const response = await apiClient.get(`/payroll/payruns/${payrunId}/preview`)
-      setSelectedPayrun(response.data)
-      setIsPreviewOpen(true)
+      const response = await apiClient.get(
+        `/payroll/payruns/${payrunId}/preview`
+      );
+      setSelectedPayrun(response.data);
+      setIsPreviewOpen(true);
     } catch (error) {
-      console.error('Failed to preview payrun:', error)
+      console.error("Failed to preview payrun:", error);
     }
-  }
+  };
 
   const handleProcess = async (payrunId) => {
     try {
-      await apiClient.post(`/payroll/payruns/${payrunId}/process`)
-      toast.success('Payrun processed successfully')
-      fetchPayruns()
-      fetchDashboardData()
+      await apiClient.post(`/payroll/payruns/${payrunId}/process`);
+      toast.success("Payrun processed successfully");
+      fetchPayruns();
+      fetchDashboardData();
     } catch (error) {
-      console.error('Failed to process payrun:', error)
+      console.error("Failed to process payrun:", error);
     }
-  }
+  };
 
   const handleValidate = async (payrollId) => {
     try {
-      await apiClient.put(`/payroll/${payrollId}/validate`)
-      toast.success('Payroll validated successfully')
-      fetchCurrentMonthPayrun()
-      fetchPayruns()
-      fetchDashboardData()
+      await apiClient.put(`/payroll/${payrollId}/validate`);
+      toast.success("Payroll validated successfully");
+      fetchCurrentMonthPayrun();
+      fetchPayruns();
+      fetchDashboardData();
     } catch (error) {
-      console.error('Failed to validate payroll:', error)
-      toast.error(error.response?.data?.message || 'Failed to validate payroll')
+      console.error("Failed to validate payroll:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to validate payroll"
+      );
     }
-  }
+  };
 
   const handleProcessPayrun = async () => {
-    if (!currentMonthPayrun) return
+    if (!currentMonthPayrun) return;
     try {
-      await apiClient.post(`/payroll/payruns/${currentMonthPayrun.id}/process`)
-      toast.success('Payrun processed successfully')
-      fetchCurrentMonthPayrun()
-      fetchPayruns()
-      fetchDashboardData()
+      await apiClient.post(`/payroll/payruns/${currentMonthPayrun.id}/process`);
+      toast.success("Payrun processed successfully");
+      fetchCurrentMonthPayrun();
+      fetchPayruns();
+      fetchDashboardData();
     } catch (error) {
-      console.error('Failed to process payrun:', error)
-      toast.error(error.response?.data?.message || 'Failed to process payrun')
+      console.error("Failed to process payrun:", error);
+      toast.error(error.response?.data?.message || "Failed to process payrun");
     }
-  }
+  };
 
   const handlePayrollClick = (payroll) => {
     if (payroll.payslipId) {
-      navigate(`/payslips/${payroll.payslipId}?payrunId=${currentMonthPayrun?.id}`)
+      navigate(
+        `/payslips/${payroll.payslipId}?payrunId=${currentMonthPayrun?.id}`
+      );
     } else {
-      navigate(`/payslips/payroll/${payroll.id}?payrunId=${currentMonthPayrun?.id}`)
+      navigate(
+        `/payslips/payroll/${payroll.id}?payrunId=${currentMonthPayrun?.id}`
+      );
     }
-  }
+  };
 
   const handleValidateAll = async () => {
-    if (!currentMonthPayrun) return
+    if (!currentMonthPayrun) return;
     try {
-      await apiClient.put(`/payroll/payruns/${currentMonthPayrun.id}/validate-all`)
-      toast.success('All payrolls validated successfully')
-      fetchCurrentMonthPayrun()
-      fetchPayruns()
-      fetchDashboardData()
+      await apiClient.put(
+        `/payroll/payruns/${currentMonthPayrun.id}/validate-all`
+      );
+      toast.success("All payrolls validated successfully");
+      fetchCurrentMonthPayrun();
+      fetchPayruns();
+      fetchDashboardData();
     } catch (error) {
-      console.error('Failed to validate all payrolls:', error)
-      toast.error(error.response?.data?.message || 'Failed to validate all payrolls')
+      console.error("Failed to validate all payrolls:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to validate all payrolls"
+      );
     }
-  }
+  };
 
   const payrunColumns = [
     {
-      header: 'Pay Period',
+      header: "Pay Period",
       accessor: (row) =>
         `${formatDate(row.payPeriodStart)} - ${formatDate(row.payPeriodEnd)}`,
     },
     {
-      header: 'Employee',
-      accessor: (row) => `${row.totalEmployees} Employee${row.totalEmployees !== 1 ? 's' : ''}`,
+      header: "Employee",
+      accessor: (row) =>
+        `${row.totalEmployees} Employee${row.totalEmployees !== 1 ? "s" : ""}`,
     },
     {
-      header: 'Employer Cost',
-      accessor: 'employerCost',
+      header: "Employer Cost",
+      accessor: "employerCost",
       cell: (row) => formatCurrency(row.employerCost || row.totalAmount * 0.2),
     },
     {
-      header: 'Basic Wage',
-      accessor: 'basicWage',
+      header: "Basic Wage",
+      accessor: "basicWage",
       cell: (row) => formatCurrency(row.basicWage || row.totalAmount * 0.6),
     },
     {
-      header: 'Gross Wage',
-      accessor: 'grossWage',
+      header: "Gross Wage",
+      accessor: "grossWage",
       cell: (row) => formatCurrency(row.grossWage || row.totalAmount * 0.8),
     },
     {
-      header: 'Net Wage',
-      accessor: 'netWage',
+      header: "Net Wage",
+      accessor: "netWage",
       cell: (row) => formatCurrency(row.netWage || row.totalAmount),
     },
     {
-      header: 'Status',
-      accessor: 'status',
+      header: "Status",
+      accessor: "status",
       cell: (row) => (
         <div className="flex items-center gap-2">
-          {row.status === 'completed' ? (
+          {row.status === "completed" ? (
             <Button
               variant="outline"
               size="sm"
@@ -260,9 +315,9 @@ export default function Payroll() {
           ) : (
             <span
               className={`rounded-full px-2 py-1 text-xs ${
-                row.status === 'processing'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-gray-100 text-gray-800'
+                row.status === "processing"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-gray-100 text-gray-800"
               }`}
             >
               {row.status}
@@ -271,58 +326,67 @@ export default function Payroll() {
         </div>
       ),
     },
-  ]
+  ];
 
   const payrollColumns = [
     {
-      header: 'Pay Period',
-      accessor: 'payPeriod',
+      header: "Pay Period",
+      accessor: "payPeriod",
       cell: (row) => {
         // Try to get pay period from payroll object first
         if (row.payPeriodStart && row.payPeriodEnd) {
-          return `${formatDate(row.payPeriodStart)} - ${formatDate(row.payPeriodEnd)}`
+          return `${formatDate(row.payPeriodStart)} - ${formatDate(
+            row.payPeriodEnd
+          )}`;
         }
         // Fallback to payrun's pay period
-        if (currentMonthPayrun?.payPeriodStart && currentMonthPayrun?.payPeriodEnd) {
-          return `${formatDate(currentMonthPayrun.payPeriodStart)} - ${formatDate(currentMonthPayrun.payPeriodEnd)}`
+        if (
+          currentMonthPayrun?.payPeriodStart &&
+          currentMonthPayrun?.payPeriodEnd
+        ) {
+          return `${formatDate(
+            currentMonthPayrun.payPeriodStart
+          )} - ${formatDate(currentMonthPayrun.payPeriodEnd)}`;
         }
         // If payPeriod is a string (from backend)
         if (row.payPeriod) {
-          return row.payPeriod
+          return row.payPeriod;
         }
-        return '-'
+        return "-";
       },
     },
     {
-      header: 'Employee',
-      accessor: (row) => row.employee?.name || `${row.employee?.firstName} ${row.employee?.lastName}`,
+      header: "Employee",
+      accessor: (row) =>
+        row.employee?.name ||
+        `${row.employee?.firstName} ${row.employee?.lastName}`,
     },
     {
-      header: 'Employer Cost',
-      accessor: 'employerCost',
+      header: "Employer Cost",
+      accessor: "employerCost",
       cell: (row) => formatCurrency(row.employerCost || 0),
     },
     {
-      header: 'Basic Wage',
-      accessor: 'basicWage',
+      header: "Basic Wage",
+      accessor: "basicWage",
       cell: (row) => formatCurrency(row.basicWage || 0),
     },
     {
-      header: 'Gross Wage',
-      accessor: 'grossWage',
+      header: "Gross Wage",
+      accessor: "grossWage",
       cell: (row) => formatCurrency(row.grossWage || 0),
     },
     {
-      header: 'Net Wage',
-      accessor: 'netWage',
+      header: "Net Wage",
+      accessor: "netWage",
       cell: (row) => formatCurrency(row.netWage || 0),
     },
     {
-      header: 'Status',
-      accessor: 'status',
+      header: "Status",
+      accessor: "status",
       cell: (row) => (
         <div className="flex items-center gap-2">
-          {row.status === 'Done' || row.status === 'validated' ? (
+          {row.status === "Done" || row.status === "validated" ? (
             <Button
               variant="outline"
               size="sm"
@@ -333,9 +397,9 @@ export default function Payroll() {
           ) : (
             <span
               className={`rounded-full px-2 py-1 text-xs ${
-                row.status === 'computed'
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-gray-100 text-gray-800'
+                row.status === "computed"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-gray-100 text-gray-800"
               }`}
             >
               {row.status}
@@ -344,7 +408,7 @@ export default function Payroll() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
@@ -356,7 +420,9 @@ export default function Payroll() {
           {/* Year and Month Filters */}
           <div className="flex items-center gap-2">
             <div className="space-y-1">
-              <Label htmlFor="year-filter" className="text-xs">Year</Label>
+              <Label htmlFor="year-filter" className="text-xs">
+                Year
+              </Label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger id="year-filter" className="w-32">
                   <SelectValue placeholder="Select Year" />
@@ -371,7 +437,9 @@ export default function Payroll() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="month-filter" className="text-xs">Month</Label>
+              <Label htmlFor="month-filter" className="text-xs">
+                Month
+              </Label>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                 <SelectTrigger id="month-filter" className="w-40">
                   <SelectValue placeholder="Select Month" />
@@ -386,29 +454,35 @@ export default function Payroll() {
               </Select>
             </div>
           </div>
-          {activeTab === 'payrun' && (
+          {activeTab === "payrun" && (
             <div className="flex gap-2">
-              {currentMonthPayrun && currentMonthPayrun.status === 'draft' && (
-                <Button variant="outline" onClick={handleProcessPayrun}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Process Payrun
-                </Button>
-              )}
-              {currentMonthPayrun && 
-               currentMonthPayrun.payrolls && 
-               currentMonthPayrun.payrolls.length > 0 &&
-               currentMonthPayrun.payrolls.some(p => p.status === 'computed' || p.status === 'draft') && (
-                <Button variant="outline" onClick={handleValidateAll}>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Validate
-                </Button>
-              )}
+              {/* {currentMonthPayrun && currentMonthPayrun.status === "draft" && (
+                // <Button variant="outline" onClick={handleProcessPayrun}>
+                //   <Play className="mr-2 h-4 w-4" />
+                //   Process Payrun
+                // </Button>
+              )} */}
+              {currentMonthPayrun &&
+                currentMonthPayrun.payrolls &&
+                currentMonthPayrun.payrolls.length > 0 &&
+                currentMonthPayrun.payrolls.some(
+                  (p) => p.status === "computed" || p.status === "draft"
+                ) && (
+                  <Button variant="outline" onClick={handleValidateAll}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Validate
+                  </Button>
+                )}
             </div>
           )}
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="payrun">Payrun</TabsTrigger>
@@ -432,29 +506,36 @@ export default function Payroll() {
                   {dashboardData.warnings.map((warning, index) => {
                     const getWarningLabel = (type) => {
                       switch (type) {
-                        case 'noBankAccount':
-                          return 'Bank Account'
-                        case 'noPhone':
-                          return 'Phone Number'
-                        case 'noPAN':
-                          return 'PAN Number'
-                        case 'noUAN':
-                          return 'UAN Number'
-                        case 'noAddress':
-                          return 'Address'
+                        case "noBankAccount":
+                          return "Bank Account";
+                        case "noPhone":
+                          return "Phone Number";
+                        case "noPAN":
+                          return "PAN Number";
+                        case "noUAN":
+                          return "UAN Number";
+                        case "noAddress":
+                          return "Address";
                         default:
-                          return 'Information'
+                          return "Information";
                       }
-                    }
-                    
+                    };
+
                     return (
-                      <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-yellow-100">
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 rounded-md bg-yellow-100"
+                      >
                         <AlertTriangle className="h-4 w-4 text-yellow-700 flex-shrink-0" />
                         <p className="text-sm text-yellow-800">
-                          <span className="font-semibold">{warning.count}</span> Employee{warning.count !== 1 ? 's' : ''} without <span className="font-medium">{getWarningLabel(warning.type)}</span>
+                          <span className="font-semibold">{warning.count}</span>{" "}
+                          Employee{warning.count !== 1 ? "s" : ""} without{" "}
+                          <span className="font-medium">
+                            {getWarningLabel(warning.type)}
+                          </span>
                         </p>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </CardContent>
@@ -466,7 +547,9 @@ export default function Payroll() {
             <Card>
               <CardHeader>
                 <CardTitle>Payruns</CardTitle>
-                <CardDescription>View all payruns (completed payruns are read-only)</CardDescription>
+                <CardDescription>
+                  View all payruns (completed payruns are read-only)
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <DataTable
@@ -477,8 +560,8 @@ export default function Payroll() {
                   paginated
                   pageSize={10}
                   onRowClick={(payrun) => {
-                    setSelectedPayrun(payrun)
-                    setIsPreviewOpen(true)
+                    setSelectedPayrun(payrun);
+                    setIsPreviewOpen(true);
                   }}
                 />
               </CardContent>
@@ -533,7 +616,9 @@ export default function Payroll() {
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Employee Count</CardTitle>
+                  <CardTitle className="text-green-800">
+                    Employee Count
+                  </CardTitle>
                   <CardDescription>Annually</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -552,7 +637,9 @@ export default function Payroll() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Employee Count</CardTitle>
+                  <CardTitle className="text-green-800">
+                    Employee Count
+                  </CardTitle>
                   <CardDescription>Monthly</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -585,16 +672,25 @@ export default function Payroll() {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Payrun {monthOptions.find(m => m.value === selectedMonth)?.label || 'Selected Month'} {selectedYear}
+                    Payrun{" "}
+                    {monthOptions.find((m) => m.value === selectedMonth)
+                      ?.label || "Selected Month"}{" "}
+                    {selectedYear}
                   </CardTitle>
                   <CardDescription>
-                    Pay Period: {currentMonthPayrun.payPeriodStart && currentMonthPayrun.payPeriodEnd
-                      ? `${formatDate(currentMonthPayrun.payPeriodStart)} - ${formatDate(currentMonthPayrun.payPeriodEnd)}`
-                      : 'N/A'}
-                    {currentMonthPayrun.payDate && ` | Pay Date: ${formatDate(currentMonthPayrun.payDate)}`}
+                    Pay Period:{" "}
+                    {currentMonthPayrun.payPeriodStart &&
+                    currentMonthPayrun.payPeriodEnd
+                      ? `${formatDate(
+                          currentMonthPayrun.payPeriodStart
+                        )} - ${formatDate(currentMonthPayrun.payPeriodEnd)}`
+                      : "N/A"}
+                    {currentMonthPayrun.payDate &&
+                      ` | Pay Date: ${formatDate(currentMonthPayrun.payDate)}`}
                   </CardDescription>
                   <CardDescription className="mt-2">
-                    The payslip of an individual employee is generated on the basis of attendance of that employee in a particular month.
+                    The payslip of an individual employee is generated on the
+                    basis of attendance of that employee in a particular month.
                   </CardDescription>
                   <CardDescription className="mt-2">
                     Done status show once any payrun/payslip has been validated.
@@ -603,11 +699,17 @@ export default function Payroll() {
                 <CardContent>
                   <div className="grid grid-cols-4 gap-4 mb-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Employer Cost</p>
+                      <p className="text-sm text-muted-foreground">
+                        Employer Cost
+                      </p>
                       <p className="text-lg font-semibold">
                         {formatCurrency(
-                          currentMonthPayrun.payrolls?.reduce((sum, p) => sum + (p.grossSalary || 0), 0) || 
-                          currentMonthPayrun.totalAmount || 0
+                          currentMonthPayrun.payrolls?.reduce(
+                            (sum, p) => sum + (p.grossSalary || 0),
+                            0
+                          ) ||
+                            currentMonthPayrun.totalAmount ||
+                            0
                         )}
                       </p>
                     </div>
@@ -615,8 +717,12 @@ export default function Payroll() {
                       <p className="text-sm text-muted-foreground">Gross</p>
                       <p className="text-lg font-semibold">
                         {formatCurrency(
-                          currentMonthPayrun.payrolls?.reduce((sum, p) => sum + (p.grossSalary || 0), 0) || 
-                          currentMonthPayrun.totalAmount || 0
+                          currentMonthPayrun.payrolls?.reduce(
+                            (sum, p) => sum + (p.grossSalary || 0),
+                            0
+                          ) ||
+                            currentMonthPayrun.totalAmount ||
+                            0
                         )}
                       </p>
                     </div>
@@ -624,14 +730,17 @@ export default function Payroll() {
                       <p className="text-sm text-muted-foreground">Net</p>
                       <p className="text-lg font-semibold">
                         {formatCurrency(
-                          currentMonthPayrun.payrolls?.reduce((sum, p) => sum + (p.netSalary || 0), 0) || 0
+                          currentMonthPayrun.payrolls?.reduce(
+                            (sum, p) => sum + (p.netSalary || 0),
+                            0
+                          ) || 0
                         )}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Status</p>
                       <div className="mt-1">
-                        {currentMonthPayrun.status === 'completed' ? (
+                        {currentMonthPayrun.status === "completed" ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -640,7 +749,9 @@ export default function Payroll() {
                             Done
                           </Button>
                         ) : (
-                          <span className="text-sm text-muted-foreground">{currentMonthPayrun.status}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {currentMonthPayrun.status}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -651,18 +762,111 @@ export default function Payroll() {
               {/* Employee Payroll List */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Payslip List view</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Payslip List view</CardTitle>
+                    <div className="flex items-center gap-2 border rounded-md p-1">
+                      <Button
+                        variant={viewMode === "table" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setViewMode("table")}
+                        className="h-8 w-8 p-0"
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={viewMode === "grid" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setViewMode("grid")}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Grid3x3 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <DataTable
-                    data={payrolls}
-                    columns={payrollColumns}
-                    searchable
-                    searchPlaceholder="Search employees..."
-                    paginated
-                    pageSize={10}
-                    onRowClick={handlePayrollClick}
-                  />
+                  {viewMode === "table" ? (
+                    <DataTable
+                      data={payrolls}
+                      columns={payrollColumns}
+                      searchable
+                      searchPlaceholder="Search employees..."
+                      paginated
+                      pageSize={10}
+                      onRowClick={handlePayrollClick}
+                    />
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {payrolls.length === 0 ? (
+                        <div className="col-span-full text-center py-8 text-muted-foreground">
+                          No payrolls found
+                        </div>
+                      ) : (
+                        payrolls.map((payroll) => (
+                          <div
+                            key={payroll.id}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => handlePayrollClick(payroll)}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold">
+                                  {payroll.employee?.name ||
+                                    `${payroll.employee?.firstName || ""} ${
+                                      payroll.employee?.lastName || ""
+                                    }`.trim() ||
+                                    "N/A"}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {payroll.employee?.employeeId || "N/A"}
+                                </p>
+                              </div>
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                  payroll.status === "validated"
+                                    ? "bg-green-100 text-green-800"
+                                    : payroll.status === "computed"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {payroll.status || "draft"}
+                              </span>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <p>
+                                <span className="font-medium">Period:</span>{" "}
+                                {payroll.payPeriodStart && payroll.payPeriodEnd
+                                  ? `${formatDate(
+                                      payroll.payPeriodStart
+                                    )} - ${formatDate(payroll.payPeriodEnd)}`
+                                  : currentMonthPayrun?.payPeriodStart &&
+                                    currentMonthPayrun?.payPeriodEnd
+                                  ? `${formatDate(
+                                      currentMonthPayrun.payPeriodStart
+                                    )} - ${formatDate(
+                                      currentMonthPayrun.payPeriodEnd
+                                    )}`
+                                  : payroll.payPeriod || "-"}
+                              </p>
+                              <p>
+                                <span className="font-medium">Gross:</span>{" "}
+                                {formatCurrency(payroll.grossSalary || 0)}
+                              </p>
+                              <p>
+                                <span className="font-medium">Deductions:</span>{" "}
+                                {formatCurrency(payroll.totalDeductions || 0)}
+                              </p>
+                              <p className="font-semibold">
+                                <span className="font-medium">Net:</span>{" "}
+                                {formatCurrency(payroll.netSalary || 0)}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
@@ -671,12 +875,16 @@ export default function Payroll() {
               <CardHeader>
                 <CardTitle>No Payrun Found</CardTitle>
                 <CardDescription>
-                  No payrun found for {monthOptions.find(m => m.value === selectedMonth)?.label || 'selected month'} {selectedYear}. Create a new payrun to get started.
+                  No payrun found for{" "}
+                  {monthOptions.find((m) => m.value === selectedMonth)?.label ||
+                    "selected month"}{" "}
+                  {selectedYear}. Create a new payrun to get started.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Payruns are automatically created for each month. Use the Process Payrun button to generate payrolls.
+                  Payruns are automatically created for each month. Use the
+                  Process Payrun button to generate payrolls.
                 </p>
               </CardContent>
             </Card>
@@ -690,9 +898,9 @@ export default function Payroll() {
           <DialogHeader>
             <DialogTitle>Payrun Details</DialogTitle>
             <DialogDescription>
-              {selectedPayrun?.status === 'completed' 
-                ? 'View payrun details (read-only - cannot be edited)' 
-                : 'View payrun details'}
+              {selectedPayrun?.status === "completed"
+                ? "View payrun details (read-only - cannot be edited)"
+                : "View payrun details"}
             </DialogDescription>
           </DialogHeader>
           {selectedPayrun && (
@@ -707,11 +915,11 @@ export default function Payroll() {
                   <p className="text-sm font-medium">
                     <span
                       className={`rounded-full px-2 py-1 text-xs ${
-                        selectedPayrun.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : selectedPayrun.status === 'processing'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
+                        selectedPayrun.status === "completed"
+                          ? "bg-green-100 text-green-800"
+                          : selectedPayrun.status === "processing"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       {selectedPayrun.status}
@@ -721,15 +929,20 @@ export default function Payroll() {
                 <div>
                   <Label>Pay Period</Label>
                   <p className="text-sm font-medium">
-                    {selectedPayrun.payPeriodStart && selectedPayrun.payPeriodEnd
-                      ? `${formatDate(selectedPayrun.payPeriodStart)} - ${formatDate(selectedPayrun.payPeriodEnd)}`
-                      : 'N/A'}
+                    {selectedPayrun.payPeriodStart &&
+                    selectedPayrun.payPeriodEnd
+                      ? `${formatDate(
+                          selectedPayrun.payPeriodStart
+                        )} - ${formatDate(selectedPayrun.payPeriodEnd)}`
+                      : "N/A"}
                   </p>
                 </div>
                 <div>
                   <Label>Pay Date</Label>
                   <p className="text-sm font-medium">
-                    {selectedPayrun.payDate ? formatDate(selectedPayrun.payDate) : 'N/A'}
+                    {selectedPayrun.payDate
+                      ? formatDate(selectedPayrun.payDate)
+                      : "N/A"}
                   </p>
                 </div>
                 <div>
@@ -745,10 +958,11 @@ export default function Payroll() {
                   </p>
                 </div>
               </div>
-              {selectedPayrun.status === 'completed' && (
+              {selectedPayrun.status === "completed" && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    This payrun is completed and cannot be edited. All payrolls have been validated and payslips generated.
+                    This payrun is completed and cannot be edited. All payrolls
+                    have been validated and payslips generated.
                   </p>
                 </div>
               )}
@@ -777,5 +991,5 @@ export default function Payroll() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

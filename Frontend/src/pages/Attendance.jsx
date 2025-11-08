@@ -31,10 +31,11 @@ export default function Attendance() {
 
   // Admin view state
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [selectedMonth, setSelectedMonth] = useState(null) // null = day view, Date = month view
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null)
+  const [selectedDepartment, setSelectedDepartment] = useState(null)
   const [employees, setEmployees] = useState([])
+  const [departments, setDepartments] = useState([])
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -43,18 +44,17 @@ export default function Attendance() {
   const [employeeSelectedDate, setEmployeeSelectedDate] = useState(new Date())
   const [employeeViewMode, setEmployeeViewMode] = useState('month') // 'day' or 'month'
   const [monthSummary, setMonthSummary] = useState(null)
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('')
+  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState(null)
 
   const isAdmin = ['admin', 'hr', 'payroll'].includes(user?.role)
 
   useEffect(() => {
     if (isAdmin) {
       fetchEmployees()
-      if (selectedMonth) {
-        fetchAttendanceForMonth(selectedMonth, selectedEmployeeId)
-      } else {
-        fetchAttendanceForDate(selectedDate, selectedEmployeeId)
-      }
+      fetchAttendanceForDate(selectedDate, selectedEmployeeId, selectedDepartment)
     } else {
+      fetchEmployees() // Fetch employees for department filters
       fetchTodayAttendance()
       if (employeeViewMode === 'day') {
         fetchAttendanceForDate(employeeSelectedDate)
@@ -63,7 +63,7 @@ export default function Attendance() {
         fetchMonthSummary(employeeSelectedMonth)
       }
     }
-  }, [isAdmin, selectedDate, selectedMonth, selectedEmployeeId, employeeSelectedMonth, employeeSelectedDate, employeeViewMode])
+  }, [isAdmin, selectedDate, selectedEmployeeId, selectedDepartment, employeeSelectedMonth, employeeSelectedDate, employeeViewMode])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -87,23 +87,39 @@ export default function Attendance() {
       const response = await apiClient.get('/employees')
       const employeesData = response.data?.data || response.data || []
       setEmployees(Array.isArray(employeesData) ? employeesData : [])
+      
+      // Extract unique departments
+      const uniqueDepartments = [...new Set(employeesData.map(emp => emp.department).filter(Boolean))]
+      setDepartments(uniqueDepartments.sort())
     } catch (error) {
       console.error('Failed to fetch employees:', error)
       setEmployees([])
+      setDepartments([])
     }
   }
 
-  const fetchAttendanceForDate = async (date, employeeId = null) => {
+  const fetchAttendanceForDate = async (date, employeeId = null, department = null) => {
     try {
       setLoading(true)
-      const dateStr = dayjs(date).format('YYYY-MM-DD')
+      // Use local date to avoid timezone issues
+      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+      const dateStr = dayjs(localDate).format('YYYY-MM-DD')
       let url = `/attendance?date=${dateStr}`
       if (employeeId) {
         url += `&employeeId=${employeeId}`
       }
       const response = await apiClient.get(url)
       // Backend returns { status: 'success', data: [...] }
-      const attendanceData = response.data?.data || response.data || []
+      let attendanceData = response.data?.data || response.data || []
+      
+      // Filter by department on frontend if needed
+      if (department && department !== 'all') {
+        attendanceData = attendanceData.filter(att => {
+          const emp = employees.find(e => e.id === att.employeeId || e.employeeId === att.employeeId)
+          return emp && emp.department === department
+        })
+      }
+      
       setAttendance(Array.isArray(attendanceData) ? attendanceData : [])
     } catch (error) {
       console.error('Failed to fetch attendance:', error)
@@ -207,26 +223,11 @@ export default function Attendance() {
     const newDate = dayjs(selectedDate)
       .add(direction === 'next' ? 1 : -1, 'day')
       .toDate()
-    setSelectedDate(newDate)
+    // Ensure we use local date to avoid timezone issues
+    const localDate = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate())
+    setSelectedDate(localDate)
   }
 
-  const handleMonthChange = (direction) => {
-    const currentMonth = selectedMonth || new Date()
-    const newMonth = dayjs(currentMonth)
-      .add(direction === 'next' ? 1 : -1, 'month')
-      .toDate()
-    setSelectedMonth(newMonth)
-  }
-
-  const handleViewModeChange = (mode) => {
-    if (mode === 'month') {
-      setSelectedMonth(new Date())
-      setSelectedDate(new Date())
-    } else {
-      setSelectedMonth(null)
-      setSelectedDate(new Date())
-    }
-  }
 
   const handleEmployeeMonthChange = (direction) => {
     const newMonth = dayjs(employeeSelectedMonth)
@@ -241,26 +242,40 @@ export default function Attendance() {
       header: 'Date',
       accessor: 'date',
       cell: (row) => formatDate(row.date, 'DD/MM/YYYY'),
+      className: 'text-left',
+      cellClassName: 'text-left',
     },
     {
       header: 'Employee',
       accessor: 'employeeName',
       cell: (row) => row.employeeName || `${row.firstName || ''} ${row.lastName || ''}` || row.employeeId || '-',
+      className: 'text-left',
+      cellClassName: 'text-left',
     },
     {
-      header: 'Employee ID',
-      accessor: 'employeeId',
-      cell: (row) => row.employeeId || '-',
+      header: 'Login ID',
+      accessor: 'loginId',
+      cell: (row) => {
+        // Try to get login ID from employee data
+        const emp = employees.find(e => e.id === row.employeeId || e.employeeId === row.employeeId)
+        return emp?.user?.employeeId || emp?.user?.email || row.employeeId || '-'
+      },
+      className: 'text-left',
+      cellClassName: 'text-left',
     },
     {
       header: 'Check In',
       accessor: 'checkIn',
       cell: (row) => (row.checkIn ? formatTime(row.checkIn) : '-'),
+      className: 'text-left',
+      cellClassName: 'text-left',
     },
     {
       header: 'Check Out',
       accessor: 'checkOut',
       cell: (row) => (row.checkOut ? formatTime(row.checkOut) : '-'),
+      className: 'text-left',
+      cellClassName: 'text-left',
     },
     {
       header: 'Work Hours',
@@ -271,6 +286,8 @@ export default function Attendance() {
         const minutes = Math.floor((row.hoursWorked - hours) * 60)
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
       },
+      className: 'text-center',
+      cellClassName: 'text-center',
     },
     {
       header: 'Extra hours',
@@ -281,6 +298,8 @@ export default function Attendance() {
         const minutes = Math.floor((row.extraHours - hours) * 60)
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
       },
+      className: 'text-center',
+      cellClassName: 'text-center',
     },
     {
       header: 'Status',
@@ -295,6 +314,8 @@ export default function Attendance() {
           {row.status || '-'}
         </span>
       ),
+      className: 'text-center',
+      cellClassName: 'text-center',
     },
   ]
 
@@ -337,18 +358,41 @@ export default function Attendance() {
     },
   ]
 
-  // Filter attendance based on search
+  // Filter attendance based on search and department
   const filteredAttendance = isAdmin
-    ? attendance.filter((record) =>
-        searchTerm
-          ? (record.employeeName || `${record.firstName || ''} ${record.lastName || ''}`)
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            record.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            record.email?.toLowerCase().includes(searchTerm.toLowerCase())
-          : true
-      )
-    : attendance
+    ? attendance.filter((record) => {
+        // Search filter
+        const matchesSearch = !searchTerm || 
+          (record.employeeName || `${record.firstName || ''} ${record.lastName || ''}`)
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          record.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          record.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        
+        // Department filter
+        const matchesDepartment = !selectedDepartment || selectedDepartment === 'all' || (() => {
+          const emp = employees.find(e => e.id === record.employeeId || e.employeeId === record.employeeId)
+          return emp && emp.department === selectedDepartment
+        })()
+        
+        return matchesSearch && matchesDepartment
+      })
+    : attendance.filter((record) => {
+        // Employee search filter
+        const matchesSearch = !employeeSearchTerm || 
+          (record.employeeName || `${record.firstName || ''} ${record.lastName || ''}`)
+            .toLowerCase()
+            .includes(employeeSearchTerm.toLowerCase()) ||
+          record.employeeId?.toLowerCase().includes(employeeSearchTerm.toLowerCase())
+        
+        // Employee department filter
+        const matchesDepartment = !employeeDepartmentFilter || employeeDepartmentFilter === 'all' || (() => {
+          const emp = employees.find(e => e.id === record.employeeId || e.employeeId === record.employeeId)
+          return emp && emp.department === employeeDepartmentFilter
+        })()
+        
+        return matchesSearch && matchesDepartment
+      })
 
   return (
     <div className="space-y-6">
@@ -395,7 +439,7 @@ export default function Attendance() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Searchable Employee Dropdown and View Mode */}
+            {/* Searchable Employee Dropdown and Department Filter */}
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex-1 relative min-w-[300px]" ref={dropdownRef}>
                 <div className="relative">
@@ -495,94 +539,63 @@ export default function Attendance() {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={selectedMonth === null ? 'default' : 'outline'}
-                  onClick={() => handleViewModeChange('day')}
-                >
-                  Day
-                </Button>
-                <Button
-                  variant={selectedMonth !== null ? 'default' : 'outline'}
-                  onClick={() => handleViewModeChange('month')}
-                >
-                  Month
-                </Button>
-              </div>
+              <Select value={selectedDepartment || 'all'} onValueChange={(value) => setSelectedDepartment(value === 'all' ? null : value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Date/Month Navigation */}
-            {selectedMonth === null ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleDateChange('prev')}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Input
-                  type="date"
-                  value={dayjs(selectedDate).format('YYYY-MM-DD')}
-                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                  className="w-40"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleDateChange('next')}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <p className="text-sm text-muted-foreground ml-4">
-                  {dayjs(selectedDate).format('DD, MMMM YYYY')}
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleMonthChange('prev')}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Input
-                  type="month"
-                  value={dayjs(selectedMonth).format('YYYY-MM')}
-                  onChange={(e) => setSelectedMonth(new Date(e.target.value + '-01'))}
-                  className="w-40"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleMonthChange('next')}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <p className="text-sm text-muted-foreground ml-4">
-                  {dayjs(selectedMonth).format('MMMM YYYY')}
-                </p>
-              </div>
-            )}
+            {/* Date Navigation */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleDateChange('prev')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Input
+                type="date"
+                value={dayjs(selectedDate).format('YYYY-MM-DD')}
+                onChange={(e) => {
+                  const dateValue = e.target.value
+                  if (dateValue) {
+                    // Create date in local timezone to avoid timezone shift
+                    const [year, month, day] = dateValue.split('-').map(Number)
+                    const localDate = new Date(year, month - 1, day)
+                    setSelectedDate(localDate)
+                  }
+                }}
+                className="w-40"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleDateChange('next')}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <p className="text-sm text-muted-foreground ml-4">
+                {dayjs(selectedDate).format('DD, MMMM YYYY')}
+              </p>
+            </div>
 
-            {/* Calendar View for Month, Table View for Day */}
-            {selectedMonth ? (
-              <AttendanceCalendar
-                month={selectedMonth}
-                attendance={filteredAttendance}
-                selectedEmployeeId={selectedEmployeeId}
-                employees={employees}
-                searchTerm={searchTerm}
-              />
-            ) : (
-              <DataTable
-                data={filteredAttendance}
-                columns={adminColumns}
-                searchable={false}
-                paginated={false}
-              />
-            )}
+            {/* Table View */}
+            <DataTable
+              data={filteredAttendance}
+              columns={adminColumns}
+              searchable={false}
+              paginated={false}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -653,20 +666,46 @@ export default function Attendance() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={employeeViewMode === 'day' ? 'default' : 'outline'}
-                  onClick={() => setEmployeeViewMode('day')}
-                >
-                  Day
-                </Button>
-                <Button
-                  variant={employeeViewMode === 'month' ? 'default' : 'outline'}
-                  onClick={() => setEmployeeViewMode('month')}
-                >
-                  Month
-                </Button>
+              {/* View Mode Toggle and Filters */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={employeeViewMode === 'day' ? 'default' : 'outline'}
+                    onClick={() => setEmployeeViewMode('day')}
+                  >
+                    Day
+                  </Button>
+                  <Button
+                    variant={employeeViewMode === 'month' ? 'default' : 'outline'}
+                    onClick={() => setEmployeeViewMode('month')}
+                  >
+                    Month
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="relative flex-1 max-w-[300px]">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search attendance..."
+                      value={employeeSearchTerm}
+                      onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={employeeDepartmentFilter || 'all'} onValueChange={(value) => setEmployeeDepartmentFilter(value === 'all' ? null : value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Day View */}

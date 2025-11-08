@@ -228,6 +228,7 @@ model Leave {
   endDate         DateTime    @db.Date
   days            Int
   reason          String
+  documentUrl     String?     // URL to uploaded document (for sick leave)
   status          LeaveStatus @default(pending)
   approvedById    String?
   approvedBy      User?       @relation("LeaveApprover", fields: [approvedById], references: [id])

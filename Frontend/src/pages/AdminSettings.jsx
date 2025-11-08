@@ -17,7 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { Mail, Lock, Send, Edit2, Eye, EyeOff, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Mail, Lock, Send, Edit2, Eye, EyeOff, Search, Grid3x3, List } from "lucide-react";
 import apiClient from "../lib/api";
 import { toast } from "sonner";
 import { useAuthStore } from "../store/auth";
@@ -36,6 +37,8 @@ export default function AdminSettings() {
   const [showPasswords, setShowPasswords] = useState({});
   const [passwords, setPasswords] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [viewMode, setViewMode] = useState("table"); // "table" or "grid"
 
   useEffect(() => {
     fetchUsers();
@@ -147,11 +150,12 @@ export default function AdminSettings() {
     }));
   };
 
-  // Filter users based on search term
+  const roles = [...new Set(users.map(u => u.role).filter(Boolean))].sort();
+
+  // Filter users based on search term and role
   const filteredUsers = users.filter((userItem) => {
-    if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = !searchTerm || (
       userItem.email?.toLowerCase().includes(searchLower) ||
       userItem.employeeId?.toLowerCase().includes(searchLower) ||
       `${userItem.firstName || ""} ${userItem.lastName || ""}`
@@ -159,6 +163,8 @@ export default function AdminSettings() {
         .includes(searchLower) ||
       userItem.role?.toLowerCase().includes(searchLower)
     );
+    const matchesRole = !selectedRole || selectedRole === 'all' || userItem.role === selectedRole;
+    return matchesSearch && matchesRole;
   });
 
   if (loading) {
@@ -194,27 +200,67 @@ export default function AdminSettings() {
               </p>
             </div>
 
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users by email, login ID, name, or role..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+            <div className="mb-4 space-y-4">
+              {/* Search and Filters */}
+              <div className="flex flex-wrap gap-4 items-center">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search users by email, login ID, name, or role..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <Label htmlFor="role-filter" className="text-xs text-muted-foreground mb-1 block">
+                    Role
+                  </Label>
+                  <Select value={selectedRole || 'all'} onValueChange={(value) => setSelectedRole(value === 'all' ? null : value)}>
+                    <SelectTrigger id="role-filter" className="w-full">
+                      <SelectValue placeholder="All Roles" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      {roles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 border rounded-md p-1">
+                  <Button
+                    variant={viewMode === "table" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <Table>
+            {viewMode === "table" ? (
+              <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-20">Avatar</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Login ID</TableHead>
-                    <TableHead>Password</TableHead>
-                    <TableHead className="w-32">Actions</TableHead>
+                    <TableHead className="w-20 text-center">Avatar</TableHead>
+                    <TableHead className="text-left">Email</TableHead>
+                    <TableHead className="text-left">Login ID</TableHead>
+                    <TableHead className="text-left">Password</TableHead>
+                    <TableHead className="text-center w-32">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -232,7 +278,7 @@ export default function AdminSettings() {
                   ) : (
                     filteredUsers.map((userItem) => (
                       <TableRow key={userItem.id}>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <div className="flex items-center justify-center">
                             <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground text-xl font-bold overflow-hidden flex items-center justify-center">
                               {userItem.avatar ? (
@@ -250,13 +296,13 @@ export default function AdminSettings() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium text-left">
                           {userItem.email}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-left">
                           {userItem.employeeId || userItem.email}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-left">
                           {editingPassword === userItem.id ? (
                             <div className="flex items-center gap-2">
                               <Input
@@ -322,7 +368,7 @@ export default function AdminSettings() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <Button
                             variant="outline"
                             size="sm"
@@ -351,6 +397,131 @@ export default function AdminSettings() {
                 </TableBody>
               </Table>
             </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredUsers.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    {users.length === 0
+                      ? "No users found"
+                      : "No users match your filters"}
+                  </div>
+                ) : (
+                  filteredUsers.map((userItem) => (
+                    <div
+                      key={userItem.id}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center justify-center mb-3">
+                        <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground text-xl font-bold overflow-hidden flex items-center justify-center">
+                          {userItem.avatar ? (
+                            <img
+                              src={userItem.avatar}
+                              alt={`${userItem.firstName} ${userItem.lastName}`}
+                              className="h-full w-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <span>
+                              {userItem.firstName?.[0] || ""}
+                              {userItem.lastName?.[0] || ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-center mb-3">
+                        <h3 className="font-semibold">{userItem.firstName} {userItem.lastName}</h3>
+                        <p className="text-sm text-muted-foreground">{userItem.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {userItem.employeeId || userItem.email}
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 rounded text-xs bg-primary/10 text-primary">
+                          {userItem.role?.charAt(0).toUpperCase() + userItem.role?.slice(1)}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-sm">
+                          <span className="font-medium">Password:</span>{" "}
+                          {editingPassword === userItem.id ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <Input
+                                type={showPasswords[userItem.id] ? "text" : "password"}
+                                value={passwords[userItem.id] || ""}
+                                onChange={(e) =>
+                                  setPasswords((prev) => ({
+                                    ...prev,
+                                    [userItem.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Enter new password"
+                                className="flex-1"
+                                autoComplete="new-password"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleShowPassword(userItem.id)}
+                              >
+                                {showPasswords[userItem.id] ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSavePassword(userItem.id)}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCancelEdit(userItem.id)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="font-mono">••••••••</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditPassword(userItem.id)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleSendCredentials(userItem.id)}
+                          disabled={
+                            sendingEmail === userItem.id ||
+                            editingPassword === userItem.id
+                          }
+                        >
+                          {sendingEmail === userItem.id ? (
+                            <>
+                              <Mail className="mr-2 h-4 w-4 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              Send Mail
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -312,16 +312,6 @@ export const registerUser = async (req, res, next) => {
 
     const userWithCompany = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        company: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            logo: true,
-          },
-        },
-      },
       select: {
         id: true,
         email: true,

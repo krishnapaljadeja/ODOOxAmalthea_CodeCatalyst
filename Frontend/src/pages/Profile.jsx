@@ -31,7 +31,18 @@ const profileSchema = z.object({
       message: "Invalid email address",
     }
   ),
-  phone: z.string().optional(),
+  phone: z.string().optional().or(z.literal("")).refine(
+    (val) => {
+      if (!val || val === '') return true; // Allow empty
+      // Remove all non-digit characters except +
+      const cleaned = val.replace(/[^\d+]/g, '');
+      // Check if it matches phone number pattern: optional +, then 10-15 digits
+      return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+    },
+    {
+      message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
+    }
+  ),
   address: z.string().optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
@@ -58,7 +69,17 @@ const profileSchema = z.object({
 const emergencyContactSchema = z.object({
   name: z.string().min(1, "Name is required"),
   relationship: z.string().min(1, "Relationship is required"),
-  phone: z.string().min(1, "Phone is required"),
+  phone: z.string().min(1, "Phone is required").refine(
+    (val) => {
+      // Remove all non-digit characters except +
+      const cleaned = val.replace(/[^\d+]/g, '');
+      // Check if it matches phone number pattern: optional +, then 10-15 digits
+      return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+    },
+    {
+      message: 'Phone number must be in valid format (10-15 digits, optional + prefix)'
+    }
+  ),
 });
 
 export default function Profile() {
