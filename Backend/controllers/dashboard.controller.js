@@ -18,19 +18,27 @@ export const getStats = async (req, res, next) => {
     // Get present today
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
 
     const presentToday =
       user.role === 'admin' || user.role === 'hr' || user.role === 'manager'
         ? await prisma.attendance.count({
             where: {
-              date: today,
+              date: {
+                gte: today,
+                lt: tomorrow,
+              },
               status: 'present',
             },
           })
         : await prisma.attendance.count({
             where: {
               userId: user.id,
-              date: today,
+              date: {
+                gte: today,
+                lt: tomorrow,
+              },
               status: 'present',
             },
           })
@@ -67,7 +75,7 @@ export const getStats = async (req, res, next) => {
         presentToday,
         pendingLeaves,
         lastPayrunAmount: lastPayrun?.totalAmount || 0,
-        lastPayrunDate: lastPayrun?.payDate || null,
+        lastPayrunDate: lastPayrun?.payDate ? lastPayrun.payDate.toISOString() : null,
       },
     })
   } catch (error) {

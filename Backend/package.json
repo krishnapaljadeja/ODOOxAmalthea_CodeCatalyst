@@ -10,10 +10,20 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset --force",
     "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio"
   },
-  "keywords": ["hrms", "api", "express", "prisma"],
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "keywords": [
+    "hrms",
+    "api",
+    "express",
+    "prisma"
+  ],
   "author": "WorkZen HRMS Team",
   "license": "ISC",
   "dependencies": {
@@ -31,4 +41,3 @@
     "prisma": "^5.7.1"
   }
 }
-
