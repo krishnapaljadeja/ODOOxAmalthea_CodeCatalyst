@@ -1,5 +1,9 @@
 # 🎯 Team Number - 44
 
+## 🎥 Project Video
+
+### **[▶️ Watch Project Demo Video](https://drive.google.com/file/d/11mCKdYVKeXNlD00qqq3xM5g93IfKArbm/view?usp=sharing)**
+
 ## Team Members
 
 - **Krishnapal Singh Jadeja** - Team Lead
@@ -9,9 +13,6 @@
 
 ---
 
-## 🎥 Project Video
-
-### **[▶️ Watch Project Demo Video](https://drive.google.com/file/d/11mCKdYVKeXNlD00qqq3xM5g93IfKArbm/view?usp=sharing)**
 
 ## Project Description
 
