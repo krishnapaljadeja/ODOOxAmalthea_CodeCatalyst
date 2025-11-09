@@ -80,9 +80,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}/api`);
 
-  // Schedule auto-checkout task to run daily at 6:30 PM
-  // Cron format: minute hour day month dayOfWeek
-  // '30 18 * * *' means: 30th minute, 18th hour (6:30 PM), every day
+  // Schedule auto-checkout task to run daily at 6:30 
   cron.schedule(
     "30 18 * * *",
     async () => {
@@ -100,7 +98,7 @@ app.listen(PORT, () => {
     },
     {
       scheduled: true,
-      timezone: "Asia/Kolkata", // Adjust timezone as needed
+      timezone: "Asia/Kolkata", 
     }
   );
 

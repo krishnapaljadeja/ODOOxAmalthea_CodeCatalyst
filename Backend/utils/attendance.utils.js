@@ -2,24 +2,18 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-/**
- * Auto-checkout employees who checked in but didn't check out
- * Sets checkout time to 6 PM of the attendance date
- */
+
 export const autoCheckoutIncompleteAttendance = async () => {
   try {
     const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
 
-    // Find all incomplete attendance records
-    // Records where checkIn exists but checkOut is null
-    // And the date is today or in the past (not future)
     const incompleteAttendances = await prisma.attendance.findMany({
       where: {
         checkIn: { not: null },
         checkOut: null,
-        date: { lte: today }, // Only process today or past dates
+        date: { lte: today }, 
       },
       include: {
         employee: {
@@ -50,7 +44,6 @@ export const autoCheckoutIncompleteAttendance = async () => {
 
     for (const attendance of incompleteAttendances) {
       try {
-        // Set checkout time to 6 PM of the attendance date
         const attendanceDate = new Date(attendance.date);
         const checkoutTime = new Date(attendanceDate);
         checkoutTime.setHours(18, 0, 0, 0); // 6 PM
@@ -64,15 +57,11 @@ export const autoCheckoutIncompleteAttendance = async () => {
           continue;
         }
 
-        // Calculate hours worked from checkIn to 6 PM
         const checkInTime = new Date(attendance.checkIn);
         const hoursWorked = (checkoutTime - checkInTime) / (1000 * 60 * 60);
 
-        // Determine status based on hours worked
-        // If worked >= 4 hours, mark as present, otherwise half_day
         const status = hoursWorked >= 4 ? "present" : "half_day";
 
-        // Update attendance record
         await prisma.attendance.update({
           where: { id: attendance.id },
           data: {
