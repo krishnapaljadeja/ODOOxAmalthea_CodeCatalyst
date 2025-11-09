@@ -32,7 +32,7 @@ const getEndpoint = (url) => {
   let endpoint = url.replace(API_BASE_URL, "");
   // Remove /api prefix if present
   endpoint = endpoint.replace(/^\/api/, "");
-  // Ensure starts with /
+
   if (!endpoint.startsWith("/")) {
     endpoint = "/" + endpoint;
   }
@@ -227,19 +227,15 @@ apiClient.interceptors.request.use(
 // Response interceptor - Handle errors and token refresh, extract data from backend response
 apiClient.interceptors.response.use(
   (response) => {
-    // Backend returns { status: 'success', data: ... } format
-    // Extract data if present, otherwise return response as is
     if (
       response.data &&
       typeof response.data === "object" &&
       "status" in response.data &&
       "data" in response.data
     ) {
-      // For blob responses (like CSV export), don't modify
-      if (response.config?.responseType === "blob") {
+      if (response.config?.responseType === "blob") { //like CSV export
         return response;
       }
-      // Extract data from backend response format
       return {
         ...response,
         data: response.data.data,
@@ -284,8 +280,6 @@ apiClient.interceptors.response.use(
 
     // Handle other errors
     if (error.response) {
-      // Skip showing toast for 404 errors - they're often valid "not found" states
-      // (e.g., no attendance record for today)
       if (error.response.status === 404) {
         return Promise.reject(error);
       }

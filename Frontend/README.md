@@ -122,8 +122,6 @@ Frontend/
 │   │   └── utils.js        # General utilities
 │   ├── store/              # Zustand stores
 │   │   └── auth.js         # Auth store
-│   ├── types/              # Type definitions
-│   │   └── index.js        # JSDoc type definitions
 │   ├── mocks/              # Mock API responses
 │   │   └── index.js        # Mock API functions
 │   ├── App.jsx             # Main app component
