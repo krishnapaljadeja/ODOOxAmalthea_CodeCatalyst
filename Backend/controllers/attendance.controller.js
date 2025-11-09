@@ -572,3 +572,29 @@ export const adminCheckOut = async (req, res, next) => {
     next(error);
   }
 };
+
+export const triggerAutoCheckout = async (req, res, next) => {
+  try {
+    const user = req.user;
+
+    // Only admin and HR can trigger auto-checkout manually
+    if (!["admin", "hr"].includes(user.role)) {
+      return res.status(403).json({
+        status: "error",
+        message: "Insufficient permissions",
+        error: "Forbidden",
+      });
+    }
+
+    const { autoCheckoutIncompleteAttendance } = await import("../utils/attendance.utils.js");
+    const result = await autoCheckoutIncompleteAttendance();
+
+    res.json({
+      status: "success",
+      message: `Auto-checkout completed: ${result.updated} of ${result.processed} records updated`,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

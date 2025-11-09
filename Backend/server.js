@@ -23,6 +23,8 @@ import reportRoutes from "./routes/report.routes.js";
 
 import adminRoutes from "./routes/admin.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
+import cron from "node-cron";
+import { autoCheckoutIncompleteAttendance } from "./utils/attendance.utils.js";
 
 dotenv.config();
 
@@ -77,4 +79,30 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}/api`);
+
+  // Schedule auto-checkout task to run daily at 6:30 PM
+  // Cron format: minute hour day month dayOfWeek
+  // '30 18 * * *' means: 30th minute, 18th hour (6:30 PM), every day
+  cron.schedule(
+    "30 18 * * *",
+    async () => {
+      console.log(
+        `[Scheduled Task] Running auto-checkout at ${new Date().toISOString()}`
+      );
+      try {
+        const result = await autoCheckoutIncompleteAttendance();
+        console.log(
+          `[Scheduled Task] Auto-checkout completed: ${result.updated} records updated`
+        );
+      } catch (error) {
+        console.error(`[Scheduled Task] Auto-checkout failed:`, error);
+      }
+    },
+    {
+      scheduled: true,
+      timezone: "Asia/Kolkata", // Adjust timezone as needed
+    }
+  );
+
+  console.log(`⏰ Auto-checkout scheduled to run daily at 6:30 PM`);
 });
