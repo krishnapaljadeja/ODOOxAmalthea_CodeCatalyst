@@ -6,6 +6,7 @@ import {
   Clock,
   Calendar,
   DollarSign,
+  Wallet,
   FileText,
   Settings,
   Menu,
@@ -45,7 +46,7 @@ const navItems = [
   {
     path: "/salary-management",
     label: "Salary Management",
-    icon: DollarSign,
+    icon: Wallet,
     roles: ["admin", "hr", "payroll"],
   },
   {

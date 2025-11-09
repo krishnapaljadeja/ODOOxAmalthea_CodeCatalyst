@@ -45,7 +45,6 @@ export default function Attendance() {
   const [employeeViewMode, setEmployeeViewMode] = useState('month') // 'day' or 'month'
   const [monthSummary, setMonthSummary] = useState(null)
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('')
-  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState(null)
 
   const isAdmin = ['admin', 'hr', 'payroll'].includes(user?.role)
 
@@ -54,7 +53,6 @@ export default function Attendance() {
       fetchEmployees()
       fetchAttendanceForDate(selectedDate, selectedEmployeeId, selectedDepartment)
     } else {
-      fetchEmployees() // Fetch employees for department filters
       fetchTodayAttendance()
       if (employeeViewMode === 'day') {
         fetchAttendanceForDate(employeeSelectedDate)
@@ -395,13 +393,7 @@ export default function Attendance() {
             .includes(employeeSearchTerm.toLowerCase()) ||
           record.employeeId?.toLowerCase().includes(employeeSearchTerm.toLowerCase())
         
-        // Employee department filter
-        const matchesDepartment = !employeeDepartmentFilter || employeeDepartmentFilter === 'all' || (() => {
-          const emp = employees.find(e => e.id === record.employeeId || e.employeeId === record.employeeId)
-          return emp && emp.department === employeeDepartmentFilter
-        })()
-        
-        return matchesSearch && matchesDepartment
+        return matchesSearch
       })
 
   return (
@@ -717,19 +709,6 @@ export default function Attendance() {
                       className="pl-10"
                     />
                   </div>
-                  <Select value={employeeDepartmentFilter || 'all'} onValueChange={(value) => setEmployeeDepartmentFilter(value === 'all' ? null : value)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
