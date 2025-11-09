@@ -88,7 +88,7 @@ export default function Payroll() {
 
   const [selectedYear, setSelectedYear] = useState(() => getCurrentDate().year);
   const [selectedMonth, setSelectedMonth] = useState(
-    () => getCurrentDate().month
+    () => ((getCurrentDate().month-1).toString())
   );
   const [viewMode, setViewMode] = useState("table"); // "table" or "grid"
 
