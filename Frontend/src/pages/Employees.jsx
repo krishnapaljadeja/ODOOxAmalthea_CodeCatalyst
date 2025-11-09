@@ -34,15 +34,6 @@ import {
   Pencil,
   Grid3x3,
   List,
-  Users,
-  Clock,
-  Calendar,
-  DollarSign,
-  BarChart3,
-  Shield,
-  Zap,
-  Settings,
-  FileText,
 } from "lucide-react";
 import apiClient from "../lib/api";
 import { formatDate, formatPhone, formatCurrency } from "../lib/format";
@@ -94,11 +85,11 @@ const employeeSchema = z.object({
         // Remove all non-digit characters except +
         const cleaned = val.replace(/[^\d+]/g, "");
         // Check if it matches phone number pattern: optional +, then 10-15 digits
-        return /^[\+]?[1-9][0-9]{9,14}$/.test(cleaned);
+        return /^[\+]?[1-9][0-9]{9}$/.test(cleaned);
       },
       {
         message:
-          "Phone number must be in valid format (10-15 digits, optional + prefix)",
+          "Phone number must be in valid format (10 digits), optional",
       }
     ),
   department: z.string().min(1, "Department is required"),
@@ -848,6 +839,7 @@ export default function Employees() {
                         id="phone"
                         type="tel"
                         {...register("phone")}
+                        onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
                         aria-invalid={errors.phone ? "true" : "false"}
                       />
                       {errors.phone && (

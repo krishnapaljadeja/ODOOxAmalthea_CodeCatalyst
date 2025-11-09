@@ -47,13 +47,47 @@ import { useAuthStore } from "../store/auth";
 
 const leaveSchema = z
   .object({
-    type: z.enum(["sick", "vacation", "personal", "unpaid"], {
+    type: z.enum(["sick", "vacation", "unpaid"], {
       required_error: "Leave type is required",
     }),
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().min(1, "End date is required"),
     reason: z.string().min(1, "Reason is required"),
   })
+  .refine(
+    (data) => {
+      // Start date must be before or equal to end date
+      if (data.startDate && data.endDate) {
+        const start = new Date(data.startDate);
+        const end = new Date(data.endDate);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        return start <= end;
+      }
+      return true;
+    },
+    {
+      message: "Start date must be before or equal to end date",
+      path: ["startDate"],
+    }
+  )
+  .refine(
+    (data) => {
+      // End date must be after or equal to start date
+      if (data.startDate && data.endDate) {
+        const start = new Date(data.startDate);
+        const end = new Date(data.endDate);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        return end >= start;
+      }
+      return true;
+    },
+    {
+      message: "End date must be after or equal to start date",
+      path: ["endDate"],
+    }
+  )
   .refine(
     (data) => {
       // For sick leave, start date must be in the past
@@ -249,8 +283,7 @@ export default function Leaves() {
 
   const leaveTypeLabels = {
     sick: "Sick Leave",
-    vacation: "Vacation",
-    personal: "Personal Leave",
+    vacation: "Casual Leave",
     unpaid: "Unpaid Leave",
   };
 
@@ -438,8 +471,7 @@ export default function Leaves() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="sick">Sick Leave</SelectItem>
-                      <SelectItem value="vacation">Vacation</SelectItem>
-                      <SelectItem value="personal">Personal Leave</SelectItem>
+                      <SelectItem value="vacation">Casual Leave</SelectItem>
                       <SelectItem value="unpaid">Unpaid Leave</SelectItem>
                     </SelectContent>
                   </Select>
@@ -457,7 +489,9 @@ export default function Leaves() {
                       type="date"
                       {...register("startDate")}
                       max={
-                        watch("type") === "sick"
+                        endDate
+                          ? endDate
+                          : watch("type") === "sick"
                           ? new Date().toISOString().split("T")[0]
                           : undefined
                       }
@@ -480,7 +514,7 @@ export default function Leaves() {
                       id="endDate"
                       type="date"
                       {...register("endDate")}
-                      min={startDate}
+                      min={startDate || undefined}
                       max={
                         watch("type") === "sick"
                           ? new Date().toISOString().split("T")[0]

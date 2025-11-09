@@ -55,7 +55,7 @@ import { mockApi } from './mocks'
  * @property {string} id - Leave ID
  * @property {string} employeeId - Employee ID
  * @property {string} employeeName - Employee name
- * @property {string} type - Leave type (sick|vacation|personal|unpaid)
+ * @property {string} type - Leave type (sick|vacation|unpaid) - Note: vacation is displayed as "Casual Leave" in UI
  * @property {string} startDate - Start date (ISO 8601)
  * @property {string} endDate - End date (ISO 8601)
  * @property {number} days - Number of days
@@ -462,7 +462,7 @@ export const backendIntegrationSpec = {
             Authorization: { type: 'string', required: true, description: 'Bearer token' },
           },
           body: {
-            type: { type: 'string', required: true, description: 'Leave type (sick|vacation|personal|unpaid)' },
+            type: { type: 'string', required: true, description: 'Leave type (sick|vacation|unpaid) - Note: vacation is displayed as "Casual Leave" in UI' },
             startDate: { type: 'string', required: true, description: 'Start date (ISO 8601)' },
             endDate: { type: 'string', required: true, description: 'End date (ISO 8601)' },
             days: { type: 'number', required: true, description: 'Number of days' },

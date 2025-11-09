@@ -69,7 +69,7 @@ export const getLeaves = async (req, res, next) => {
       endDate: leave.endDate.toISOString().split("T")[0],
       days: leave.days,
       reason: leave.reason,
-      documentUrl: leave.documentUrl,
+      documentUrl: leave.documentUrl || null,
       status: leave.status,
       approvedBy: leave.approvedById,
       approvedAt: leave.approvedAt?.toISOString() || null,
@@ -164,18 +164,24 @@ export const createLeave = async (req, res, next) => {
       });
     }
 
+    const leaveData = {
+      employeeId: employee.id,
+      userId: user.id,
+      type,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      days: parseInt(days),
+      reason,
+      status: "pending",
+    };
+
+    // Only include documentUrl if it has a value
+    if (documentUrl) {
+      leaveData.documentUrl = documentUrl;
+    }
+
     const leave = await prisma.leave.create({
-      data: {
-        employeeId: employee.id,
-        userId: user.id,
-        type,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        days: parseInt(days),
-        reason,
-        documentUrl,
-        status: "pending",
-      },
+      data: leaveData,
       include: {
         employee: {
           select: {
@@ -199,7 +205,7 @@ export const createLeave = async (req, res, next) => {
         endDate: leave.endDate.toISOString().split("T")[0],
         days: leave.days,
         reason: leave.reason,
-        documentUrl: leave.documentUrl,
+        documentUrl: leave.documentUrl || null,
         status: leave.status,
         approvedBy: leave.approvedById,
         approvedAt: leave.approvedAt?.toISOString() || null,
@@ -268,7 +274,7 @@ export const approveLeave = async (req, res, next) => {
         endDate: updated.endDate.toISOString().split("T")[0],
         days: updated.days,
         reason: updated.reason,
-        documentUrl: updated.documentUrl,
+        documentUrl: updated.documentUrl || null,
         status: updated.status,
         approvedBy: updated.approvedById,
         approvedAt: updated.approvedAt?.toISOString() || null,
@@ -337,7 +343,7 @@ export const rejectLeave = async (req, res, next) => {
         endDate: updated.endDate.toISOString().split("T")[0],
         days: updated.days,
         reason: updated.reason,
-        documentUrl: updated.documentUrl,
+        documentUrl: updated.documentUrl || null,
         status: updated.status,
         approvedBy: updated.approvedById,
         approvedAt: updated.approvedAt?.toISOString() || null,
