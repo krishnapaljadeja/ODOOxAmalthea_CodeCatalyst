@@ -16,7 +16,6 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-
 export const getEmployees = async (req, res, next) => {
   try {
     const { search, department, status } = req.query;
@@ -115,7 +114,7 @@ export const createEmployee = async (req, res, next) => {
       position,
       salary,
       hireDate,
-      role, 
+      role,
     } = req.body;
 
     const currentUser = req.user; // Admin/HR
@@ -173,6 +172,16 @@ export const createEmployee = async (req, res, next) => {
       }
     }
 
+    // Validate salary - cannot be negative
+    const parsedSalary = parseFloat(salary);
+    if (isNaN(parsedSalary) || parsedSalary < 0) {
+      return res.status(400).json({
+        status: "error",
+        message: "Salary must be a valid positive number (cannot be negative)",
+        error: "Validation Error",
+      });
+    }
+
     const companyCode = company.code;
 
     const employeeId = await generateEmployeeId(
@@ -198,65 +207,73 @@ export const createEmployee = async (req, res, next) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        role: employeeRole,
-        phone,
-        department,
-        position,
-        employeeId,
-        companyId: company.id,
-      },
-    });
+    // Use transaction to ensure atomicity - all operations succeed or all fail
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          firstName,
+          lastName,
+          role: employeeRole,
+          phone,
+          department,
+          position,
+          employeeId,
+          companyId: company.id,
+        },
+      });
 
-    // Create password reset token
-    await prisma.passwordResetToken.create({
-      data: {
-        token: resetToken,
-        userId: user.id,
-        email: user.email,
-        expiresAt,
-      },
-    });
+      // Create password reset token
+      await tx.passwordResetToken.create({
+        data: {
+          token: resetToken,
+          userId: user.id,
+          email: user.email,
+          expiresAt,
+        },
+      });
 
-    // Create employee
-    const employee = await prisma.employee.create({
-      data: {
-        employeeId,
-        userId: user.id,
-        email,
-        firstName,
-        lastName,
-        phone,
-        department,
-        position,
-        status: "active",
-        hireDate: new Date(hireDate),
-        salary: parseFloat(salary),
-        companyId: company.id,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            avatar: true,
-            phone: true,
-            department: true,
-            position: true,
-            createdAt: true,
-            updatedAt: true,
+      // Create employee
+      const employee = await tx.employee.create({
+        data: {
+          employeeId,
+          userId: user.id,
+          email,
+          firstName,
+          lastName,
+          phone,
+          department,
+          position,
+          status: "active",
+          hireDate: new Date(hireDate),
+          salary: parsedSalary,
+          companyId: company.id,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              avatar: true,
+              phone: true,
+              department: true,
+              position: true,
+              createdAt: true,
+              updatedAt: true,
+            },
           },
         },
-      },
+      });
+
+      return { user, employee };
     });
+
+    const { user, employee } = result;
 
     try {
       await sendAccountCreationEmail(
@@ -929,7 +946,6 @@ export const importEmployees = async (req, res, next) => {
   }
 };
 
-
 export const exportEmployees = async (req, res, next) => {
   try {
     const user = req.user;
@@ -1265,8 +1281,7 @@ export const updateEmployee = async (req, res, next) => {
     if (user.companyId && employee.companyId !== user.companyId) {
       return res.status(403).json({
         status: "error",
-        message:
-          "You can only update employees in your company",
+        message: "You can only update employees in your company",
         error: "Forbidden",
       });
     }
