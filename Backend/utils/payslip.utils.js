@@ -212,67 +212,67 @@ export const generatePayslipPDF = async (payslip, employee, payroll) => {
 
           doc.fontSize(14).text('Earnings', { underline: true })
           doc.fontSize(12)
-          doc.text(`Basic Salary: ₹${computation.proratedBasic.toFixed(2)}`)
+          doc.text(`Basic Salary: Rs${computation.proratedBasic.toFixed(2)}`)
           if (computation.hra > 0) {
-            doc.text(`House Rent Allowance: ₹${computation.hra.toFixed(2)}`)
+            doc.text(`House Rent Allowance: Rs ${computation.hra.toFixed(2)}`)
           }
           if (computation.standardAllowance > 0) {
-            doc.text(`Standard Allowance: ₹${computation.standardAllowance.toFixed(2)}`)
+            doc.text(`Standard Allowance: Rs ${computation.standardAllowance.toFixed(2)}`)
           }
           if (computation.bonus > 0) {
-            doc.text(`Performance Bonus: ₹${computation.bonus.toFixed(2)}`)
+            doc.text(`Performance Bonus: Rs ${computation.bonus.toFixed(2)}`)
           }
           if (computation.lta > 0) {
-            doc.text(`Travel Allowance: ₹${computation.lta.toFixed(2)}`)
+            doc.text(`Travel Allowance: Rs ${computation.lta.toFixed(2)}`)
           }
           if (computation.fixedAllowance > 0) {
-            doc.text(`Fixed Allowance: ₹${computation.fixedAllowance.toFixed(2)}`)
+            doc.text(`Fixed Allowance: Rs ${computation.fixedAllowance.toFixed(2)}`)
           }
-          doc.text(`Gross Salary: ₹${computation.grossTotal.toFixed(2)}`, { bold: true })
+          doc.text(`Gross Salary: Rs ${computation.grossTotal.toFixed(2)}`, { bold: true })
           doc.moveDown()
 
           doc.fontSize(14).text('Deductions', { underline: true })
           doc.fontSize(12)
           if (computation.pfEmployee > 0) {
-            doc.text(`PF Employee: ₹${computation.pfEmployee.toFixed(2)}`)
+            doc.text(`PF Employee: Rs ${computation.pfEmployee.toFixed(2)}`)
           }
           if (computation.professionalTax > 0) {
-            doc.text(`Professional Tax: ₹${computation.professionalTax.toFixed(2)}`)
+            doc.text(`Professional Tax: Rs ${computation.professionalTax.toFixed(2)}`)
           }
           if (computation.otherDeductions > 0) {
-            doc.text(`Other Deductions: ₹${computation.otherDeductions.toFixed(2)}`)
+            doc.text(`Other Deductions: Rs ${computation.otherDeductions.toFixed(2)}`)
           }
-          doc.text(`Total Deductions: ₹${computation.deductionsTotal.toFixed(2)}`, { bold: true })
+          doc.text(`Total Deductions: Rs ${computation.deductionsTotal.toFixed(2)}`, { bold: true })
           doc.moveDown()
 
-          doc.fontSize(16).text(`Net Salary: ₹${computation.netAmount.toFixed(2)}`, { bold: true, align: 'right' })
+          doc.fontSize(16).text(`Net Salary: Rs ${computation.netAmount.toFixed(2)}`, { bold: true, align: 'right' })
         } else {
           // Fallback to payroll data if salary structure not found
           doc.fontSize(14).text('Earnings', { underline: true })
           doc.fontSize(12)
-          doc.text(`Gross Salary: ₹${(payroll?.grossSalary || 0).toFixed(2)}`)
+          doc.text(`Gross Salary: Rs ${(payroll?.grossSalary || 0).toFixed(2)}`)
           doc.moveDown()
 
           doc.fontSize(14).text('Deductions', { underline: true })
           doc.fontSize(12)
-          doc.text(`Total Deductions: ₹${(payroll?.totalDeductions || 0).toFixed(2)}`)
+          doc.text(`Total Deductions: Rs ${(payroll?.totalDeductions || 0).toFixed(2)}`)
           doc.moveDown()
 
-          doc.fontSize(16).text(`Net Salary: ₹${(payroll?.netSalary || 0).toFixed(2)}`, { bold: true, align: 'right' })
+          doc.fontSize(16).text(`Net Salary: Rs ${(payroll?.netSalary || 0).toFixed(2)}`, { bold: true, align: 'right' })
         }
       } else {
         // Fallback if no payrun data
         doc.fontSize(14).text('Earnings', { underline: true })
         doc.fontSize(12)
-        doc.text(`Gross Salary: ₹${(payroll?.grossSalary || 0).toFixed(2)}`)
+        doc.text(`Gross Salary: Rs ${(payroll?.grossSalary || 0).toFixed(2)}`)
         doc.moveDown()
 
         doc.fontSize(14).text('Deductions', { underline: true })
         doc.fontSize(12)
-        doc.text(`Total Deductions: ₹${(payroll?.totalDeductions || 0).toFixed(2)}`)
+        doc.text(`Total Deductions: Rs ${(payroll?.totalDeductions || 0).toFixed(2)}`)
         doc.moveDown()
 
-        doc.fontSize(16).text(`Net Salary: ₹${(payroll?.netSalary || 0).toFixed(2)}`, { bold: true, align: 'right' })
+        doc.fontSize(16).text(`Net Salary: Rs ${(payroll?.netSalary || 0).toFixed(2)}`, { bold: true, align: 'right' })
       }
 
       doc.end()
