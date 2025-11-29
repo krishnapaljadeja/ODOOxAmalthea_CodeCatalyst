@@ -2,15 +2,67 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 
 const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = parseInt(process.env.SMTP_PORT || "587");
+  const secure = false; // Use STARTTLS instead of direct SSL
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  // Log configuration (without sensitive data) for debugging
+  console.log("[Email Config] SMTP Configuration:", {
+    host,
+    port,
+    secure,
+    user: user ? `${user.substring(0, 3)}***` : "NOT SET",
+    hasPassword: !!pass,
+    nodeEnv: process.env.NODE_ENV || "development",
   });
+
+  // Validate required environment variables
+  if (!user || !pass) {
+    const error = new Error(
+      "SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS environment variables."
+    );
+    console.error("[Email Config] Missing credentials:", {
+      hasUser: !!user,
+      hasPass: !!pass,
+    });
+    throw error;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user,
+      pass,
+    },
+    // Add connection timeout settings to prevent hanging
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 5000, // 5 seconds
+    socketTimeout: 10000, // 10 seconds
+    // Enable debug logging in development
+    debug: process.env.NODE_ENV === "development",
+    logger: process.env.NODE_ENV === "development",
+  });
+
+  // Verify connection configuration
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error("[Email Config] SMTP connection verification failed:", {
+        message: error.message,
+        code: error.code,
+        command: error.command,
+        response: error.response,
+        responseCode: error.responseCode,
+      });
+    } else {
+      console.log("[Email Config] SMTP connection verified successfully");
+    }
+  });
+
+  return transporter;
 };
 
 export const generateRandomPassword = (length = 12) => {
@@ -34,6 +86,9 @@ export const sendAccountCreationEmail = async (
   firstName,
   resetToken
 ) => {
+  const startTime = Date.now();
+  console.log(`[Email] Attempting to send account creation email to: ${email}`);
+
   try {
     const transporter = createTransporter();
 
@@ -114,15 +169,47 @@ export const sendAccountCreationEmail = async (
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+    const duration = Date.now() - startTime;
+    console.log(`[Email] Account creation email sent successfully to ${email} in ${duration}ms`, {
+      messageId: info.messageId,
+      response: info.response,
+    });
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    const duration = Date.now() - startTime;
+    console.error(`[Email] Failed to send account creation email to ${email} after ${duration}ms:`, {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+
+    // Provide more specific error messages
+    if (error.code === "ETIMEDOUT" || error.code === "ECONNECTIONTIMEOUT") {
+      throw new Error(
+        `SMTP connection timeout. Check your SMTP host and port settings, and ensure Render allows outbound connections on port ${process.env.SMTP_PORT || "587"}.`
+      );
+    } else if (error.code === "EAUTH") {
+      throw new Error(
+        "SMTP authentication failed. Please verify your SMTP_USER and SMTP_PASS credentials."
+      );
+    } else if (error.code === "ECONNREFUSED") {
+      throw new Error(
+        `SMTP connection refused. Check if the SMTP host (${process.env.SMTP_HOST || "smtp.gmail.com"}) and port (${process.env.SMTP_PORT || "587"}) are correct.`
+      );
+    }
+
     throw error;
   }
 };
 
 export const sendPasswordResetEmail = async (email, firstName, resetToken) => {
+  const startTime = Date.now();
+  console.log(`[Email] Attempting to send password reset email to: ${email}`);
+
   try {
     const transporter = createTransporter();
 
@@ -173,10 +260,39 @@ export const sendPasswordResetEmail = async (email, firstName, resetToken) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+    const duration = Date.now() - startTime;
+    console.log(`[Email] Password reset email sent successfully to ${email} in ${duration}ms`, {
+      messageId: info.messageId,
+      response: info.response,
+    });
     return true;
   } catch (error) {
-    console.error("Error sending password reset email:", error);
+    const duration = Date.now() - startTime;
+    console.error(`[Email] Failed to send password reset email to ${email} after ${duration}ms:`, {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+
+    // Provide more specific error messages
+    if (error.code === "ETIMEDOUT" || error.code === "ECONNECTIONTIMEOUT") {
+      throw new Error(
+        `SMTP connection timeout. Check your SMTP host and port settings, and ensure Render allows outbound connections on port ${process.env.SMTP_PORT || "587"}.`
+      );
+    } else if (error.code === "EAUTH") {
+      throw new Error(
+        "SMTP authentication failed. Please verify your SMTP_USER and SMTP_PASS credentials."
+      );
+    } else if (error.code === "ECONNREFUSED") {
+      throw new Error(
+        `SMTP connection refused. Check if the SMTP host (${process.env.SMTP_HOST || "smtp.gmail.com"}) and port (${process.env.SMTP_PORT || "587"}) are correct.`
+      );
+    }
+
     throw error;
   }
 };
